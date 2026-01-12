@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Timer,
+  Truck,
 } from "lucide-react"; // Adjust if you're using different icon lib
 import RazorpayButton from "./RazorpayButton";
 import { useAuth } from "@/app/utils/AuthContext";
@@ -32,6 +33,7 @@ const CheckoutForm = ({
 
   // Debounce timer ref
   const debounceRef = useRef(null);
+  const hotDealHistorySentRef = useRef(false);
 
   const { getValidToken, isAuthReady } = useAuth();
 
@@ -116,8 +118,16 @@ const CheckoutForm = ({
         name: payload.name || "",
         email: payload.email || "",
         phone: payload.contact || "",
+
+        // 🔥 event tracking (optional)
+        event: payload.event || null,
+        coupon_code: payload.coupon_code || null,
+
         cart_items: cartPreview, // 🔥 includes [{ id, product_id, name, image }, ...]
       };
+
+      // remove empty noise
+      Object.keys(body).forEach((k) => body[k] === null && delete body[k]);
 
       // 👀 Debug log (safe)
       try {
@@ -549,7 +559,7 @@ const CheckoutForm = ({
   const [isApplied, setIsApplied] = useState(false);
 
   // Limited-deal config
-  const LIMITED_DEAL_CODE = "Flat100"; //YKJVFFFHBK
+  const LIMITED_DEAL_CODE = "TEST30"; //Test50  //FLATY100
   const LIMITED_DEAL_DURATION = 600; // ⭐ NEW: 10 minutes in seconds
 
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
@@ -669,6 +679,17 @@ const CheckoutForm = ({
     }
   };
 
+  const getClientIP = async () => {
+    try {
+      const res = await fetch("https://api.ipify.org?format=json");
+      const data = await res.json();
+      return data.ip || "unknown";
+    } catch (err) {
+      console.warn("Failed to fetch client IP", err);
+      return "unknown";
+    }
+  };
+
   // 🚀 Auto-apply limited-time hot deal (silent, invisible coupon)
   //  - Triggers after 5 seconds (testing)
   //  - Lasts for 2 minutes (120s) then removes itself
@@ -738,6 +759,37 @@ const CheckoutForm = ({
       window.dispatchEvent(new Event("cart-updated"));
     } catch (err) {
       console.error("Failed to apply limited-time deal:", err);
+    }
+
+    // 🔥 Send history event ONCE after successful hot-deal apply
+    if (!hotDealHistorySentRef.current) {
+      hotDealHistorySentRef.current = true;
+
+      try {
+        const token = await getValidToken();
+
+        // ❌ Client-side IP (not guaranteed accurate)
+        const clientIp = await getClientIP();
+
+        await fetch("/api/history_save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ REQUIRED
+          },
+          body: JSON.stringify({
+            event: "HOT_DEAL_APPLIED",
+            coupon_code: LIMITED_DEAL_CODE,
+            ip_address: clientIp, // ⚠️ client-sent IP
+            cart_items: JSON.parse(
+              localStorage.getItem("cartItemPreview") || "[]"
+            ),
+          }),
+          keepalive: true,
+        });
+      } catch (e) {
+        console.warn("Hot deal history event failed", e);
+      }
     }
   };
 
@@ -833,20 +885,25 @@ const CheckoutForm = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        const already =
+        const manualCoupon = localStorage.getItem("applied_coupon");
+        const limitedOnce =
           localStorage.getItem("limited_deal_applied_once") === "1";
-        if (already) return;
-      } catch (e) {
-        // ignore storage errors
-      }
 
-      if (!isApplied && !limitedDealApplied) {
+        // 🚫 HARD STOP: user already applied coupon manually
+        if (manualCoupon) return;
+
+        // 🚫 HARD STOP: limited deal already used once
+        if (limitedOnce) return;
+
+        // ✅ Safe to auto-apply
         autoApplyLimitedDeal();
+      } catch (e) {
+        console.warn("Auto deal check failed", e);
       }
-    }, 120000); // 5 seconds for testing
+    }, 120000); // 2 minutes
 
     return () => clearTimeout(timer);
-  }, [isApplied, limitedDealApplied]);
+  }, []);
 
   // ⏳ Deal countdown: 2 minutes total (120 seconds)
   useEffect(() => {
@@ -995,7 +1052,7 @@ const CheckoutForm = ({
         <div className={`space-y-6 ${!isSummaryOpen ? "hidden" : ""} lg:block`}>
           {/* 🛍 Cart Items */}
           {cartItems.map((item) => (
-            <div key={item.id} className="flex items-center gap-4 mt-6">
+            <div key={item.id} className="flex items-start gap-4 mt-6">
               <img
                 src={getImageSrc(item.image)}
                 alt={item.name}
@@ -1005,6 +1062,7 @@ const CheckoutForm = ({
                 <p className="text-sm font-medium">
                   {item.name} <br /> x {item.qty}
                 </p>
+
                 <p className="text-sm mt-1 text-right">
                   ₹
                   {(
@@ -1012,6 +1070,13 @@ const CheckoutForm = ({
                     Number(item.qty)
                   ).toFixed(2)}
                 </p>
+
+                {item.deliveryDays && (
+                  <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5 text-red-700" />
+                    Delivered in {item.deliveryDays} days
+                  </p>
+                )}
               </div>
             </div>
           ))}
@@ -1454,7 +1519,7 @@ const CheckoutForm = ({
 
                 {/* 🛍 Cart Items */}
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 mt-6">
+                  <div key={item.id} className="flex items-start gap-4 mt-6">
                     <img
                       src={getImageSrc(item.image)}
                       alt={item.name}
@@ -1472,6 +1537,12 @@ const CheckoutForm = ({
                           ) * Number(item.qty)
                         ).toFixed(2)}
                       </p>
+                      {item.deliveryDays && (
+                        <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
+                          <Truck className="w-3.5 h-3.5 text-red-700" />
+                          Delivered in {item.deliveryDays} days
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

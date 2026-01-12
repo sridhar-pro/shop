@@ -138,6 +138,7 @@ export default function CheckoutPage({ formData }) {
           item.subtotal ||
           `₹${(parseCurrency(item.price) * item.qty).toFixed(2)}`,
         image: item.image || "/fallback.png",
+        deliveryDays: item.deliveryDays || null, // ✅ NEW
       }));
       setCartItems(itemsArray);
 

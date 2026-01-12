@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
+import axios from "axios";
 
 export async function POST() {
   try {
-    const res = await fetch(
-      "https://marketplace.yuukke.com/api/v1/Auth/api_login",
+    const response = await axios.post(
+      `${process.env.BACKEND_BASE_URL}/api_login`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: "admin",
-          password: "Admin@123",
-        }),
+        username: process.env.ADMIN_USERNAME,
+        password: process.env.ADMIN_PASSWORD,
+      },
+      {
+        timeout: 30000,
       }
     );
 
-    const data = await res.json();
-    if (data.status !== "success") throw new Error("Login failed");
+    return NextResponse.json(response.data, { status: 200 });
+  } catch (error) {
+    console.error("Server login failed:", error.message);
 
-    return NextResponse.json({ token: data.token });
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Authentication failed",
+      },
+      { status: 500 }
+    );
   }
 }

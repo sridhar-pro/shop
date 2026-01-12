@@ -5,7 +5,7 @@ import { useAuth } from "../utils/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
-import { TrendingUp, Trash2, Timer } from "lucide-react";
+import { TrendingUp, Trash2, Timer, Truck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const OrderSummary = () => {
@@ -32,7 +32,7 @@ const OrderSummary = () => {
   const [bogoOffers, setBogoOffers] = useState([]);
 
   // Limited-deal config
-  const LIMITED_DEAL_CODE = "Flat100"; //YKJVFFFHBK
+  const LIMITED_DEAL_CODE = "TEST30"; //TEST50 //FLATY100
   const LIMITED_DEAL_DURATION = 600; // seconds (10 minutes)
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION);
@@ -114,6 +114,7 @@ const OrderSummary = () => {
           item.subtotal ||
           `₹${(parseCurrency(item.price) * item.qty).toFixed(2)}`,
         image: item.image || "/fallback.png",
+        deliveryDays: item.deliveryDays || null, // ✅ NEW
       }));
       setCartItems(itemsArray);
 
@@ -337,20 +338,25 @@ const OrderSummary = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        const already =
+        const manualCoupon = localStorage.getItem("applied_coupon");
+        const limitedOnce =
           localStorage.getItem("limited_deal_applied_once") === "1";
-        if (already) return; // don't reapply
-      } catch (e) {
-        // ignore storage errors and proceed
-      }
 
-      if (!isApplied && !limitedDealApplied) {
+        // 🚫 HARD STOP: user already applied coupon manually
+        if (manualCoupon) return;
+
+        // 🚫 HARD STOP: limited deal already used once
+        if (limitedOnce) return;
+
+        // ✅ Safe to auto-apply
         autoApplyLimitedDeal();
+      } catch (e) {
+        console.warn("Auto deal check failed", e);
       }
-    }, 120000); // 2 min trigger
+    }, 120000); // 2 minutes
 
     return () => clearTimeout(timer);
-  }, [isApplied, limitedDealApplied]);
+  }, []);
 
   const autoApplyLimitedDeal = async () => {
     const cartId = localStorage.getItem("cart_id");
@@ -653,7 +659,7 @@ const OrderSummary = () => {
                   transition={{ duration: 0.2 }}
                   className="flex items-center justify-between gap-4 border-b border-gray-200 py-3"
                 >
-                  <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-start gap-4 flex-1">
                     <img
                       src={getImageSrc(item.image)}
                       alt={item.name}
@@ -666,6 +672,12 @@ const OrderSummary = () => {
                       <p className="text-sm text-gray-600 mt-1">
                         ₹{(item.price * item.qty).toFixed(2)}
                       </p>
+                      {item.deliveryDays && (
+                        <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
+                          <Truck className="w-3.5 h-3.5 text-red-700" />
+                          Delivered in {item.deliveryDays} days
+                        </p>
+                      )}
                     </div>
                   </div>
 

@@ -229,19 +229,21 @@ const Wishlist = () => {
                       const fetchToken = async () => {
                         const res = await fetch("/api/login", {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            username: "admin",
-                            password: "Admin@123",
-                          }),
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
                         });
+                      
                         const data = await res.json();
-                        if (data.status === "success") {
+                      
+                        if (data?.status === "success" && data?.token) {
                           localStorage.setItem("authToken", data.token);
                           return data.token;
                         }
+                      
                         throw new Error("Authentication failed");
                       };
+                      
 
                       let token = localStorage.getItem("authToken");
                       if (!token) token = await fetchToken();

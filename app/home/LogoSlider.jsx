@@ -1,13 +1,10 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useAuth } from "../utils/AuthContext";
 import Link from "next/link";
-import { fetchWithAuthGlobal } from "../utils/fetchWithAuth";
 
 const LogoSlider = () => {
   const [logos, setLogos] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
-  const { getValidToken } = useAuth();
   const hasFetched = useRef(false);
 
   // Check if mobile on mount and resize
@@ -17,38 +14,35 @@ const LogoSlider = () => {
     window.addEventListener("resize", checkIfMobile);
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
-
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-
+  
     const fetchLogos = async () => {
       try {
-        const data = await fetchWithAuthGlobal(
-          "/api/vendorlogo",
-          {},
-          getValidToken
-        );
-        console.log("Logo data:", data);
-
+        // NOTE: endpoint matches the catch-all route dynamic param
+        const res = await fetch("/api/vendorLogo"); 
+        const data = await res.json();
+  
         if (!data || !Array.isArray(data)) {
           throw new Error("No logo data received.");
         }
-
+  
         const logoUrls = data.map((vendor) => ({
           id: vendor.id,
           slug: vendor.slug,
           logo: `https://marketplace.yuukke.com/assets/uploads/thumbs/${vendor.store_logo}`,
         }));
-
+  
         setLogos(logoUrls);
       } catch (error) {
         console.error("⚠️ Error fetching logos:", error);
       }
     };
-
+  
     fetchLogos();
-  }, [getValidToken]);
+  }, []);
+  
 
   return (
     <div className="relative w-full overflow-hidden py-8 bg-white mb-16 mt-16">
@@ -72,7 +66,7 @@ const LogoSlider = () => {
                 <Link
                   href={{
                     pathname: "/products",
-                    query: { warehouses_id: vendor.slug }, // pass slug here
+                    query: { warehouses_id: vendor.slug },
                   }}
                   passHref
                 >
@@ -88,7 +82,6 @@ const LogoSlider = () => {
         </div>
       </div>
 
-      {/* Hide scrollbar for WebKit browsers */}
       <style jsx global>{`
         @keyframes slide {
           0% {
@@ -104,7 +97,6 @@ const LogoSlider = () => {
         .logo-slider-track:hover {
           animation-play-state: paused !important;
         }
-        /* Hide scrollbar for Chrome, Safari and Opera */
         .overflow-x-auto::-webkit-scrollbar {
           display: none;
         }

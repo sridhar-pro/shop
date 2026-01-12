@@ -102,35 +102,35 @@ const FeaturedProducts = () => {
       hasFetched.current = true;
 
       const fetchers = [
-        { key: "gift", url: "/api/giftproducts", setter: setGiftProducts },
+        { key: "gift", url: "/api/getGiftsProducts", setter: setGiftProducts },
         {
           key: "arrival",
-          url: "/api/newarrival",
+          url: "/api/newArraivals",
           setter: setNewArrivalProducts,
         },
         {
           key: "featured",
-          url: "/api/featuredproducts",
+          url: "/api/featuredProducts",
           setter: setFeaturedProducts,
         },
         {
           key: "festival",
-          url: "/api/festivalproducts",
+          url: "/api/festivalProducts",
           setter: setFestivalProducts,
         },
         {
           key: "wellness",
-          url: "/api/wellnessproducts",
+          url: "/api/wellnessProducts",
           setter: setWellnessProducts,
         },
         {
           key: "corporate",
-          url: "/api/corporategiftproducts",
+          url: "/api/getCorporateGifts",
           setter: setCorporateProducts,
         },
         {
           key: "return",
-          url: "/api/returngiftproducts",
+          url: "/api/getReturnGifts",
           setter: setReturnProducts,
         },
       ];
@@ -158,7 +158,9 @@ const FeaturedProducts = () => {
             }
           }
 
-          const data = await fetchWithAuthGlobal(url, {}, getValidToken);
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Failed to fetch");
+          const data = await res.json();
 
           const validData = Array.isArray(data) ? data : [];
           setter(validData);
@@ -378,14 +380,16 @@ const FeaturedProducts = () => {
             isNaN(quantityNum) ||
             quantityNum <= 0;
 
-          // ✅ Extract product_variants safely
           const variants = Array.isArray(product.product_variants)
             ? product.product_variants.map((variant) => ({
                 id: variant.id,
                 name: variant.name,
                 price: Number(variant.price),
                 quantity: Number(variant.quantity),
-                image: variant.front_view || null, // ✅ add image extraction safely
+                color: variant.color,
+                frontImage: variant.front_view || null,
+                backImage: variant.back_view || null,
+                zoomImage: variant.zoom_view || null,
               }))
             : [];
 
@@ -397,6 +401,10 @@ const FeaturedProducts = () => {
           // ✅ Calculate final price (base + variant)
           const variantExtra = selectedVariant ? selectedVariant.price : 0;
           const finalPrice = promoPrice + variantExtra;
+
+          const mainImageSrc = selectedVariant?.frontImage
+            ? getImageSrc(selectedVariant.frontImage)
+            : getImageSrc(product.image);
 
           return (
             <motion.div
@@ -449,29 +457,37 @@ const FeaturedProducts = () => {
               >
                 <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden mb-3 md:mb-4 group">
                   <Image
-                    src={getImageSrc(product.image)}
+                    src={mainImageSrc}
                     alt={product.name || "Image not found!"}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    className={`object-contain ${
+                    className={`object-contain transition-opacity duration-300 ${
                       isOutOfStock ? "opacity-70" : ""
                     }`}
                   />
-                  {/* Hover Image - Show variant image if available, else fallback */}
+
+                  {/* Hover Image - Variant aware */}
                   {!isOutOfStock &&
                     (() => {
                       let hoverImage = null;
 
-                      // ✅ If variants exist and first one has an image, use it
-                      if (variants.length > 0 && variants[0]?.image) {
-                        hoverImage = variants[0].image; // You can change to selectedVariant?.image too
-                      } else {
-                        // ✅ Fallback to existing product.image_g parsing
+                      // ✅ 1️⃣ Variant hover: back → zoom
+                      if (variants.length > 0 && selectedVariant) {
+                        hoverImage =
+                          selectedVariant.backImage ||
+                          selectedVariant.zoomImage ||
+                          null;
+                      }
+
+                      // ✅ 2️⃣ Product gallery fallback
+                      if (!hoverImage) {
                         const matches =
                           product.image_g?.match(/src="([^"]+)"/g) || [];
+
                         const urls = matches.map((src) =>
                           src.replace(/src="|"/g, "")
                         );
+
                         hoverImage = urls[1] || null;
                       }
 
@@ -582,7 +598,7 @@ const FeaturedProducts = () => {
                           </svg>
                         ))}
                       </div>
-                      <span className="text-[10px] md:text-xs text-gray-600 ml-1">
+                      <span className="text-[10px] md:text-xs text-gray-600 ml-1 font-odop">
                         ({Number(review.toFixed(1))})
                       </span>
                     </div>
@@ -1127,16 +1143,15 @@ const FeaturedProducts = () => {
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify({
-                                    username: "admin",
-                                    password: "Admin@123",
-                                  }),
                                 });
+
                                 const data = await res.json();
-                                if (data.status === "success") {
+
+                                if (data?.status === "success" && data?.token) {
                                   localStorage.setItem("authToken", data.token);
                                   return data.token;
                                 }
+
                                 throw new Error("Authentication failed");
                               };
 
@@ -1405,19 +1420,19 @@ const FeaturedProducts = () => {
                           const fetchToken = async () => {
                             const res = await fetch("/api/login", {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                username: "admin",
-                                password: "Admin@123",
-                              }),
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
                             });
+
                             const data = await res.json();
-                            if (data.status === "success") {
+
+                            if (data?.status === "success" && data?.token) {
                               localStorage.setItem("authToken", data.token);
                               return data.token;
-                            } else {
-                              throw new Error("Authentication failed");
                             }
+
+                            throw new Error("Authentication failed");
                           };
 
                           if (!token) token = await fetchToken();

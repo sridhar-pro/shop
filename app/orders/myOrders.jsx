@@ -1,10 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  Truck,
+  Star,
+} from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
 import { useAuth } from "../utils/AuthContext";
 import InvoiceDownload from "./InvoiceDownload";
+import TrackingResult from "../track-order/TrackingResult";
 
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -12,6 +19,14 @@ const MyOrders = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(12);
   const [total, setTotal] = useState(0);
+
+  const [trackingData, setTrackingData] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState("");
+
+  const [activeReview, setActiveReview] = useState({});
+  const [submittedProducts, setSubmittedProducts] = useState({});
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const scrollToTop = () => {
     if (typeof window !== "undefined") {
@@ -139,6 +154,114 @@ const MyOrders = () => {
     pages.push(totalPages);
 
     return pages;
+  };
+
+  const handleTrackOrder = async () => {
+    try {
+      setTrackingLoading(true);
+      setTrackingError("");
+
+      const token = await getValidToken();
+
+      const res = await fetch("/api/orderTracking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          order_id: viewedOrder.invoice.reference_no, // 👈 IMPORTANT
+          awb: "",
+          mobile_number: "",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Tracking not available for this order");
+      }
+
+      const data = await res.json();
+      setTrackingData(data);
+    } catch (err) {
+      console.error("Tracking error ❌", err);
+      setTrackingError(err.message || "Unable to track order");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const setRating = (productId, value) => {
+    if (submittedProducts[productId]) return;
+
+    setActiveReview((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        product_ratings: value,
+      },
+    }));
+  };
+
+  const updateField = (productId, field, value) => {
+    if (submittedProducts[productId]) return;
+
+    setActiveReview((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const submitReview = async (item) => {
+    const review = activeReview[item.product_id];
+
+    if (!review?.product_ratings) {
+      toast.error("Please select a star rating");
+      return;
+    }
+
+    if (submittedProducts[item.product_id]) return;
+
+    setSubmittingReview(true);
+
+    try {
+      const token = await getValidToken();
+
+      const res = await fetch("/api/addreview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          order_id: viewedOrder.order_id || viewedOrder.invoice.id,
+          product_id: item.product_id,
+          written_review: review.written_review || "",
+          headline: review.headline || "",
+          product_ratings: review.product_ratings,
+          created_by: viewedOrder.invoice.customer_id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === true) {
+        toast.success("Review added successfully 🎉");
+        setSubmittedProducts((prev) => ({
+          ...prev,
+          [item.product_id]: true,
+        }));
+      } else {
+        toast.error("Failed to submit review");
+      }
+    } catch (err) {
+      console.error("Review error ❌", err);
+      toast.error("Something went wrong");
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const getImageSrc = (image) => {
@@ -471,180 +594,177 @@ const MyOrders = () => {
         {/* Render products of viewed order */}
         {viewedOrder && viewedOrder.seller_group?.length > 0 && (
           <div className="flex flex-col">
-            {/* Back button */}
-            <div className="mb-6">
+            {/* 🔙 Back + 🚚 Track buttons */}
+            <div className="mb-6 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setViewedOrder(null)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200"
+                onClick={() => {
+                  setViewedOrder(null);
+                  setTrackingData(null);
+                  setTrackingError("");
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md shadow-sm hover:bg-gray-200 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back to Orders
               </button>
+
+              <button
+                onClick={handleTrackOrder}
+                className="inline-flex items-center gap-2 px-5 py-2.5
+          bg-gradient-to-r from-green-600 to-emerald-600
+          text-white rounded-xl shadow-md
+          hover:shadow-lg hover:scale-[1.02]
+          transition-all duration-200"
+              >
+                <Truck className="w-5 h-5" />
+                Track Order
+              </button>
             </div>
 
-            {/* If multiple seller groups, separate packages */}
-            {viewedOrder.seller_group.length > 1 ? (
-              viewedOrder.seller_group.map((group, gIdx) => (
-                <div key={gIdx} className="mb-10">
-                  {/* Package Header */}
+            {/* 📦 Packages / Products */}
+            {viewedOrder.seller_group.map((group, gIdx) => (
+              <div key={gIdx} className="mb-12">
+                {viewedOrder.seller_group.length > 1 && (
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     Package {gIdx + 1}
                   </h2>
+                )}
 
-                  {/* Product grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {group.items.map((item) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {group.items.map((item) => {
+                    const isSubmitted = submittedProducts[item.product_id];
+
+                    return (
                       <div
                         key={item.id}
-                        className="relative flex flex-col items-center bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 p-4 group"
+                        className="relative flex flex-col bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow p-4 group"
                       >
                         {/* Product Image */}
                         <div className="w-full h-44 flex items-center justify-center overflow-hidden rounded-xl mb-4">
                           <Image
                             src={getImageSrc(item.image)}
                             alt={item.product_name || "Product Image"}
-                            className="object-contain w-full h-full transform transition-transform duration-300 group-hover:scale-105"
                             width={180}
                             height={180}
+                            className="object-contain w-full h-full transition-transform group-hover:scale-105"
                           />
                         </div>
 
                         {/* Product Name */}
-                        <h3 className="text-md font-semibold text-center text-gray-800 mb-2 line-clamp-2">
+                        <h3
+                          className="text-md font-semibold text-center text-gray-800 mb-2 line-clamp-2
+             min-h-[3rem]"
+                        >
                           {item.product_name}
                         </h3>
-
-                        {/* Price + Quantity */}
-                        <div className="flex items-center gap-2 mb-2">
+                        {/* Price */}
+                        <div className="flex items-center justify-center gap-2 mb-3">
                           <p className="text-lg font-bold text-[#A00300]">
                             ₹{parseFloat(item.subtotal).toFixed(2)}
                           </p>
-                          <span className="text-sm text-gray-600 mt-0.5">
+                          <span className="text-sm text-gray-600">
                             x {parseInt(item.quantity)}
                           </span>
                         </div>
 
-                        {/* Review Section */}
+                        {/* ⭐ Review Section */}
                         {item.product_review === true && (
-                          <ReviewForm
-                            orderId={viewedOrder.order_id}
-                            productId={item.id}
-                          />
+                          <div className="mt-4 w-full border-t pt-4">
+                            <p className="text-sm font-medium text-gray-700 mb-2 text-center">
+                              Share your experience
+                            </p>
+
+                            {/* Stars */}
+                            <div className="flex justify-center gap-2 mb-3">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  disabled={isSubmitted}
+                                  onClick={() =>
+                                    setRating(item.product_id, star)
+                                  }
+                                >
+                                  <Star
+                                    className={`h-6 w-6 ${
+                                      star <=
+                                      (activeReview[item.product_id]
+                                        ?.product_ratings || 0)
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-gray-300"
+                                    }`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Headline */}
+                            <input
+                              disabled={isSubmitted}
+                              type="text"
+                              placeholder="Headline (optional)"
+                              className="w-full mb-2 rounded-lg border px-3 py-2 text-xs disabled:bg-gray-100"
+                              onChange={(e) =>
+                                updateField(
+                                  item.product_id,
+                                  "headline",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            {/* Review */}
+                            <textarea
+                              disabled={isSubmitted}
+                              rows={2}
+                              placeholder="Write your review (optional)"
+                              className="w-full mb-3 rounded-lg border px-3 py-2 text-xs resize-none disabled:bg-gray-100"
+                              onChange={(e) =>
+                                updateField(
+                                  item.product_id,
+                                  "written_review",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            {/* Submit */}
+                            <button
+                              disabled={submittingReview || isSubmitted}
+                              onClick={() => submitReview(item)}
+                              className="w-full rounded-lg bg-black text-white py-2 text-xs font-semibold disabled:opacity-60"
+                            >
+                              {isSubmitted
+                                ? "Review Submitted ✓"
+                                : "Submit Review"}
+                            </button>
+                          </div>
                         )}
 
-                        {/* Hover border accent */}
-                        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#A00300] pointer-events-none transition-all duration-300"></div>
+                        {/* Hover Border */}
+                        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#A00300] pointer-events-none" />
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Cancel Button / Status */}
-                  <div className="mt-6 flex justify-start">
-                    {group.cancelable?.status === 1 ? (
-                      <button
-                        disabled={cancellingIndex === gIdx}
-                        className={`px-5 py-2 rounded-lg transition-colors ${
-                          cancellingIndex === gIdx
-                            ? "bg-gray-400 text-white cursor-not-allowed"
-                            : "bg-[#a00300] text-white hover:bg-red-700"
-                        }`}
-                        onClick={() =>
-                          handleCancelPackage(
-                            group.items[0]?.shiprocket_order_id,
-                            gIdx
-                          )
-                        }
-                      >
-                        {cancellingIndex === gIdx
-                          ? "Cancelling..."
-                          : "Cancel Order"}
-                      </button>
-                    ) : group.cancelable?.status === 2 ? (
-                      <p className="px-5 py-2 text-gray-500 font-medium border border-gray-300 rounded-lg">
-                        {"Order cancelled" || group.cancelable.message}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))
-            ) : (
-              // 👇 Single seller group
-              <div className="mb-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {viewedOrder.seller_group[0].items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="relative flex flex-col items-center bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 p-4 group"
-                    >
-                      {/* Image */}
-                      <div className="w-full h-44 flex items-center justify-center overflow-hidden rounded-xl mb-4">
-                        <Image
-                          src={getImageSrc(item.image)}
-                          alt={item.product_name || "Product Image"}
-                          className="object-contain w-full h-full transform transition-transform duration-300 group-hover:scale-105"
-                          width={180}
-                          height={180}
-                        />
-                      </div>
-
-                      {/* Product Name */}
-                      <h3 className="text-md font-semibold text-center text-gray-800 mb-1 line-clamp-2">
-                        {item.product_name}
-                      </h3>
-
-                      {/* Price + Quantity */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="text-lg font-bold text-[#A00300]">
-                          ₹{parseFloat(item.subtotal).toFixed(2)}
-                        </p>
-                        <span className="text-sm text-gray-600 mt-0.5">
-                          x {parseInt(item.quantity)}
-                        </span>
-                      </div>
-
-                      {/* Review Section */}
-                      {item.product_review === true && (
-                        <ReviewForm
-                          orderId={viewedOrder.order_id}
-                          productId={item.id}
-                        />
-                      )}
-
-                      {/* Hover border accent */}
-                      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#A00300] pointer-events-none transition-all duration-300"></div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {/* Cancel Button / Status for single package */}
-                <div className="mt-6 flex justify-start">
-                  {viewedOrder.seller_group[0].cancelable?.status === 1 ? (
+                {/* Cancel (per package) */}
+                {group.cancelable?.status === 1 && (
+                  <div className="mt-6">
                     <button
-                      disabled={cancellingIndex === 0}
-                      className={`px-5 py-2 rounded-lg transition-colors ${
-                        cancellingIndex === 0
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-[#a00300] text-white hover:bg-red-700"
-                      }`}
                       onClick={() =>
                         handleCancelPackage(
-                          viewedOrder.seller_group[0].items[0]
-                            ?.shiprocket_order_id,
-                          0
+                          group.items[0]?.shiprocket_order_id,
+                          gIdx
                         )
                       }
+                      className="px-5 py-2 rounded-lg bg-[#a00300] text-white hover:bg-red-700"
                     >
-                      {cancellingIndex === 0 ? "Cancelling..." : "Cancel Order"}
+                      Cancel Order
                     </button>
-                  ) : viewedOrder.seller_group[0].cancelable?.status === 2 ? (
-                    <p className="px-5 py-2 text-gray-500 font-medium border border-gray-300 rounded-lg">
-                      {"Order cancelled" ||
-                        viewedOrder.seller_group[0].cancelable.message}
-                    </p>
-                  ) : null}
-                </div>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>

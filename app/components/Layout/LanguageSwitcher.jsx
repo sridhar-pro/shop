@@ -43,7 +43,7 @@ const LanguageSwitcher = () => {
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
         onClick={toggleDropdown}
-        className="flex items-center gap-1 px-3 py-2  text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md transition-all"
+        className="flex items-center gap-1 px-3 py-2  text-sm font-medium text-gray-900 hover:bg-gray-100 rounded-full transition-all"
       >
         <Globe className="w-4 h-4 text-gray-900" />
         {currentLangCode}

@@ -35,7 +35,7 @@ const blogHam = () => {
       more: 'Each artisanal piece whispers: "Because of you, I am more',
       img: "/blog/ham6.png",
       reverse: false,
-      link: "https://gift.yuukke.com/product-list/gratitude-box",
+      link: "https://gift.yuukke.com/product-list/gratitude-box-thoughtful-festive-hamper-for-employees-clients-and-loved-ones-sustainable-diwali-and-corporate-gifting",
     },
     {
       id: 4,
@@ -45,7 +45,7 @@ const blogHam = () => {
       more: "Includes high-quality office essentials, gourmet treats, and customizable branding options to make every desk feel special.",
       img: "/blog/ham7.jpg",
       reverse: true,
-      link: "https://gift.yuukke.com/product-list/elite-desk-hamper",
+      link: "https://gift.yuukke.com/product-list/elite-essentials-for-mindful-professionals",
     },
     {
       id: 5,
@@ -55,7 +55,7 @@ const blogHam = () => {
       more: "Featuring artisanal goodies, sustainable packaging, and eco-friendly selections that make your gifting meaningful and memorable.",
       img: "/blog/ham1.png",
       reverse: false,
-      link: "https://gift.yuukke.com/product-list/signature-consicious",
+      link: "https://gift.yuukke.com/product-list/signature-conscious-selection-hamper",
     },
     {
       id: 6,
@@ -65,7 +65,7 @@ const blogHam = () => {
       more: "Packed with organic snacks, calming essentials, and premium self-care items to inspire well-being and appreciation.",
       img: "/blog/ham3.jpg",
       reverse: true,
-      link: "https://gift.yuukke.com/product-list/the-conscious-luxe-corporate-hamper",
+      link: "https://gift.yuukke.com/product-list/the-conscious-luxe-corporate",
     },
     {
       id: 1,

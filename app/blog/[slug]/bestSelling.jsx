@@ -8,19 +8,19 @@ export default function HampersSection() {
       text: "The Signature Conscious Selection Hamper is where luxury meets responsibility.",
       btn: "View Hamper",
       img: "/blog/ham1.png",
-      link: "https://gift.yuukke.com/product-list/signature-consicious",
+      link: "https://gift.yuukke.com/product-list/signature-conscious-selection-hamper",
     },
     {
       text: "The Gratitude Box is a heartfelt way to say thank you.",
       btn: "View Hamper",
       img: "/blog/ham6.png",
-      link: "https://gift.yuukke.com/product-list/gratitude-box",
+      link: "https://gift.yuukke.com/product-list/gratitude-box-thoughtful-festive-hamper-for-employees-clients-and-loved-ones-sustainable-diwali-and-corporate-gifting",
     },
     {
       text: "The Conscious Luxe Corporate Hamper blends premium cork-base work",
       btn: "View Hamper",
       img: "/blog/ham3.jpg",
-      link: "https://gift.yuukke.com/product-list/the-conscious-luxe-corporate-hamper",
+      link: "https://gift.yuukke.com/product-list/the-conscious-luxe-corporate",
     },
   ];
 

@@ -102,20 +102,14 @@ const PopupForm = ({ isOpen, onClose, mode, defaultCatalogue }) => {
     let authToken = localStorage.getItem("authToken");
 
     if (!authToken) {
-      const authResponse = await fetch(
-        "https://marketplace.yuukke.com/api/v1/Auth/api_login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: "admin",
-            password: "Admin@123",
-          }),
-        }
-      );
-
+      const authResponse = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    
       const authData = await authResponse.json();
-      if (authData.status === "success") {
+    
+      if (authData?.status === "success" && authData?.token) {
         authToken = authData.token;
         localStorage.setItem("authToken", authToken);
       } else {
@@ -152,28 +146,22 @@ const PopupForm = ({ isOpen, onClose, mode, defaultCatalogue }) => {
       let authToken = localStorage.getItem("authToken");
 
       // Get auth token if missing
-      if (!authToken) {
-        const authResponse = await fetch(
-          "https://marketplace.yuukke.com/api/v1/Auth/api_login",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              username: "admin",
-              password: "Admin@123",
-            }),
-          }
-        );
+          // 🔐 Get new auth token if missing
+if (!authToken) {
+  const authResponse = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
 
-        const authData = await authResponse.json();
-        if (authData.status === "success") {
-          authToken = authData.token;
-          localStorage.setItem("authToken", authToken);
-        } else {
-          throw new Error("Authentication failed");
-        }
-      }
+  const authData = await authResponse.json();
 
+  if (authData?.status === "success" && authData?.token) {
+    authToken = authData.token;
+    localStorage.setItem("authToken", authToken);
+  } else {
+    throw new Error("Authentication failed");
+  }
+}
       // Save form data
       const requestBody = {
         full_name: formData.name,

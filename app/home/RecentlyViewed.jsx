@@ -483,7 +483,7 @@ const RecentlyViewed = () => {
                     </svg>
                   ))}
                 </div>
-                <span className="text-[10px] md:text-xs text-gray-600 ml-1">
+                <span className="text-[10px] md:text-xs text-gray-600 ml-1 font-odop">
                   ({Number(review.toFixed(1))})
                 </span>
               </div>
@@ -491,6 +491,7 @@ const RecentlyViewed = () => {
           </div>
 
           <div className="mt-0">
+            {/* Price Display */}
             <div className="space-y-1 mt-1">
               {hasPromo ? (
                 <>
@@ -500,68 +501,27 @@ const RecentlyViewed = () => {
                         isOutOfStock ? "text-gray-500" : "text-[#A00300]"
                       }`}
                     >
-                      ₹{finalPromoPrice?.toFixed(2)}
+                      ₹
+                      {(
+                        Number(product.promo_price) +
+                        (selectedVariant?.price || 0)
+                      ).toFixed(2)}
                     </p>
                     <p className="text-xs md:text-sm text-gray-400 line-through">
-                      ₹{finalBasePrice.toFixed(2)}
+                      ₹
+                      {(
+                        Number(product.price) + (selectedVariant?.price || 0)
+                      ).toFixed(2)}
                     </p>
-
-                    {variants.length > 0 && (
-                      <div className="relative inline-block ml-2">
-                        <select
-                          value={selectedVariant?.id}
-                          onChange={(e) => {
-                            const v = variants.find(
-                              (v) => String(v.id) === e.target.value
-                            );
-                            handleVariantChange(product.id, v);
-                          }}
-                          className="
-                            appearance-none
-                            text-xs md:text-sm
-                            font-medium
-                            tracking-wide
-                            pl-4 pr-10 py-2
-                            rounded-lg
-                            border border-gray-300
-                            bg-white/80 backdrop-blur-sm
-                            shadow-sm
-                            text-gray-800
-                            focus:outline-none
-                            focus:ring-1 focus:ring-[#A00300] focus:border-[#A00300]
-                            cursor-pointer
-                            transition-all duration-200
-                            hover:border-[#A00300]/60 hover:shadow-md
-                          "
-                        >
-                          {variants.map((variant) => (
-                            <option key={variant.id} value={variant.id}>
-                              {variant.name}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg
-                            className="w-4 h-4 text-gray-500"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </span>
-                      </div>
-                    )}
                   </div>
 
+                  {/* Show discount badge only on mobile in next line */}
                   <span className="block md:inline text-[10px] md:text-xs font-bold text-red-600 bg-transparent md:bg-green-100 px-1.5 md:px-2 py-[1px] md:py-0.5 rounded-lg md:ml-2">
-                    {discountPercent}
+                    {Math.round(
+                      ((Number(product.price) - Number(product.promo_price)) /
+                        Number(product.price)) *
+                        100
+                    )}
                     {t("% OFF")}
                   </span>
                 </>
@@ -572,34 +532,43 @@ const RecentlyViewed = () => {
                       isOutOfStock ? "text-gray-500" : "text-gray-950"
                     }`}
                   >
-                    ₹{finalBasePrice.toFixed(2)}
+                    ₹
+                    {(
+                      Number(product.price) + (selectedVariant?.price || 0)
+                    ).toFixed(2)}
                   </p>
 
                   {variants.length > 0 && (
-                    <div className="relative inline-block ml-2">
+                    <div className="relative ml-2 font-odop w-[90px] md:w-[110px]">
                       <select
                         value={selectedVariant?.id}
                         onChange={(e) => {
                           const v = variants.find(
                             (v) => String(v.id) === e.target.value
                           );
-                          handleVariantChange(product.id, v);
+                          setSelectedVariants((prev) => ({
+                            ...prev,
+                            [product.id]: v,
+                          }));
                         }}
                         className="
-                          appearance-none
-                          text-xs md:text-sm
-                          uppercase font-medium
-                          pl-4 pr-10 py-2
-                          rounded-xl
-                          border border-gray-300
-                          shadow-sm
-                          bg-white
-                          focus:outline-none
-                          focus:ring-2 focus:ring-[#A00300] focus:border-[#A00300]
-                          cursor-pointer
-                          transition-all duration-200
-                          hover:border-[#A00300]/70
-                        "
+        appearance-none
+        text-xs md:text-sm
+        uppercase font-medium
+        pl-3 pr-8
+        py-1.5 md:py-2
+        rounded-lg
+        border border-gray-300
+        bg-white
+        shadow-sm
+        cursor-pointer
+        w-full
+        truncate
+        focus:outline-none
+        focus:ring-2 focus:ring-[#A00300] focus:border-[#A00300]
+        hover:border-[#A00300]/70
+        transition-all duration-200
+      "
                       >
                         {variants.map((variant) => (
                           <option key={variant.id} value={variant.id}>
@@ -607,7 +576,8 @@ const RecentlyViewed = () => {
                           </option>
                         ))}
                       </select>
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+
+                      <span className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
                         <svg
                           className="w-4 h-4 text-gray-500"
                           xmlns="http://www.w3.org/2000/svg"
@@ -1028,16 +998,15 @@ const RecentlyViewed = () => {
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify({
-                                    username: "admin",
-                                    password: "Admin@123",
-                                  }),
                                 });
+
                                 const data = await res.json();
-                                if (data.status === "success") {
+
+                                if (data?.status === "success" && data?.token) {
                                   localStorage.setItem("authToken", data.token);
                                   return data.token;
                                 }
+
                                 throw new Error("Authentication failed");
                               };
 
@@ -1272,19 +1241,19 @@ const RecentlyViewed = () => {
                           const fetchToken = async () => {
                             const res = await fetch("/api/login", {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                username: "admin",
-                                password: "Admin@123",
-                              }),
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
                             });
+
                             const data = await res.json();
-                            if (data.status === "success") {
+
+                            if (data?.status === "success" && data?.token) {
                               localStorage.setItem("authToken", data.token);
                               return data.token;
-                            } else {
-                              throw new Error("Authentication failed");
                             }
+
+                            throw new Error("Authentication failed");
                           };
 
                           if (!token) token = await fetchToken();

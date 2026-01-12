@@ -231,7 +231,7 @@ export default function RecentlyViewedProducts() {
                           </svg>
                         ))}
                       </div>
-                      <span className="text-[10px] md:text-xs text-gray-600 ml-1">
+                      <span className="text-[10px] md:text-xs text-gray-600 ml-1 font-odop">
                         ({Number(review.toFixed(1))})
                       </span>
                     </div>

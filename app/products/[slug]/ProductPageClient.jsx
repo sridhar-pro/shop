@@ -38,7 +38,7 @@ import { useSession } from "@/app/context/SessionContext";
 
 export default function ProductPageClient() {
   const { t } = useTranslation();
-
+  const reviewsRef = useRef(null);
   const router = useRouter();
   const { isLoggedIn } = useSession();
   const [showPopupenq, setShowPopupenq] = useState(false);
@@ -433,7 +433,8 @@ export default function ProductPageClient() {
           promo_tag: p.promo_tag,
           quantity: p.quantity,
           review: p.review,
-          review_count: p.review,
+          review_count: Array.isArray(p.all_reviews) ? p.all_reviews.length : 0,
+          all_reviews: p.all_reviews || [], // ✅ full list
           category: p.category,
           brand: p.brand,
           weight: p.weight,
@@ -606,16 +607,19 @@ export default function ProductPageClient() {
       const fetchToken = async () => {
         const res = await fetch("/api/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: "admin", password: "Admin@123" }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
+
         const data = await res.json();
-        if (data.status === "success") {
+
+        if (data?.status === "success" && data?.token) {
           localStorage.setItem("authToken", data.token);
           return data.token;
-        } else {
-          throw new Error("Authentication failed");
         }
+
+        throw new Error("Authentication failed");
       };
 
       if (!token) token = await fetchToken();
@@ -1114,6 +1118,20 @@ export default function ProductPageClient() {
     return `https://marketplace.yuukke.com/assets/uploads/thumbs/${image}`;
   };
 
+  // Always keep reviews safe
+  const reviews = Array.isArray(product?.all_reviews)
+    ? product.all_reviews
+    : [];
+
+  const handleReviewClick = () => {
+    if (reviewsRef.current) {
+      reviewsRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
   // Main product display
   return (
     <div className="min-h-screen relative">
@@ -1480,6 +1498,106 @@ export default function ProductPageClient() {
               </div>
             )}
           </div>
+          {/* ⭐ Review Stars (Mobile) */}
+          {Number(product.review) > 0 && reviews.length > 0 && (
+            <div className="relative mt-2 flex md:hidden items-center gap-2 px-4 font-odop">
+              {/* Stars */}
+              <div className="flex items-center gap-[2px] cursor-pointer">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const rating = Number(product.review);
+                  let fill = "0%";
+                  if (rating >= star) fill = "100%";
+                  else if (rating >= star - 0.5) fill = "50%";
+
+                  return (
+                    <div key={star} className="relative w-5 h-5">
+                      <svg
+                        className="absolute w-5 h-5 text-gray-300"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                      </svg>
+
+                      <div
+                        className="absolute top-0 left-0 h-full overflow-hidden"
+                        style={{ width: fill }}
+                      >
+                        <svg
+                          className="w-5 h-5 text-[#f5b50a]"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Rating */}
+              <span className="text-sm font-bold text-gray-800">
+                {Number(product.review).toFixed(1)}
+              </span>
+
+              {/* Review Count */}
+              <span
+                onClick={handleReviewClick}
+                className="text-sm text-blue-600 cursor-pointer hover:underline"
+              >
+                ({reviews.length.toLocaleString()} reviews)
+              </span>
+
+              {/* Hover Card */}
+              <div
+                className="absolute left-0 top-full mt-3 w-72 bg-white border rounded-lg shadow-xl p-4
+                 opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                 transition-all duration-200 z-50"
+              >
+                <p className="font-semibold text-gray-900 mb-1">
+                  {Number(product.review).toFixed(1)} out of 5
+                </p>
+
+                <p className="text-sm text-gray-500 mb-3">
+                  {reviews.length.toLocaleString()} global ratings
+                </p>
+
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const total = reviews.length;
+                  const count = reviews.filter(
+                    (r) => Math.round(Number(r.product_rating)) === star
+                  ).length;
+
+                  const percent = total ? Math.round((count / total) * 100) : 0;
+
+                  return (
+                    <div key={star} className="flex items-center gap-2 mb-1">
+                      <span className="w-12 text-sm">{star} star</span>
+
+                      <div className="flex-1 h-3 bg-gray-200 rounded">
+                        <div
+                          className="h-3 bg-orange-400 rounded"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+
+                      <span className="w-8 text-sm text-gray-600">
+                        {percent}%
+                      </span>
+                    </div>
+                  );
+                })}
+
+                <p
+                  onClick={handleReviewClick}
+                  className="text-sm text-blue-600 mt-3 hover:underline cursor-pointer"
+                >
+                  See customer reviews →
+                </p>
+              </div>
+            </div>
+          )}
           {/* 🎨 Mob Variants Color Selector */}
           {product.variants.length > 0 && (
             <div className="flex md:hidden items-center gap-3 px-4 mb-2 mt-2">
@@ -1607,6 +1725,112 @@ export default function ProductPageClient() {
                   </div>
                 )}
 
+                {/* ⭐ Review Stars */}
+                {Number(product.review) > 0 && reviews.length > 0 && (
+                  <div className="relative mt-2 hidden md:flex items-center gap-2 group font-odop">
+                    {/* Stars */}
+                    <div className="flex items-center gap-[2px] cursor-pointer">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const rating = Number(product.review);
+                        let fill = "0%";
+                        if (rating >= star) fill = "100%";
+                        else if (rating >= star - 0.5) fill = "50%";
+
+                        return (
+                          <div key={star} className="relative w-5 h-5">
+                            <svg
+                              className="absolute w-5 h-5 text-gray-300"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                            </svg>
+
+                            <div
+                              className="absolute top-0 left-0 h-full overflow-hidden"
+                              style={{ width: fill }}
+                            >
+                              <svg
+                                className="w-5 h-5 text-[#f5b50a]"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                              >
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                              </svg>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Rating */}
+                    <span className="text-sm font-bold text-gray-800">
+                      {Number(product.review).toFixed(1)}
+                    </span>
+
+                    {/* Review Count */}
+                    <span
+                      onClick={handleReviewClick}
+                      className="text-sm text-blue-600 cursor-pointer hover:underline"
+                    >
+                      ({reviews.length.toLocaleString()} reviews)
+                    </span>
+
+                    {/* Hover Card */}
+                    <div
+                      className="absolute left-0 top-full mt-3 w-72 bg-white border rounded-lg shadow-xl p-4
+                 opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                 transition-all duration-200 z-50"
+                    >
+                      <p className="font-semibold text-gray-900 mb-1">
+                        {Number(product.review).toFixed(1)} out of 5
+                      </p>
+
+                      <p className="text-sm text-gray-500 mb-3">
+                        {reviews.length.toLocaleString()} global ratings
+                      </p>
+
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const total = reviews.length;
+                        const count = reviews.filter(
+                          (r) => Math.round(Number(r.product_rating)) === star
+                        ).length;
+
+                        const percent = total
+                          ? Math.round((count / total) * 100)
+                          : 0;
+
+                        return (
+                          <div
+                            key={star}
+                            className="flex items-center gap-2 mb-1"
+                          >
+                            <span className="w-12 text-sm">{star} star</span>
+
+                            <div className="flex-1 h-3 bg-gray-200 rounded">
+                              <div
+                                className="h-3 bg-orange-400 rounded"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+
+                            <span className="w-8 text-sm text-gray-600">
+                              {percent}%
+                            </span>
+                          </div>
+                        );
+                      })}
+
+                      <p
+                        onClick={handleReviewClick}
+                        className="text-sm text-blue-600 mt-3 hover:underline cursor-pointer"
+                      >
+                        See customer reviews →
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* ⭐ BOGO Tag with Flash */}
                 {product.bogo_offer && product.bogo_offer.length > 0 && (
                   <div className="hidden md:flex flex-wrap gap-2 mt-2 mb-2 ">
@@ -1692,43 +1916,71 @@ export default function ProductPageClient() {
                   )}
 
                 {/* 🎨 Variants Color Selector */}
-                {product.variants.length > 0 && (
-                  <div className="hidden lg:flex items-center gap-3 ">
-                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap uppercase">
-                      Colours:
-                    </label>
+                {product.variants.length > 0 &&
+                  (() => {
+                    const hasColorVariant = product.variants.some(
+                      (v) => v.type === "color"
+                    );
 
-                    <div className="flex gap-3">
-                      {product.variants.map((variant) => {
-                        const isSelected =
-                          selectedVariants?.[product.id]?.id === variant.id ||
-                          (!selectedVariants?.[product.id] &&
-                            variant.id === product.variants[0]?.id);
+                    const labelText = hasColorVariant ? "Colours" : "Options";
 
-                        return (
-                          <button
-                            key={variant.id}
-                            onClick={() =>
+                    return (
+                      <div className="hidden lg:flex items-start gap-4 font-odop">
+                        <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide pt-1">
+                          {labelText}:
+                        </label>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          {product.variants.map((variant) => {
+                            const isSelected =
+                              selectedVariants?.[product.id]?.id ===
+                                variant.id ||
+                              (!selectedVariants?.[product.id] &&
+                                variant.id === product.variants[0]?.id);
+
+                            const handleSelect = () =>
                               setSelectedVariants((prev) => ({
                                 ...prev,
                                 [product.id]: variant,
-                              }))
+                              }));
+
+                            if (variant.type === "color") {
+                              return (
+                                <button
+                                  key={variant.id}
+                                  onClick={handleSelect}
+                                  className={`relative w-7 h-7 rounded-full border transition-all duration-200 ${
+                                    isSelected
+                                      ? "border-[#A00300] ring-2 ring-[#A00300]/30 scale-110"
+                                      : "border-gray-300 hover:scale-105"
+                                  }`}
+                                  style={{
+                                    backgroundColor: variant.color || "#ccc",
+                                  }}
+                                />
+                              );
                             }
-                            className={`w-6 h-6 rounded-full border-2 transition-all ${
-                              isSelected
-                                ? "border-[#A00300] scale-110"
-                                : "border-gray-300 hover:border-gray-400"
-                            }`}
-                            style={{
-                              backgroundColor: variant.color || "#ccc",
-                            }}
-                            aria-label={`Select ${variant.name}`}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+
+                            return (
+                              <button
+                                key={variant.id}
+                                onClick={handleSelect}
+                                title={variant.name}
+                                className={`w-full px-3 py-2 text-xs font-semibold rounded-md uppercase
+                                truncate text-center transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-[#A00300] text-white shadow-sm"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {variant.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
 
               {/* Highlights */}
@@ -1976,6 +2228,139 @@ export default function ProductPageClient() {
                     </>
                   )}
                 </div>
+
+                {/* 🧾 Customer Reviews Section */}
+                {reviews.length > 0 && (
+                  <div
+                    ref={reviewsRef}
+                    id="customer-reviews"
+                    className="mt-10 scroll-mt-28 font-odop"
+                  >
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+                      Customer Reviews
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                      {/* ⭐ LEFT: Rating Summary */}
+                      <div className="md:col-span-4">
+                        {/* Average Rating */}
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-4xl font-bold text-gray-900">
+                              {Number(product.review).toFixed(1)}
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span
+                                  key={star}
+                                  className={`text-xl ${
+                                    Number(product.review) >= star
+                                      ? "text-[#f5b50a]"
+                                      : "text-gray-300"
+                                  }`}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-gray-500 mb-3">
+                            {reviews.length} global ratings
+                          </p>
+                        </div>
+
+                        {/* Rating Distribution */}
+                        <div className="space-y-2">
+                          {[5, 4, 3, 2, 1].map((star) => {
+                            const total = reviews.length;
+                            const count = reviews.filter(
+                              (r) =>
+                                Math.round(Number(r.product_rating)) === star
+                            ).length;
+
+                            const percent = total
+                              ? Math.round((count / total) * 100)
+                              : 0;
+
+                            return (
+                              <div
+                                key={star}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="w-12 text-sm text-gray-700">
+                                  {star} star
+                                </span>
+
+                                <div className="flex-1 h-3 bg-gray-200 rounded">
+                                  <div
+                                    className="h-3 bg-[#f5b50a] rounded"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+
+                                <span className="w-10 text-sm text-gray-600">
+                                  {percent}%
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 📝 RIGHT: Reviews List */}
+                      <div className="md:col-span-8">
+                        <div className="space-y-6">
+                          {reviews.map((review) => (
+                            <div
+                              key={review.id}
+                              className="border-b border-gray-200 pb-6"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="font-semibold text-gray-900">
+                                  {review.user_name || "Anonymous"}
+                                </p>
+
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <span
+                                      key={star}
+                                      className={`text-sm ${
+                                        Number(review.product_rating) >= star
+                                          ? "text-[#f5b50a]"
+                                          : "text-gray-300"
+                                      }`}
+                                    >
+                                      ★
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {review.headline && (
+                                <p className="font-medium text-gray-800 mb-1">
+                                  {review.headline}
+                                </p>
+                              )}
+
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {review.written_review}
+                              </p>
+
+                              <p className="text-xs text-gray-400 mt-2">
+                                Reviewed on{" "}
+                                {new Date(
+                                  review.created_at
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Static Badges */}
                 <div className="grid grid-cols-3 gap-x-2  mt-4">

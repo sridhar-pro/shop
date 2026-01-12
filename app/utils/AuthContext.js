@@ -33,10 +33,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const promise = axios.post(
         "/api/login",
-        {
-          username: "admin",
-          password: "Admin@123",
-        },
+        {},
         {
           timeout: API_TIMEOUT,
         }

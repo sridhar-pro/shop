@@ -8,7 +8,7 @@ const LIVE_API = process.env.LIVE_API_URL;
 const BASE_API = IS_TEST ? TEST_API : LIVE_API;
 
 // always-live endpoints
-const LOGIN_API = process.env.LOGIN_API;
+// const LOGIN_API = process.env.LOGIN_API;
 const PINCODE_API = process.env.PINCODE_API;
 const ODOP_REGISTER_API = process.env.ODOP_REGISTER_API;
 
@@ -58,38 +58,38 @@ const nextConfig = {
         source: "/api/mobslider",
         destination: `${BASE_API}/mobile_slider`,
       },
-      {
-        source: "/api/newarrival",
-        destination: `${BASE_API}/newArraivals`,
-      },
-      {
-        source: "/api/featuredproducts",
-        destination: `${BASE_API}/featuredProducts`,
-      },
-      {
-        source: "/api/festivalproducts",
-        destination: `${BASE_API}/festivalProducts`,
-      },
-      {
-        source: "/api/wellnessproducts",
-        destination: `${BASE_API}/wellnessProducts`,
-      },
-      {
-        source: "/api/giftproducts",
-        destination: `${BASE_API}/getGiftsProducts`,
-      },
-      {
-        source: "/api/corporategiftproducts",
-        destination: `${BASE_API}/getCorporateGifts`,
-      },
-      {
-        source: "/api/returngiftproducts",
-        destination: `${BASE_API}/getReturnGifts`,
-      },
-      {
-        source: "/api/vendorlogo",
-        destination: `${BASE_API}/vendorLogo`,
-      },
+      // {
+      //   source: "/api/newarrival",
+      //   destination: `${BASE_API}/newArraivals`,
+      // },
+      // {
+      //   source: "/api/featuredproducts",
+      //   destination: `${BASE_API}/featuredProducts`,
+      // },
+      // {
+      //   source: "/api/festivalproducts",
+      //   destination: `${BASE_API}/festivalProducts`,
+      // },
+      // {
+      //   source: "/api/wellnessproducts",
+      //   destination: `${BASE_API}/wellnessProducts`,
+      // },
+      // {
+      //   source: "/api/giftproducts",
+      //   destination: `${BASE_API}/getGiftsProducts`,
+      // },
+      // {
+      //   source: "/api/corporategiftproducts",
+      //   destination: `${BASE_API}/getCorporateGifts`,
+      // },
+      // {
+      //   source: "/api/returngiftproducts",
+      //   destination: `${BASE_API}/getReturnGifts`,
+      // },
+      // {
+      //   source: "/api/vendorlogo",
+      //   destination: `${BASE_API}/vendorLogo`,
+      // },
       {
         source: "/api/getNews",
         destination: `${BASE_API}/getNews`,
@@ -180,6 +180,10 @@ const nextConfig = {
         destination: `${BASE_API}/viewdetails`,
       },
       {
+        source: "/api/addreview",
+        destination: `${BASE_API}/addReview`,
+      },
+      {
         source: "/api/wishlist",
         destination: `${BASE_API}/wishlist`,
       },
@@ -265,7 +269,7 @@ const nextConfig = {
       },
 
       // always-live endpoints
-      { source: "/api/login", destination: LOGIN_API },
+      // { source: "/api/login", destination: LOGIN_API },
       { source: "/api/pincode", destination: PINCODE_API },
       { source: "/api/odopregister", destination: ODOP_REGISTER_API },
     ];

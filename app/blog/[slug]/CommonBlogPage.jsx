@@ -142,14 +142,7 @@ export default function CommonBlogPage({ slug }) {
 
         {/* Body */}
         <div
-          className="prose prose-xl prose-gray max-w-none
-            prose-headings:font-semibold prose-headings:text-gray-900
-            prose-p:text-gray-700 prose-p:leading-relaxed
-            prose-img:rounded-lg prose-img:mx-auto prose-img:my-6
-            prose-a:text-[#7d0431] prose-a:no-underline hover:prose-a:underline
-            prose-li:marker:text-[#7d0431]
-            prose-strong:text-gray-900
-            prose-blockquote:border-l-4 prose-blockquote:border-[#7d0431] prose-blockquote:pl-4 prose-blockquote:text-gray-700"
+          className="blog-content"
           dangerouslySetInnerHTML={{ __html: blog.content }}
         />
       </article>

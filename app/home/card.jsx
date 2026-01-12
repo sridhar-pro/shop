@@ -8,12 +8,9 @@ import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import CategoriesSection from "./CategorieSection";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../utils/AuthContext";
-import { fetchWithAuthGlobal } from "../utils/fetchWithAuth";
 
 export function WobbleCardDemo() {
   const { t } = useTranslation();
-  const { getValidToken } = useAuth();
   const hasFetched = useRef(false);
 
   const [slides, setSlides] = useState([]);
@@ -22,38 +19,26 @@ export function WobbleCardDemo() {
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-
+  
     const fetchNewArrivals = async () => {
       try {
-        const data = await fetchWithAuthGlobal(
-          "/api/newarrival",
-          {},
-          getValidToken
-        );
+        const res = await fetch("/api/newArraivals");
+        const data = await res.json();
         if (!data) return;
-
+  
         const getShortDescription = (htmlText, wordLimit = 20) => {
           if (!htmlText) return "";
-
           const text = htmlText.replace(/<[^>]*>/g, "").trim();
           const words = text.split(/\s+/);
-          if (words.length <= wordLimit) return text;
-
-          let snippet = words.slice(0, wordLimit).join(" ");
-          const extraWords = words.slice(wordLimit, wordLimit + 5).join(" ");
-          const fullStopIndex = extraWords.indexOf(".");
-          snippet +=
-            fullStopIndex !== -1
-              ? extraWords.slice(0, fullStopIndex + 1)
-              : "...";
-
-          return snippet;
+          return words.length <= wordLimit
+            ? text
+            : words.slice(0, wordLimit).join(" ") + "...";
         };
-
-        const idsToIgnore = ["1179", "1165"]; // ❌ must be strings
-
+  
+        const idsToIgnore = ["1179", "1165"];
+  
         const mappedSlides = data
-          .filter((item) => !idsToIgnore.includes(item.id)) // ✅ now it will work
+          .filter((item) => !idsToIgnore.includes(item.id))
           .map((item) => ({
             title: item.name,
             description: getShortDescription(item.product_details),
@@ -61,15 +46,17 @@ export function WobbleCardDemo() {
             image: `https://marketplace.yuukke.com/assets/uploads/${item.image}`,
             link: item.slug,
           }));
-
+  
         setSlides(mappedSlides);
       } catch (error) {
         console.error("❌ Error fetching new arrivals:", error);
       }
     };
-
+  
     fetchNewArrivals();
-  }, [getValidToken]);
+  }, []);
+  
+
 
   // Slide autoplay
   useEffect(() => {

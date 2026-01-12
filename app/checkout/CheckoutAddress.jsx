@@ -10,6 +10,7 @@ import {
   Wallet2,
   TrendingUp,
   Timer,
+  Truck,
 } from "lucide-react";
 import { useSession } from "../context/SessionContext";
 import { useRouter } from "next/navigation";
@@ -264,7 +265,7 @@ const CheckoutAddress = ({
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
 
   // 🔥 Limited-time hot deal config
-  const LIMITED_DEAL_CODE = "Flat100"; // same as OrderSummary
+  const LIMITED_DEAL_CODE = "TEST30"; // same as OrderSummary
   const LIMITED_DEAL_DURATION = 600; // 10 minutes in seconds (or your value)
 
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
@@ -564,20 +565,25 @@ const CheckoutAddress = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        const already =
+        const manualCoupon = localStorage.getItem("applied_coupon");
+        const limitedOnce =
           localStorage.getItem("limited_deal_applied_once") === "1";
-        if (already) return;
-      } catch (e) {
-        // ignore storage errors
-      }
 
-      if (!isApplied && !limitedDealApplied) {
+        // 🚫 HARD STOP: user already applied coupon manually
+        if (manualCoupon) return;
+
+        // 🚫 HARD STOP: limited deal already used once
+        if (limitedOnce) return;
+
+        // ✅ Safe to auto-apply
         autoApplyLimitedDeal();
+      } catch (e) {
+        console.warn("Auto deal check failed", e);
       }
-    }, 120000); // 5 seconds for testing
+    }, 120000); // 2 minutes
 
     return () => clearTimeout(timer);
-  }, [isApplied, limitedDealApplied]);
+  }, []);
 
   // ⏳ Deal countdown: 2 minutes total (120 seconds)
   useEffect(() => {
@@ -1073,7 +1079,7 @@ const CheckoutAddress = ({
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.betalearnings.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -1519,7 +1525,7 @@ const CheckoutAddress = ({
 
             {/* 🛍 Cart Items */}
             {cartItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 mt-6 mb-4">
+              <div key={item.id} className="flex items-start gap-4 mt-6 mb-4">
                 <img
                   src={getImageSrc(item.image)}
                   alt={item.name}
@@ -1536,6 +1542,12 @@ const CheckoutAddress = ({
                       Number(item.qty)
                     ).toFixed(2)}
                   </p>
+                  {item.deliveryDays && (
+                    <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
+                      <Truck className="w-3.5 h-3.5 text-red-700" />
+                      Delivered in {item.deliveryDays} days
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

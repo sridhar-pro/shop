@@ -318,7 +318,7 @@ export default function Navbar() {
                         : "/login"
                     }
                     aria-label="Profile"
-                    className="rounded-full transition flex items-center justify-center w-full h-full"
+                    className="rounded-full hover:bg-gray-100 p-2 transition flex items-center justify-center w-full h-full"
                   >
                     <User className="w-5 h-5 text-black cursor-pointer" />
                   </Link>

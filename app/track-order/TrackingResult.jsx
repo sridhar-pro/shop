@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 
-const TrackingResult = ({ trackingData }) => {
+const TrackingResult = ({ trackingData, showBackButton = true }) => {
   const singleTrack = trackingData?.tracking_data;
   const multiWarehouse = trackingData?.data?.warehouses;
 
@@ -592,15 +592,17 @@ const TrackingResult = ({ trackingData }) => {
       )}
 
       {/* Back Button */}
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-6 py-2 bg-[#a00300] text-white font-semibold rounded-full shadow-md hover:bg-[#c20404] transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Tracking
-        </button>
-      </div>
+      {showBackButton && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-6 py-2 bg-[#a00300] text-white font-semibold rounded-full shadow-md hover:bg-[#c20404] transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Tracking
+          </button>
+        </div>
+      )}
     </div>
   );
 };

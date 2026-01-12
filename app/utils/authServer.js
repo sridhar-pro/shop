@@ -3,24 +3,26 @@ import axios from "axios";
 
 let cachedToken = null;
 let lastFetched = null;
-const TOKEN_TTL = 1000 * 60 * 10; // 10 mins cache
+const TOKEN_TTL = 1000 * 60 * 10; // 10 minutes
 
 export async function getServerToken() {
+  // Return cached token if still valid
   if (cachedToken && lastFetched && Date.now() - lastFetched < TOKEN_TTL) {
     return cachedToken;
   }
 
   try {
+    const backendUrl = process.env.BACKEND_BASE_URL; // TEST or LIVE base URL
     const res = await axios.post(
-      "https://marketplace.yuukke.com/api/v1/Auth/api_login",
+      `${backendUrl}/api_login`,
       {
-        username: "admin",
-        password: "Admin@123",
+        username: process.env.ADMIN_USERNAME,
+        password: process.env.ADMIN_PASSWORD,
       },
       { timeout: 30000 }
     );
 
-    if (res.data?.status === "success") {
+    if (res.data?.status === "success" && res.data?.token) {
       cachedToken = res.data.token;
       lastFetched = Date.now();
       return cachedToken;

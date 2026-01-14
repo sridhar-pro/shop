@@ -170,7 +170,7 @@ const MyOrders = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          order_id: viewedOrder.invoice.reference_no, // 👈 IMPORTANT
+          order_id: viewedOrder.invoice.reference_no || viewedOrder.order_id, // 👈 IMPORTANT
           awb: "",
           mobile_number: "",
         }),
@@ -620,6 +620,26 @@ const MyOrders = () => {
                 Track Order
               </button>
             </div>
+
+            {/* 🚚 Tracking Result Section */}
+            {trackingLoading && (
+              <p className="text-center text-gray-500 py-4">
+                Fetching tracking...
+              </p>
+            )}
+
+            {trackingError && (
+              <p className="text-center text-red-600 py-4">{trackingError}</p>
+            )}
+
+            {trackingData && (
+              <div className="mb-10">
+                <TrackingResult
+                  trackingData={trackingData}
+                  showBackButton={false}
+                />
+              </div>
+            )}
 
             {/* 📦 Packages / Products */}
             {viewedOrder.seller_group.map((group, gIdx) => (

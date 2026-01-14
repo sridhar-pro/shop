@@ -871,6 +871,48 @@ export default function ProductPageClient() {
       localStorage.setItem("cart_data", JSON.stringify(updatedCart));
       setCartItems(updatedCart);
 
+      const isValidOffer = (offer) => {
+        return (
+          offer?.promo_price ||
+          offer?.promo_tag ||
+          offer?.bogo ||
+          offer?.matchingQtyOffer ||
+          offer?.end_date
+        );
+      };
+
+      // Build offer payload
+      const offerPayload = {
+        promo_price: product.promo_price,
+        end_date: product.end_date,
+        promo_tag: product.promo_tag,
+        bogo: Array.isArray(product.bogo_offer)
+          ? product.bogo_offer.length > 0
+          : !!product.bogo_offer,
+        matchingQtyOffer: matchingOffer
+          ? {
+              offer_qty: matchingOffer.offer_qty,
+              offer_price: matchingOffer.offer_price,
+            }
+          : null,
+        createdAt: Date.now(),
+      };
+
+      const now = Date.now();
+      if (offerPayload.end_date && now > new Date(offerPayload.end_date)) {
+        offerPayload.end_date = null; // kill expired promo
+      }
+
+      // Save only REAL offers (avoid ghost null offers)
+      if (isValidOffer(offerPayload)) {
+        localStorage.setItem(
+          `offer_${product.id}`,
+          JSON.stringify(offerPayload)
+        );
+      } else {
+        localStorage.removeItem(`offer_${product.id}`);
+      }
+
       // Rest of your API calls...
       const token = await getValidToken();
       if (!token) {

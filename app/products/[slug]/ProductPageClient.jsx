@@ -65,7 +65,7 @@ export default function ProductPageClient() {
       setQuantity(
         Number(product?.minimum_order_qty) > 0
           ? Number(product.minimum_order_qty)
-          : 1
+          : 1,
       );
     } else {
       setQuantity(1);
@@ -203,7 +203,7 @@ export default function ProductPageClient() {
   const [cartItems, setCartItems] = useState([]);
 
   const [viewerCount, setViewerCount] = useState(
-    () => Math.floor(Math.random() * 16) + 15
+    () => Math.floor(Math.random() * 16) + 15,
   );
   const [lastUpdated, setLastUpdated] = useState("just now");
 
@@ -288,15 +288,18 @@ export default function ProductPageClient() {
     }, 60000);
 
     // Change viewer count more naturally (every 8-15 seconds)
-    const countInterval = setInterval(() => {
-      const direction = Math.random() < 0.55 ? 1 : -1; // 55% chance to increase
-      const amount = Math.floor(Math.random() * 2) + 1; // Change by 1-2
+    const countInterval = setInterval(
+      () => {
+        const direction = Math.random() < 0.55 ? 1 : -1; // 55% chance to increase
+        const amount = Math.floor(Math.random() * 2) + 1; // Change by 1-2
 
-      setViewerCount((prev) => {
-        const newCount = prev + direction * amount;
-        return Math.max(15, Math.min(30, newCount));
-      });
-    }, 8000 + Math.random() * 7000); // Random interval between 8-15 seconds
+        setViewerCount((prev) => {
+          const newCount = prev + direction * amount;
+          return Math.max(15, Math.min(30, newCount));
+        });
+      },
+      8000 + Math.random() * 7000,
+    ); // Random interval between 8-15 seconds
 
     return () => {
       clearInterval(timeInterval);
@@ -415,7 +418,7 @@ export default function ProductPageClient() {
 
           localStorage.setItem(
             "recentlyViewedProducts",
-            JSON.stringify(updated)
+            JSON.stringify(updated),
           );
         } catch (storageErr) {
           console.warn("Failed to update recently viewed:", storageErr);
@@ -524,7 +527,7 @@ export default function ProductPageClient() {
       : [];
 
     const productImages = (product.image_g || []).map((img) =>
-      img.startsWith("http") ? img : `${BASE_URL}${img}`
+      img.startsWith("http") ? img : `${BASE_URL}${img}`,
     );
 
     const imagesToShow =
@@ -675,8 +678,10 @@ export default function ProductPageClient() {
             body: JSON.stringify({ cart_id: cartId }),
           });
           taxData = await retryTaxRes.json();
+          window.dispatchEvent(new Event("cart-updated"));
         } else {
           taxData = await taxRes.json();
+          window.dispatchEvent(new Event("cart-updated"));
         }
 
         localStorage.setItem("cart_tax_details", JSON.stringify(taxData));
@@ -752,7 +757,7 @@ export default function ProductPageClient() {
         (offer) =>
           offer.offer_qty &&
           offer.offer_price &&
-          Number(offer.offer_qty) === quantity
+          Number(offer.offer_qty) === quantity,
       );
 
       // Get or create cart ID
@@ -764,10 +769,10 @@ export default function ProductPageClient() {
 
       // Get existing cart
       const existingCart = JSON.parse(
-        localStorage.getItem("cart_data") || "[]"
+        localStorage.getItem("cart_data") || "[]",
       );
       const existingIndex = existingCart.findIndex(
-        (item) => item.id === product.id
+        (item) => item.id === product.id,
       );
 
       // Validate stock
@@ -824,8 +829,8 @@ export default function ProductPageClient() {
       const finalPrice = matchingOffer
         ? Number(matchingOffer.offer_price) / quantity
         : isPromoValid
-        ? Number(product.promo_price)
-        : totalPrice;
+          ? Number(product.promo_price)
+          : totalPrice;
 
       // 🐞 Debug log
       // console.log("💰 Price Calculation Debug:", {
@@ -863,7 +868,7 @@ export default function ProductPageClient() {
             : existingCart.map((item, i) =>
                 i === existingIndex
                   ? { ...item, qty: quantity, price: finalPrice }
-                  : item
+                  : item,
               )
           : [...existingCart, cartItem];
 
@@ -907,7 +912,7 @@ export default function ProductPageClient() {
       if (isValidOffer(offerPayload)) {
         localStorage.setItem(
           `offer_${product.id}`,
-          JSON.stringify(offerPayload)
+          JSON.stringify(offerPayload),
         );
       } else {
         localStorage.removeItem(`offer_${product.id}`);
@@ -968,6 +973,7 @@ export default function ProductPageClient() {
         const taxData = await taxRes.json();
         localStorage.setItem("cart_tax_details", JSON.stringify(taxData));
         // console.log("taxData:", taxData);
+        window.dispatchEvent(new Event("cart-updated"));
       } catch (taxError) {
         console.error("🚫 Failed to fetch tax details:", taxError);
       }
@@ -1003,10 +1009,10 @@ export default function ProductPageClient() {
 
       // Get existing cart
       const existingCart = JSON.parse(
-        localStorage.getItem("cart_data") || "[]"
+        localStorage.getItem("cart_data") || "[]",
       );
       const existingIndex = existingCart.findIndex(
-        (item) => item.id === product.id
+        (item) => item.id === product.id,
       );
 
       // Validate stock
@@ -1094,6 +1100,7 @@ export default function ProductPageClient() {
         });
         const taxData = await taxRes.json();
         localStorage.setItem("cart_tax_details", JSON.stringify(taxData));
+        window.dispatchEvent(new Event("cart-updated"));
       } catch (taxError) {
         console.error("🚫 Failed to fetch tax details:", taxError);
       }
@@ -1222,7 +1229,7 @@ export default function ProductPageClient() {
                       ? Number(
                           selectedVariants?.[product.id]?.quantity ??
                             product.variants[0]?.quantity ??
-                            0
+                            0,
                         )
                       : Number(product?.quantity);
 
@@ -1332,13 +1339,13 @@ export default function ProductPageClient() {
                   ]
                     .filter(Boolean)
                     .map((img) =>
-                      img.startsWith("http") ? img : `${BASE_URL}${img}`
+                      img.startsWith("http") ? img : `${BASE_URL}${img}`,
                     )
                 : [];
 
               // 3. Collect product-level images
               const productImages = (product.image_g || []).map((img) =>
-                img.startsWith("http") ? img : `${BASE_URL}${img}`
+                img.startsWith("http") ? img : `${BASE_URL}${img}`,
               );
 
               // 4. Decide which to show
@@ -1396,8 +1403,8 @@ export default function ProductPageClient() {
                             (variantImages.length > 0
                               ? variantImages[0]
                               : productImages.length > 0
-                              ? productImages[0]
-                              : product.image)
+                                ? productImages[0]
+                                : product.image)
                           }
                           alt={product?.name || "Product image"}
                           fill
@@ -1459,8 +1466,8 @@ export default function ProductPageClient() {
                     const variantPrice = selectedVariants?.[product.id]?.price
                       ? Number(selectedVariants[product.id].price)
                       : product.variants.length > 0
-                      ? Number(product.variants[0].price) // ✅ fallback to 0th
-                      : 0;
+                        ? Number(product.variants[0].price) // ✅ fallback to 0th
+                        : 0;
 
                     return (basePrice + variantPrice).toFixed(2);
                   })()}
@@ -1493,7 +1500,7 @@ export default function ProductPageClient() {
                       {Math.round(
                         ((Number(product.price) - Number(product.promo_price)) /
                           Number(product.price)) *
-                          100
+                          100,
                       )}
                       {t("% OFF")}
                     </span>
@@ -1608,7 +1615,7 @@ export default function ProductPageClient() {
                 {[5, 4, 3, 2, 1].map((star) => {
                   const total = reviews.length;
                   const count = reviews.filter(
-                    (r) => Math.round(Number(r.product_rating)) === star
+                    (r) => Math.round(Number(r.product_rating)) === star,
                   ).length;
 
                   const percent = total ? Math.round((count / total) * 100) : 0;
@@ -1698,7 +1705,7 @@ export default function ProductPageClient() {
                         ? Number(
                             selectedVariants?.[product.id]?.quantity ??
                               product.variants[0]?.quantity ??
-                              0
+                              0,
                           )
                         : Number(product?.quantity);
 
@@ -1835,7 +1842,7 @@ export default function ProductPageClient() {
                       {[5, 4, 3, 2, 1].map((star) => {
                         const total = reviews.length;
                         const count = reviews.filter(
-                          (r) => Math.round(Number(r.product_rating)) === star
+                          (r) => Math.round(Number(r.product_rating)) === star,
                         ).length;
 
                         const percent = total
@@ -1914,8 +1921,8 @@ export default function ProductPageClient() {
                           ?.price
                           ? Number(selectedVariants[product.id].price)
                           : product.variants.length > 0
-                          ? Number(product.variants[0].price) // ✅ fallback to 0th
-                          : 0;
+                            ? Number(product.variants[0].price) // ✅ fallback to 0th
+                            : 0;
 
                         return (basePrice + variantPrice).toFixed(2);
                       })()}
@@ -1949,7 +1956,7 @@ export default function ProductPageClient() {
                             ((Number(product.price) -
                               Number(product.promo_price)) /
                               Number(product.price)) *
-                              100
+                              100,
                           )}
                           {t("% OFF")}
                         </span>
@@ -1961,7 +1968,7 @@ export default function ProductPageClient() {
                 {product.variants.length > 0 &&
                   (() => {
                     const hasColorVariant = product.variants.some(
-                      (v) => v.type === "color"
+                      (v) => v.type === "color",
                     );
 
                     const labelText = hasColorVariant ? "Colours" : "Options";
@@ -2075,7 +2082,7 @@ export default function ProductPageClient() {
 
                   const validOffers = offersData.filter(
                     (offer) =>
-                      offer.offer_label || offer.offer_qty || offer.offer_price
+                      offer.offer_label || offer.offer_qty || offer.offer_price,
                   );
 
                   return (
@@ -2110,8 +2117,8 @@ export default function ProductPageClient() {
                                 ]?.price
                                   ? Number(selectedVariants[product.id].price)
                                   : product.variants.length > 0
-                                  ? Number(product.variants[0].price)
-                                  : 0;
+                                    ? Number(product.variants[0].price)
+                                    : 0;
 
                                 return (basePrice + variantPrice).toFixed(2);
                               })()}
@@ -2187,12 +2194,12 @@ export default function ProductPageClient() {
                   } catch (e) {
                     console.error(
                       "❌ Invalid specifications JSON:",
-                      product.specifications
+                      product.specifications,
                     );
                   }
 
                   const validSpecs = specs.filter(
-                    (s) => s?.name && s?.value && s.value.trim() !== ""
+                    (s) => s?.name && s?.value && s.value.trim() !== "",
                   );
 
                   return (
@@ -2319,7 +2326,7 @@ export default function ProductPageClient() {
                             const total = reviews.length;
                             const count = reviews.filter(
                               (r) =>
-                                Math.round(Number(r.product_rating)) === star
+                                Math.round(Number(r.product_rating)) === star,
                             ).length;
 
                             const percent = total
@@ -2393,7 +2400,7 @@ export default function ProductPageClient() {
                               <p className="text-xs text-gray-400 mt-2">
                                 Reviewed on{" "}
                                 {new Date(
-                                  review.created_at
+                                  review.created_at,
                                 ).toLocaleDateString()}
                               </p>
                             </div>
@@ -2420,7 +2427,7 @@ export default function ProductPageClient() {
                           className="object-cover"
                         />
                       </div>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -2640,7 +2647,7 @@ export default function ProductPageClient() {
                                   ((Number(item.price) -
                                     Number(item.promo_price)) /
                                     Number(item.price)) *
-                                    100
+                                    100,
                                 )}
                                 {t("% OFF")}
                               </div>
@@ -2724,19 +2731,19 @@ export default function ProductPageClient() {
                       product.variants?.length > 0 &&
                       selectedVariants?.[product.id]
                         ? Number(
-                            selectedVariants[product.id].variant_quantity || 0
+                            selectedVariants[product.id].variant_quantity || 0,
                           )
                         : Number(product.quantity) || 0;
 
                     // 🧮 Always show 10 options starting from minQty
                     const maxQty = Math.min(
                       availableQty > 0 ? availableQty : minQty + 9,
-                      minQty + 9
+                      minQty + 9,
                     );
 
                     return Array.from(
                       { length: maxQty - minQty + 1 },
-                      (_, i) => minQty + i
+                      (_, i) => minQty + i,
                     ).map((val) => (
                       <option
                         key={val}
@@ -3012,7 +3019,7 @@ export default function ProductPageClient() {
                             {Math.round(
                               ((Number(item.price) - Number(item.promo_price)) /
                                 Number(item.price)) *
-                                100
+                                100,
                             )}
                             {t("% OFF")}
                           </span>

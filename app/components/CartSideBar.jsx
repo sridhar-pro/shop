@@ -36,7 +36,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       if (!items || items.length === 0) {
         toast.error(
-          "No products selected! Please add items to your cart before checkout."
+          "No products selected! Please add items to your cart before checkout.",
         );
         setIsProcessing(false);
         return;
@@ -78,7 +78,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
     options = {},
     maxTokenAttempts = 10,
     tokenDelay = 500,
-    retryFetch = false
+    retryFetch = false,
   ) => {
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -239,7 +239,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
         // 🔴 Show all errors if available
         if (Array.isArray(data.errors) && data.errors.length > 0) {
           data.errors.forEach((err) =>
-            toast.error(err, { position: "top-center", autoClose: 3000 })
+            toast.error(err, { position: "top-center", autoClose: 3000 }),
           );
         } else {
           toast.error(data.error || "Failed to update cart", {
@@ -294,7 +294,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
         // 🔴 Show all errors if available
         if (Array.isArray(data.errors) && data.errors.length > 0) {
           data.errors.forEach((err) =>
-            toast.error(err, { position: "top-center", autoClose: 3000 })
+            toast.error(err, { position: "top-center", autoClose: 3000 }),
           );
         } else {
           toast.error(data.message || "Failed to update cart", {
@@ -329,7 +329,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       if (response) {
         const updatedCart = cartData.map((item) =>
-          item.rowid === id ? { ...item, qty: newQty } : item
+          item.rowid === id ? { ...item, qty: newQty } : item,
         );
 
         setCartData(updatedCart);
@@ -367,7 +367,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       if (response) {
         const updatedCart = cartData.map((item) =>
-          item.rowid === id ? { ...item, qty: newQty } : item
+          item.rowid === id ? { ...item, qty: newQty } : item,
         );
 
         setCartData(updatedCart);
@@ -401,7 +401,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const cartItemsArray = Object.values(cartDataAPI.contents || {});
       const itemToRemove = cartItemsArray.find(
-        (item) => item.product_id === productId
+        (item) => item.product_id === productId,
       );
       if (!itemToRemove) throw new Error("Item not found in cart");
 
@@ -600,9 +600,9 @@ const CartSidebar = ({ isOpen, onClose }) => {
                           (sum, item) =>
                             sum +
                             parseFloat(item.subtotal.replace(/[^\d.]/g, "")),
-                          0
+                          0,
                         )
-                        .toFixed(2)
+                        .toFixed(2),
                     )}
                   </span>
                 </div>

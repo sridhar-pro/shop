@@ -19,13 +19,13 @@ export function WobbleCardDemo() {
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-  
+
     const fetchNewArrivals = async () => {
       try {
         const res = await fetch("/api/newArraivals");
         const data = await res.json();
         if (!data) return;
-  
+
         const getShortDescription = (htmlText, wordLimit = 20) => {
           if (!htmlText) return "";
           const text = htmlText.replace(/<[^>]*>/g, "").trim();
@@ -34,29 +34,26 @@ export function WobbleCardDemo() {
             ? text
             : words.slice(0, wordLimit).join(" ") + "...";
         };
-  
-        const idsToIgnore = ["1179", "1165"];
-  
-        const mappedSlides = data
-          .filter((item) => !idsToIgnore.includes(item.id))
-          .map((item) => ({
-            title: item.name,
-            description: getShortDescription(item.product_details),
-            shortDescription: getShortDescription(item.product_details),
-            image: `https://marketplace.yuukke.com/assets/uploads/${item.image}`,
-            link: item.slug,
-          }));
-  
+
+        // 🔥 Only show last 8 products
+        const latest8 = data.slice(-8); // ← best choice for New Arrivals
+
+        const mappedSlides = latest8.map((item) => ({
+          title: item.name,
+          description: getShortDescription(item.product_details),
+          shortDescription: getShortDescription(item.product_details),
+          image: `https://marketplace.yuukke.com/assets/uploads/${item.image}`,
+          link: item.slug,
+        }));
+
         setSlides(mappedSlides);
       } catch (error) {
         console.error("❌ Error fetching new arrivals:", error);
       }
     };
-  
+
     fetchNewArrivals();
   }, []);
-  
-
 
   // Slide autoplay
   useEffect(() => {
@@ -181,7 +178,7 @@ export function WobbleCardDemo() {
               </h2>
               <p className="mt-3 text-sm sm:text-base text-neutral-500">
                 {t(
-                  "From fashion to gadgets, home decor to wellness — explore handpicked deals every day and enjoy unbeatable prices."
+                  "From fashion to gadgets, home decor to wellness — explore handpicked deals every day and enjoy unbeatable prices.",
                 )}
               </p>
             </div>

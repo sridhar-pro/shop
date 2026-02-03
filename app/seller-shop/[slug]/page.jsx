@@ -8,7 +8,7 @@ import CartSidebar from "@/app/components/CartSideBar";
 import Link from "next/link";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
 const getImageSrc = (image) => {
@@ -90,19 +90,50 @@ const SellerShopPage = () => {
     if (slug) fetchShopData();
   }, [slug, getValidToken]);
 
-  // ✅ Prevent null crash
+  const videoSrc = shopData?.about_video
+    ? getImageSrc(shopData.about_video)
+    : null;
+
   const images = shopData
     ? [shopData.slider, shopData.slider2].filter(Boolean)
     : [];
 
-  // 🔁 Auto-slide effect
+  const hasVideo = Boolean(videoSrc);
+  const hasImages = images.length > 0;
+
+  const media = [];
+
+  // video first
+  if (videoSrc) {
+    media.push({
+      type: "video",
+      src: videoSrc,
+    });
+  }
+
+  // images next
+  images.forEach((img) => {
+    media.push({
+      type: "image",
+      src: getImageSrc(img),
+    });
+  });
+
+  const hasMedia = media.length > 0;
+  const currentMedia = media[currentIndex];
+
   useEffect(() => {
-    if (images.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [images.length]);
+    if (media.length <= 1) return;
+
+    // if video → wait for onEnded
+    if (currentMedia?.type === "video") return;
+
+    const timer = setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % media.length);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, media, currentMedia]);
 
   // 🚦 Loader UI
   if (loading) {
@@ -150,51 +181,87 @@ const SellerShopPage = () => {
         style={{ backgroundColor: palette.section1_color }}
       >
         {/* 🔹 Hero Section (Responsive Image Display) */}
-        {images.length > 0 && (
+        {hasMedia && (
           <>
-            {/* 🖥️ Desktop / Tablet Slider */}
+            {/* 🖥️ Desktop / Tablet */}
             <header className="hidden md:block relative w-full aspect-[16/4] overflow-hidden rounded-b-3xl shadow-lg">
-              {images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={getImageSrc(img)}
-                  alt={`Slide ${idx + 1}`}
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-                    idx === currentIndex ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-              ))}
-            </header>
-
-            {/* 📱 Mobile Auto Slider */}
-            <div className="block md:hidden w-full relative overflow-hidden rounded-b-2xl">
-              <div
-                className="flex transition-transform duration-700 ease-in-out"
-                style={{
-                  transform: `translateX(-${currentIndex * 100}%)`,
-                }}
-              >
-                {images.map((img, idx) => (
-                  <img
-                    key={idx}
-                    src={getImageSrc(img)}
-                    alt={`Slide ${idx + 1}`}
-                    className="w-full h-[120px] object-cover flex-shrink-0"
-                  />
-                ))}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0"
+                >
+                  {currentMedia.type === "video" ? (
+                    <video
+                      src={currentMedia.src}
+                      autoPlay
+                      muted
+                      playsInline
+                      onEnded={() =>
+                        setCurrentIndex((prev) => (prev + 1) % media.length)
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={currentMedia.src}
+                      alt="Seller media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
 
               {/* Dots */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-                {images.map((_, dotIdx) => (
-                  <span
-                    key={dotIdx}
-                    className={`w-2 h-2 rounded-full ${
-                      dotIdx === currentIndex ? "bg-white" : "bg-white/40"
-                    }`}
-                  ></span>
-                ))}
-              </div>
+              {media.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-50">
+                  {media.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentIndex(i)}
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        i === currentIndex ? "bg-white" : "bg-white/40"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </header>
+
+            {/* 📱 Mobile */}
+            <div className="block md:hidden relative w-full h-[120px] overflow-hidden rounded-b-2xl">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0"
+                >
+                  {currentMedia.type === "video" ? (
+                    <video
+                      src={currentMedia.src}
+                      autoPlay
+                      muted
+                      playsInline
+                      onEnded={() =>
+                        setCurrentIndex((prev) => (prev + 1) % media.length)
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={currentMedia.src}
+                      alt="Seller media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </>
         )}
@@ -343,10 +410,10 @@ const SellerShopPage = () => {
                       };
 
                       const existingCart = JSON.parse(
-                        localStorage.getItem("cart_data") || "[]"
+                        localStorage.getItem("cart_data") || "[]",
                       );
                       const existingIndex = existingCart.findIndex(
-                        (item) => item.id === product.id
+                        (item) => item.id === product.id,
                       );
 
                       const updatedCart =
@@ -354,13 +421,13 @@ const SellerShopPage = () => {
                           ? existingCart.map((item, i) =>
                               i === existingIndex
                                 ? { ...item, qty: item.qty + 1 }
-                                : item
+                                : item,
                             )
                           : [...existingCart, cartItem];
 
                       localStorage.setItem(
                         "cart_data",
-                        JSON.stringify(updatedCart)
+                        JSON.stringify(updatedCart),
                       );
                       setCartItems(updatedCart);
 
@@ -390,7 +457,7 @@ const SellerShopPage = () => {
                       if (!response.ok) {
                         console.error("🚨 Add-to-cart API failed:", data);
                         toast.error(
-                          data?.message || "Failed to add item to cart."
+                          data?.message || "Failed to add item to cart.",
                         );
                         return;
                       }
@@ -523,47 +590,81 @@ const SellerShopPage = () => {
       style={{ backgroundColor: palette.theme_color }}
     >
       {/* 🌟 Hero Section */}
-      {images.length > 0 && (
-        <header className="relative w-full h-full flex overflow-hidden shadow-md">
-          {/* 🖼️ Left: Slider */}
-          <div className="relative w-full md:w-3/4 h-full  overflow-hidden">
-            <div
-              className="flex transition-transform duration-1000 ease-in-out h-full"
-              style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-            >
-              {images.map((img, index) => (
-                <img
-                  key={index}
-                  src={getImageSrc(img)}
-                  alt={`Slide ${index + 1}`}
-                  className="w-full h-full object-contain flex-shrink-0"
-                />
-              ))}
-            </div>
-          </div>
+      {/* 🌟 Hero Section (Theme 1 – Mixed Media Slider) */}
+      {hasMedia && (
+        <header className="relative w-full overflow-hidden shadow-md">
+          <div className="flex flex-col md:flex-row w-full">
+            {/* 🎥 / 🖼️ MEDIA AREA */}
+            <div className="relative w-full md:w-3/4 aspect-[16/9] md:aspect-[16/6] bg-black">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.6 }}
+                  className="absolute inset-0"
+                >
+                  {currentMedia.type === "video" ? (
+                    <video
+                      src={currentMedia.src}
+                      autoPlay
+                      muted
+                      playsInline
+                      onEnded={() =>
+                        setCurrentIndex((prev) => (prev + 1) % media.length)
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={currentMedia.src}
+                      alt="Seller media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
 
-          {/* 🏷️ Right: Logo + Text */}
-          <div
-            className="w-1/4 h-auto hidden md:flex flex-col items-center justify-center text-center p-6"
-            style={{
-              backgroundColor: palette.section1_color,
-              color: palette.text_color,
-            }}
-          >
-            <img
-              src={getImageSrc(shopData.store_logo)}
-              alt={shopData.name}
-              className="h-20 md:h-40 mb-4 rounded-lg shadow bg-white p-2"
-            />
-            <h1
-              className="text-2xl md:text-3xl font-bold capitalize"
-              style={{ color: palette.text_color }}
+              {/* Pagination dots */}
+              {media.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-50">
+                  {media.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentIndex(i)}
+                      className={`w-2.5 h-2.5 rounded-full transition ${
+                        i === currentIndex
+                          ? "bg-red-600 scale-110"
+                          : "bg-red-600/40"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 🏷️ LOGO PANEL */}
+            <div
+              className="hidden md:flex w-1/4 flex-col items-center justify-center text-center p-6"
+              style={{
+                backgroundColor: palette.section1_color,
+                color: palette.text_color,
+              }}
             >
-              {shopData.name}
-            </h1>
+              <img
+                src={getImageSrc(shopData.store_logo)}
+                alt={shopData.name}
+                className="h-28 md:h-40 mb-4 rounded-lg shadow bg-white p-3"
+              />
+              <h1 className="text-2xl md:text-3xl font-bold capitalize">
+                {shopData.name}
+              </h1>
+            </div>
           </div>
         </header>
       )}
+
       {/* 🌟 Shop by Category */}
       <section
         className="px-6 md:px-16 py-16 rounded-3xl"
@@ -748,10 +849,10 @@ const SellerShopPage = () => {
                       };
 
                       const existingCart = JSON.parse(
-                        localStorage.getItem("cart_data") || "[]"
+                        localStorage.getItem("cart_data") || "[]",
                       );
                       const existingIndex = existingCart.findIndex(
-                        (item) => item.id === product.id
+                        (item) => item.id === product.id,
                       );
 
                       const updatedCart =
@@ -759,13 +860,13 @@ const SellerShopPage = () => {
                           ? existingCart.map((item, i) =>
                               i === existingIndex
                                 ? { ...item, qty: item.qty + 1 }
-                                : item
+                                : item,
                             )
                           : [...existingCart, cartItem];
 
                       localStorage.setItem(
                         "cart_data",
-                        JSON.stringify(updatedCart)
+                        JSON.stringify(updatedCart),
                       );
                       setCartItems(updatedCart);
 
@@ -792,7 +893,7 @@ const SellerShopPage = () => {
                       if (!response.ok) {
                         console.error("🚨 Add-to-cart API failed:", data);
                         toast.error(
-                          data?.message || "Failed to add item to cart."
+                          data?.message || "Failed to add item to cart.",
                         );
                         return;
                       }

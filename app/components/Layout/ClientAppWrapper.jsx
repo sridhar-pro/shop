@@ -7,6 +7,7 @@ import LoaderWrapper from "../Loader/LoaderWrapper";
 import Navbar from "./Navbar";
 import { AuthProvider } from "@/app/utils/AuthContext";
 import { SessionProvider } from "@/app/context/SessionContext";
+import { CartProvider } from "@/app/context/CartContext";
 import { useEffect } from "react";
 import "../../i18n";
 
@@ -67,7 +68,7 @@ function LazyAnalytics() {
 
         console.log(
           "✅ GA4 initialized and tracking page:",
-          window.location.pathname
+          window.location.pathname,
         );
       };
 
@@ -116,28 +117,30 @@ export default function ClientAppWrapper({ children }) {
     <LoaderWrapper>
       <AuthProvider>
         <SessionProvider>
-          <main className="pb-16 md:pb-0">
-            <TranslationProvider />
-            <Navbar />
-            {children}
-            <FlashSaleOffer />
-            <ConditionalFooter />
-          </main>
+          <CartProvider>
+            <main className="pb-16 md:pb-0">
+              <TranslationProvider />
+              <Navbar />
+              {children}
+              <FlashSaleOffer />
+              <ConditionalFooter />
+            </main>
 
-          <MobileBottomBar />
+            <MobileBottomBar />
 
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar
-            newestOnTop
-            closeOnClick
-            pauseOnHover
-            theme="light"
-            style={{ marginBottom: "2.5rem" }}
-          />
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar
+              newestOnTop
+              closeOnClick
+              pauseOnHover
+              theme="light"
+              style={{ marginBottom: "2.5rem" }}
+            />
 
-          <LazyAnalytics />
+            <LazyAnalytics />
+          </CartProvider>
         </SessionProvider>
       </AuthProvider>
     </LoaderWrapper>

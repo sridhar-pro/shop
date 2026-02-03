@@ -98,7 +98,7 @@ export default function RecentlyViewedProducts() {
           const discountPercent =
             hasPromo && finalBasePrice > 0
               ? `${Math.round(
-                  ((finalBasePrice - finalPromoPrice) / finalBasePrice) * 100
+                  ((finalBasePrice - finalPromoPrice) / finalBasePrice) * 100,
                 )}`
               : null;
 

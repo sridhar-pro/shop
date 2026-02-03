@@ -1,13 +1,11 @@
 "use client";
 import {
-  BriefcaseBusiness,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Flame,
   Menu,
   Settings,
-  Sparkle,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,18 +22,14 @@ import { useTranslation } from "react-i18next";
 import LogoutButton from "../Logout";
 import { useSession } from "@/app/context/SessionContext";
 import { usePathname } from "next/navigation";
-import { fetchWithAuthGlobal } from "@/app/utils/fetchWithAuth";
-import { ColourfulText } from "../ui/colourful-text";
-
-const messages = [
-  "Yuukke Anniversary Sale – Enjoy 30% OFF Sitewide • Handcrafted • Eco‑Friendly • Gift‑Ready • Limited Time Only – Shop Now!",
-  "Enjoy free shipping on orders above Rs. 700!",
-];
+import { useCart } from "@/app/context/CartContext";
 
 export default function Navbar() {
   const { t } = useTranslation();
 
   const pathname = usePathname();
+
+  const { itemCount } = useCart();
 
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -49,6 +43,47 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   const dropdownRef = useRef(null);
+
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    const fetchNews = async () => {
+      try {
+        const token = await getValidToken();
+        if (!token) {
+          console.warn("⚠️ No auth token available for getNews");
+          return;
+        }
+
+        const res = await fetch("/api/getNews", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch news");
+
+        const data = await res.json();
+
+        const cleaned = data
+          .map((item) => {
+            const div = document.createElement("div");
+            div.innerHTML = item.news || "";
+            return div.textContent || div.innerText || "";
+          })
+          .filter(Boolean);
+
+        if (cleaned.length > 0) setMessages(cleaned);
+      } catch (err) {
+        console.error("❌ News fetch error:", err);
+      }
+    };
+
+    fetchNews();
+  }, [isAuthReady, getValidToken]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -147,11 +182,14 @@ export default function Navbar() {
   };
 
   useEffect(() => {
+    if (messages.length < 2) return;
+
     const interval = setInterval(() => {
       handleNext();
     }, 4000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [messages, handleNext]);
 
   return (
     <>
@@ -390,13 +428,13 @@ export default function Navbar() {
                 onClick={toggleCart}
               >
                 <ShoppingCart className="w-5 h-5 text-black cursor-pointer" />
-                {/* {cartItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartItems.reduce((total, item) => total + item.qty, 0)}
-                  </span>
-                )} */}
-              </button>
 
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-medium rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
+                    {itemCount}
+                  </span>
+                )}
+              </button>
               <CartSidebar
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
@@ -424,11 +462,11 @@ export default function Navbar() {
                 onClick={toggleCart}
               >
                 <ShoppingCart className="w-4 h-4 text-black" />
-                {/* {cartItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
-                    {cartItems.reduce((total, item) => total + item.qty, 0)}
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-medium rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
+                    {itemCount}
                   </span>
-                )} */}
+                )}
               </button>
 
               {/* ✅ Cart Sidebar */}

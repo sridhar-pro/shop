@@ -88,7 +88,7 @@ const CheckoutAddress = ({
       localStorage.setItem("selectedPhone", JSON.stringify(selected.phone));
       localStorage.setItem(
         "selectedPostalCode",
-        JSON.stringify(selected.postal_code)
+        JSON.stringify(selected.postal_code),
       );
 
       // console.log("💾 Saved to localStorage:", {
@@ -144,7 +144,7 @@ const CheckoutAddress = ({
       !addresses.some((addr) => addr.id === selectedAddressId)
     ) {
       console.warn(
-        "⚠️ Selected address no longer exists in the current addresses list. Resetting..."
+        "⚠️ Selected address no longer exists in the current addresses list. Resetting...",
       );
 
       setSelectedAddress(null);
@@ -335,7 +335,7 @@ const CheckoutAddress = ({
       } catch (e) {
         console.warn(
           "Error clearing limited_deal_expiry after manual coupon",
-          e
+          e,
         );
       }
 
@@ -363,7 +363,7 @@ const CheckoutAddress = ({
 
       // Keep discount amount in sync
       setCouponValue(
-        appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0
+        appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0,
       );
 
       if (appliedCoupon) {
@@ -375,7 +375,7 @@ const CheckoutAddress = ({
       try {
         localStorage.setItem(
           "cart_tax_details",
-          JSON.stringify(summaryResponse)
+          JSON.stringify(summaryResponse),
         );
       } catch (e) {
         console.warn("Error saving cart_tax_details", e);
@@ -385,7 +385,7 @@ const CheckoutAddress = ({
       window.dispatchEvent(
         new CustomEvent("local-storage-update", {
           detail: { key: "cart_tax_details" },
-        })
+        }),
       );
     } catch (err) {
       console.error("❌ Error applying coupon or fetching cart summary:", err);
@@ -451,7 +451,7 @@ const CheckoutAddress = ({
         try {
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse)
+            JSON.stringify(summaryResponse),
           );
         } catch (e) {
           console.warn("Error saving cart_tax_details", e);
@@ -460,7 +460,7 @@ const CheckoutAddress = ({
         window.dispatchEvent(
           new CustomEvent("local-storage-update", {
             detail: { key: "cart_tax_details" },
-          })
+          }),
         );
       }
 
@@ -543,13 +543,13 @@ const CheckoutAddress = ({
 
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse)
+            JSON.stringify(summaryResponse),
           );
 
           window.dispatchEvent(
             new CustomEvent("local-storage-update", {
               detail: { key: "cart_tax_details" },
-            })
+            }),
           );
         }
       } catch (e) {
@@ -595,7 +595,7 @@ const CheckoutAddress = ({
           clearInterval(interval);
           // Fire and forget – do not await here
           removeLimitedDeal().catch((e) =>
-            console.error("removeLimitedDeal failed", e)
+            console.error("removeLimitedDeal failed", e),
           );
           return 0;
         }
@@ -774,6 +774,8 @@ const CheckoutAddress = ({
   // Handle address update
   const handleUpdateAddress = async (e) => {
     e.preventDefault();
+    if (!validateAddressForm()) return; // ⛔ hard stop
+
     try {
       const token = await getValidToken();
       const requestBody = {
@@ -811,6 +813,7 @@ const CheckoutAddress = ({
   // Handle add new address
   const handleAddAddress = async (e) => {
     e.preventDefault();
+    if (!validateAddressForm()) return; // ⛔ hard stop
     try {
       const token = await getValidToken();
       const requestBody = {
@@ -852,6 +855,40 @@ const CheckoutAddress = ({
       console.error("Add Address API Error ❌", error);
       toast.error("Something went wrong ❌");
     }
+  };
+
+  const validateAddressForm = () => {
+    const requiredFields = [
+      "line1",
+      "line2",
+      "city",
+      "state",
+      "postal_code",
+      "country",
+      "landmark",
+      "phone",
+    ];
+
+    for (let field of requiredFields) {
+      if (!formData[field]?.trim()) {
+        toast.error(`Please enter ${field.replace("_", " ")}`);
+        return false;
+      }
+    }
+
+    // 📱 Phone → exactly 10 digits
+    if (!/^\d{10}$/.test(formData.phone)) {
+      toast.error("Phone number must be exactly 10 digits");
+      return false;
+    }
+
+    // 📮 Postal Code → exactly 6 digits (India style)
+    if (!/^\d{6}$/.test(formData.postal_code)) {
+      toast.error("Postal code must be exactly 6 digits");
+      return false;
+    }
+
+    return true;
   };
 
   // Handle delete address
@@ -937,7 +974,7 @@ const CheckoutAddress = ({
         draggable: false,
         closeButton: false,
         hideProgressBar: true,
-      }
+      },
     );
   };
 
@@ -1008,7 +1045,7 @@ const CheckoutAddress = ({
 
       console.log(
         "📦 Payload being sent to /api/createOrder:",
-        customerPayload
+        customerPayload,
       );
 
       // ✅ API call
@@ -1055,7 +1092,7 @@ const CheckoutAddress = ({
       window.dispatchEvent(
         new CustomEvent("orderIdDataUpdated", {
           detail: result?.order_id,
-        })
+        }),
       );
 
       setTimeout(() => {
@@ -1069,7 +1106,7 @@ const CheckoutAddress = ({
     } catch (err) {
       console.error("🚨 Logged-in Order creation error:", err);
       toast.error(
-        err.message || "Something went wrong while creating the order."
+        err.message || "Something went wrong while creating the order.",
       );
     }
   };
@@ -1291,6 +1328,7 @@ const CheckoutAddress = ({
                     placeholder={field.replace("_", " ").toUpperCase()}
                     value={formData[field]}
                     onChange={handleChange}
+                    required
                     className="w-full border p-2 rounded-lg "
                   />
                 ))}
@@ -1330,6 +1368,7 @@ const CheckoutAddress = ({
                     placeholder={field.replace("_", " ").toUpperCase()}
                     value={formData[field]}
                     onChange={handleChange}
+                    required
                     className="w-full border p-2 rounded-lg "
                   />
                 ))}
@@ -1396,8 +1435,8 @@ const CheckoutAddress = ({
                           {appliedOffers.includes(offer.id)
                             ? "APPLIED"
                             : applyingOffer
-                            ? "Applying"
-                            : "APPLY"}
+                              ? "Applying"
+                              : "APPLY"}
                         </button>
                       </div>
 

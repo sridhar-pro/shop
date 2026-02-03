@@ -20,6 +20,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useTranslation } from "react-i18next";
 import WishlistButton from "@/app/components/WishlistButton";
+import { usePathname } from "next/navigation";
 import { fetchWithAuthGlobal } from "@/app/utils/fetchWithAuth";
 
 const FeaturedProducts = () => {
@@ -39,6 +40,19 @@ const FeaturedProducts = () => {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [mainImage, setMainImage] = useState(null);
   const modalRef = useRef(null);
+
+  const pathname = usePathname();
+
+  let eventSlug = null;
+
+  const parts = pathname.split("/").filter(Boolean);
+
+  const eventIndex = parts.indexOf("events");
+  if (eventIndex !== -1 && parts[eventIndex + 1]) {
+    eventSlug = parts[eventIndex + 1];
+  }
+
+  const [eventSlugFromStorage, setEventSlugFromStorage] = useState(null);
 
   const [homePageTitles, setHomePageTitles] = useState({});
 
@@ -69,6 +83,8 @@ const FeaturedProducts = () => {
   const [isInCart, setIsInCart] = useState(false);
   const [tempQuantity, setTempQuantity] = useState(1); // Temporary quantity before update
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
   const getImageSrcThumbs = (image) => {
     if (!image) return "/fallback.png";
@@ -166,11 +182,34 @@ const FeaturedProducts = () => {
           setter(validData);
 
           const title = validData[0]?.homePageTitle || null;
-          if (title) setHomePageTitles((prev) => ({ ...prev, [key]: title }));
+
+          if (title) {
+            // 🧼 Slugify the title
+            const slug = title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+
+            // 🏪 Store key → slug mapping
+            const existing = JSON.parse(
+              localStorage.getItem("homepage_slugs") || "{}",
+            );
+
+            localStorage.setItem(
+              "homepage_slugs",
+              JSON.stringify({
+                ...existing,
+                [key]: { title, slug },
+              }),
+            );
+
+            // keep your title state
+            setHomePageTitles((prev) => ({ ...prev, [key]: title }));
+          }
 
           localStorage.setItem(
             cacheKey,
-            JSON.stringify({ data: validData, timestamp: Date.now() })
+            JSON.stringify({ data: validData, timestamp: Date.now() }),
           );
         } catch (err) {
           console.error(`[${key}] Fetch error:`, err.message);
@@ -191,8 +230,8 @@ const FeaturedProducts = () => {
 
       await Promise.all(
         fetchers.map(({ key, url, setter }) =>
-          fetchWithCacheAndLogs(key, url, setter)
-        )
+          fetchWithCacheAndLogs(key, url, setter),
+        ),
       );
     };
 
@@ -233,7 +272,7 @@ const FeaturedProducts = () => {
 
   const toggleWishlist = (slug) => {
     setWishlist((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
     );
   };
 
@@ -284,7 +323,48 @@ const FeaturedProducts = () => {
     }
   }, [quickViewProduct]);
 
-  const renderTitleSection = (title, btnLink = "/products") => {
+  useEffect(() => {
+    try {
+      const slugs = JSON.parse(localStorage.getItem("homepage_slugs") || "{}");
+
+      setEventSlugFromStorage({
+        arrival: slugs?.arrival?.slug || null,
+        gift: slugs?.gift?.slug || null,
+        featured: slugs?.featured?.slug || null,
+        festival: slugs?.featured?.slug || null,
+        wellness: slugs?.wellness?.slug || null,
+        corporate: slugs?.gift?.slug || null,
+        return: slugs?.return?.slug || null,
+      });
+
+      setStorageLoaded(true); // <--- NEW
+    } catch (e) {
+      console.log("storage read failed", e);
+    }
+  }, []);
+
+  const sectionStatic = {
+    arrival: "NA01--4c91bafe",
+    gift: "CE01--2dd33e70",
+    wellness: "WP01--9a33f1d2",
+    return: "RG01--bc119f84",
+    festival: "MS01--71e2a9cd",
+    featured: "FE01--318f9ji",
+    corporate: "CP01--3jhfdkjs",
+  };
+
+  const slugify = (title) =>
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const renderTitleSection = (title, sectionKey) => {
+    const slug = slugify(title);
+    const staticTail = sectionStatic[sectionKey];
+
+    const btnLink = `/products/events/${slug}/${staticTail}`;
+
     return (
       <motion.div
         className="relative mb-20 flex flex-col items-center"
@@ -360,8 +440,8 @@ const FeaturedProducts = () => {
             hasPromo && product.promo_price
               ? Number(product.promo_price)
               : product.sale_price
-              ? Number(product.sale_price)
-              : Number(product.price);
+                ? Number(product.sale_price)
+                : Number(product.price);
 
           const originalPrice = Number(product.price);
           const discountPercent = hasPromo
@@ -485,7 +565,7 @@ const FeaturedProducts = () => {
                           product.image_g?.match(/src="([^"]+)"/g) || [];
 
                         const urls = matches.map((src) =>
-                          src.replace(/src="|"/g, "")
+                          src.replace(/src="|"/g, ""),
                         );
 
                         hoverImage = urls[1] || null;
@@ -637,7 +717,7 @@ const FeaturedProducts = () => {
                             ((Number(product.price) -
                               Number(product.promo_price)) /
                               Number(product.price)) *
-                              100
+                              100,
                           )}
                           {t("% OFF")}
                         </span>
@@ -662,7 +742,7 @@ const FeaturedProducts = () => {
                               value={selectedVariant?.id}
                               onChange={(e) => {
                                 const v = variants.find(
-                                  (v) => String(v.id) === e.target.value
+                                  (v) => String(v.id) === e.target.value,
                                 );
                                 setSelectedVariants((prev) => ({
                                   ...prev,
@@ -817,23 +897,28 @@ const FeaturedProducts = () => {
         ) : (
           <>
             {[
-              { products: giftProducts, margin: "" },
-              { products: newArrivalProducts, margin: "mt-32" },
-              { products: featuredProducts, margin: "mt-32" },
-              { products: festivalProducts, margin: "mt-32" },
-              { products: wellnessProducts, margin: "mt-20" },
-              { products: corporateProducts, margin: "mt-32" },
-              { products: returnProducts, margin: "mt-32" },
+              { key: "arrival", products: newArrivalProducts, margin: "" },
+              { key: "gift", products: giftProducts, margin: "mt-32" },
+              { key: "featured", products: featuredProducts, margin: "mt-32" },
+              { key: "festival", products: festivalProducts, margin: "mt-32" },
+              { key: "wellness", products: wellnessProducts, margin: "mt-20" },
+              {
+                key: "corporate",
+                products: corporateProducts,
+                margin: "mt-32",
+              },
+              { key: "return", products: returnProducts, margin: "mt-32" },
             ].map(
-              ({ products, margin }, index) =>
+              ({ key, products, margin }, index) =>
                 products?.length > 0 && (
-                  <div key={index} className={margin}>
+                  <div key={key} className={margin}>
                     {renderTitleSection(
-                      products[0]?.homePageTitle || "You may also like"
+                      products[0]?.homePageTitle || "You may also like",
+                      key,
                     )}
                     {renderProductCards(products)}
                   </div>
-                )
+                ),
             )}
           </>
         )}
@@ -890,7 +975,7 @@ const FeaturedProducts = () => {
                         >
                           <Image
                             src={getImageSrc(
-                              mainImage || quickViewProduct.image
+                              mainImage || quickViewProduct.image,
                             )}
                             alt={quickViewProduct.name || "Image not found!"}
                             fill
@@ -910,14 +995,14 @@ const FeaturedProducts = () => {
                           quickViewProduct.image_g.match(/src="([^"]+)"/g) ||
                           [];
                         const imageUrls = matches.map((src) =>
-                          src.replace(/src="|"/g, "")
+                          src.replace(/src="|"/g, ""),
                         );
                         const allImages = [
                           getImageSrcThumbs(quickViewProduct.image),
                           ...imageUrls,
                         ].filter(
                           (img, index, self) =>
-                            img && self.indexOf(img) === index
+                            img && self.indexOf(img) === index,
                         );
 
                         return allImages.map((img, i) => (
@@ -1005,7 +1090,7 @@ const FeaturedProducts = () => {
                                   ((Number(quickViewProduct.price) -
                                     Number(quickViewProduct.promo_price)) /
                                     Number(quickViewProduct.price)) *
-                                    100
+                                    100,
                                 )}
                                 {t("% OFF")}
                               </span>
@@ -1109,7 +1194,7 @@ const FeaturedProducts = () => {
                             if (isAdding) return;
                             setIsAdding(true);
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 2500)
+                              setTimeout(resolve, 2500),
                             );
 
                             try {
@@ -1203,7 +1288,7 @@ const FeaturedProducts = () => {
                               if (result.status !== "success") {
                                 console.warn(
                                   "🚫 Backend cart sync failed:",
-                                  result
+                                  result,
                                 );
                                 return;
                               }
@@ -1212,11 +1297,11 @@ const FeaturedProducts = () => {
 
                               // Update local cart
                               const existingCart = JSON.parse(
-                                localStorage.getItem("cart_data") || "[]"
+                                localStorage.getItem("cart_data") || "[]",
                               );
 
                               const existingItemIndex = existingCart.findIndex(
-                                (item) => item.id === quickViewProduct.id
+                                (item) => item.id === quickViewProduct.id,
                               );
 
                               const selectedVariantId =
@@ -1225,7 +1310,7 @@ const FeaturedProducts = () => {
 
                               const variantPrice = Number(
                                 selectedVariants?.[quickViewProduct.id]
-                                  ?.price || 0
+                                  ?.price || 0,
                               );
 
                               const basePrice =
@@ -1244,7 +1329,7 @@ const FeaturedProducts = () => {
                                   ? existingCart.map((item, i) =>
                                       i === existingItemIndex
                                         ? { ...item, qty: item.qty + quantity }
-                                        : item
+                                        : item,
                                     )
                                   : [
                                       ...existingCart,
@@ -1264,7 +1349,7 @@ const FeaturedProducts = () => {
 
                               localStorage.setItem(
                                 "cart_data",
-                                JSON.stringify(updatedCart)
+                                JSON.stringify(updatedCart),
                               );
                               setCartItems(updatedCart);
                               // console.log(
@@ -1286,7 +1371,7 @@ const FeaturedProducts = () => {
                                       cart_id: newCartId, // Use the same variable, no extra getItem call needed
                                       coupon_code: "0",
                                     }),
-                                  }
+                                  },
                                 );
 
                                 if (!couponRes.ok)
@@ -1300,7 +1385,7 @@ const FeaturedProducts = () => {
                               } catch (couponError) {
                                 console.error(
                                   "🚫 Error applying coupon after addToCart:",
-                                  couponError
+                                  couponError,
                                 );
                               }
 
@@ -1327,30 +1412,36 @@ const FeaturedProducts = () => {
                                         Authorization: `Bearer ${retryToken}`,
                                       },
                                       body: JSON.stringify({ cart_id: cartId }),
-                                    }
+                                    },
                                   );
 
                                   const taxData = await retryTaxRes.json();
                                   localStorage.setItem(
                                     "cart_tax_details",
-                                    JSON.stringify(taxData)
+                                    JSON.stringify(taxData),
                                   );
                                   // console.log(
                                   //   "💸 Tax details (retried):",
                                   //   taxData
                                   // );
+                                  window.dispatchEvent(
+                                    new Event("cart-updated"),
+                                  );
                                 } else {
                                   const taxData = await taxRes.json();
                                   localStorage.setItem(
                                     "cart_tax_details",
-                                    JSON.stringify(taxData)
+                                    JSON.stringify(taxData),
                                   );
                                   // console.log("💸 Tax details:", taxData);
+                                  window.dispatchEvent(
+                                    new Event("cart-updated"),
+                                  );
                                 }
                               } catch (taxError) {
                                 console.error(
                                   "🚫 Failed to fetch tax details:",
-                                  taxError
+                                  taxError,
                                 );
                               }
 
@@ -1492,21 +1583,23 @@ const FeaturedProducts = () => {
                               const taxData = await retryTaxRes.json();
                               localStorage.setItem(
                                 "cart_tax_details",
-                                JSON.stringify(taxData)
+                                JSON.stringify(taxData),
                               );
                               // console.log("💸 Tax details (retried):", taxData);
+                              window.dispatchEvent(new Event("cart-updated"));
                             } else {
                               const taxData = await taxRes.json();
                               localStorage.setItem(
                                 "cart_tax_details",
-                                JSON.stringify(taxData)
+                                JSON.stringify(taxData),
                               );
                               // console.log("💸 Tax details:", taxData);
+                              window.dispatchEvent(new Event("cart-updated"));
                             }
                           } catch (taxError) {
                             console.error(
                               "🚫 Failed to fetch tax details:",
-                              taxError
+                              taxError,
                             );
                           }
 

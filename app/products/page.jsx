@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
@@ -33,20 +34,39 @@ export default function AllProductsPage({
   categorySlug: categorySlugFromProps,
   subCategorySlug: subCategorySlugFromProps,
   subSubCategorySlug: subSubCategorySlugFromProps,
+  params,
+  searchParams,
 }) {
   const productCache = useRef({});
-  const searchParams = useSearchParams();
-  const categorySlugFromQuery = searchParams.get("category");
-  const subCategorySlugFromQuery = searchParams.get("sub");
-  const subSubCategorySlugFromQuery = searchParams.get("subsub");
+  const search = useSearchParams();
+  const categorySlugFromQuery = search.get("category");
+  const subCategorySlugFromQuery = search.get("sub");
+  const subSubCategorySlugFromQuery = search.get("subsub");
 
   const categorySlug = categorySlugFromProps || categorySlugFromQuery;
   const subCategorySlug = subCategorySlugFromProps || subCategorySlugFromQuery;
   const subSubCategorySlug =
     subSubCategorySlugFromProps || subSubCategorySlugFromQuery;
-  const warehousesId = searchParams.get("warehouses_id");
+  const warehousesId = search.get("warehouses_id");
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  const resolvedParams = React.use(params) || {};
+  let slug = resolvedParams.slug;
+
+  // Normalize slug to a string
+  if (Array.isArray(slug)) {
+    slug = slug[slug.length - 1]; // or join('-') depending on your routing structure
+  }
+
+  slug = slug ?? ""; // fallback to empty string if undefined
+
+  const title = slug
+    ? slug
+        .toString()
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
 
   const [products, setProducts] = useState([]);
   const [warehouse, setWarehouse] = useState(null);
@@ -94,8 +114,15 @@ export default function AllProductsPage({
   const isOffersPage = pathname === "/products/offers";
   const isFestivalGifting = pathname === "/products/festival-gifting";
   const isBogo = pathname === "/products/special-offers";
+  const isNewarrivalsPage = pathname?.endsWith("/NA01--4c91bafe");
+  const isCorporateEssentialsPage = pathname?.endsWith("/CE01--2dd33e70");
+  const isMostSavedPage = pathname.includes("/MS01--71e2a9cd");
+  const isWellnessPage = pathname.includes("/WP01--9a33f1d2");
+  const isReturnGiftsPage = pathname.includes("/RG01--bc119f84");
+  const isFeaturedPage = pathname.includes("FE01--318f9ji");
+  const isCorporatePage = pathname.includes("CP01--3jhfdkjs");
 
-  const searchQuery = searchParams.get("query"); // like how warehousesId or categorySlug is handled
+  const searchQuery = search.get("query"); // like how warehousesId or categorySlug is handled
 
   // Format today as YYYY-MM-DD
   const today = new Date().toISOString().split("T")[0];
@@ -170,14 +197,14 @@ export default function AllProductsPage({
 
       if (subCategorySlug) {
         const matchedSub = matchedCategory.subcategories?.find(
-          (sub) => sub.slug === subCategorySlug
+          (sub) => sub.slug === subCategorySlug,
         );
         if (matchedSub) {
           setSelectedSubcategory(matchedSub.id);
 
           if (subSubCategorySlug) {
             const matchedSubSub = matchedSub.sub_subcategories?.find(
-              (subsub) => subsub.slug === subSubCategorySlug
+              (subsub) => subsub.slug === subSubCategorySlug,
             );
             if (matchedSubSub) {
               setSelectedSubSubcategory(matchedSubSub.id);
@@ -225,7 +252,7 @@ export default function AllProductsPage({
         const data = await fetchWithAuthGlobal(
           "/api/homeCategory",
           {},
-          getValidToken
+          getValidToken,
         );
 
         if (!data) {
@@ -254,7 +281,7 @@ export default function AllProductsPage({
     inStockValue = false,
     priceRange = [1, 100000],
     searchQuery = "",
-    retry = false
+    retry = false,
   ) => {
     const token = localStorage.getItem("authToken");
     // console.time("🛒 fetchProducts");
@@ -320,6 +347,13 @@ export default function AllProductsPage({
         }),
         ...(isFestivalGifting && { best_selling: "1" }), // ✅ Added this
         ...(isBogo && { bogo: "1" }),
+        ...(isNewarrivalsPage && { new_arrivals: "1" }),
+        ...(isCorporateEssentialsPage && { gifts_products: "1" }),
+        ...(isMostSavedPage && { festival_special: "1" }),
+        ...(isWellnessPage && { wellness_products: "1" }),
+        ...(isReturnGiftsPage && { return_gifts: "1" }),
+        ...(isFeaturedPage && { featured_products: "1" }),
+        ...(isCorporatePage && { corporate_gifts: "1" }),
       },
     };
 
@@ -347,7 +381,7 @@ export default function AllProductsPage({
           sortValue,
           inStockValue,
           priceRange,
-          true // retry = true
+          true, // retry = true
         );
       }
 
@@ -419,7 +453,7 @@ export default function AllProductsPage({
           sortBy,
           inStock,
           [1, 100000],
-          searchQuery
+          searchQuery,
         );
       } else if (categories.length > 0) {
         fetchProductsByCategory(
@@ -428,7 +462,7 @@ export default function AllProductsPage({
           selectedSubSubcategory,
           currentPage,
           sortBy,
-          inStock
+          inStock,
         );
       }
     }, 300);
@@ -562,7 +596,7 @@ export default function AllProductsPage({
                                 ((Number(product.price) -
                                   Number(product.promo_price)) /
                                   Number(product.price)) *
-                                  100
+                                  100,
                               )}
                               % OFF
                             </span>
@@ -726,7 +760,7 @@ export default function AllProductsPage({
                                 "", // sortValue
                                 false, // inStockValue
                                 [1, 100000], // priceRange (default)
-                                "" // searchQuery
+                                "", // searchQuery
                               );
                             }}
                             className="flex items-center gap-1 mt-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -842,7 +876,7 @@ export default function AllProductsPage({
                                 currentPage,
                                 sortBy,
                                 inStock,
-                                [0, priceRange]
+                                [0, priceRange],
                               )
                             }
                             className=""
@@ -897,14 +931,14 @@ export default function AllProductsPage({
                                           const isCatSelected =
                                             selectedCategory === cat.id;
                                           setSelectedCategory(
-                                            isCatSelected ? null : cat.id
+                                            isCatSelected ? null : cat.id,
                                           );
                                           setSelectedSubcategory(null);
                                           setSelectedSubSubcategory(null);
                                           fetchProductsByCategory(
                                             isCatSelected ? null : cat.id,
                                             null,
-                                            null
+                                            null,
                                           );
                                         }}
                                         className={`flex items-center justify-between w-full px-1 py-1 text-sm font-medium transition-colors duration-300 group ${
@@ -978,17 +1012,17 @@ export default function AllProductsPage({
                                                           setSelectedSubcategory(
                                                             isSubSelected
                                                               ? null
-                                                              : sub.id
+                                                              : sub.id,
                                                           );
                                                           setSelectedSubSubcategory(
-                                                            null
+                                                            null,
                                                           );
                                                           fetchProductsByCategory(
                                                             selectedCategory,
                                                             isSubSelected
                                                               ? null
                                                               : sub.id,
-                                                            null
+                                                            null,
                                                           );
                                                         }}
                                                         className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
@@ -1056,12 +1090,12 @@ export default function AllProductsPage({
                                                                       }}
                                                                       onClick={() => {
                                                                         setSelectedSubSubcategory(
-                                                                          subsub.id
+                                                                          subsub.id,
                                                                         );
                                                                         fetchProductsByCategory(
                                                                           selectedCategory,
                                                                           selectedSubcategory,
-                                                                          subsub.id
+                                                                          subsub.id,
                                                                         );
                                                                       }}
                                                                       className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
@@ -1080,14 +1114,14 @@ export default function AllProductsPage({
                                                                       }
                                                                     </motion.button>
                                                                   );
-                                                                }
+                                                                },
                                                               )}
                                                             </motion.div>
                                                           )}
                                                       </AnimatePresence>
                                                     </div>
                                                   );
-                                                }
+                                                },
                                               )}
                                             </motion.div>
                                           )}
@@ -1111,7 +1145,7 @@ export default function AllProductsPage({
                           currentPage,
                           sortBy,
                           inStock,
-                          [0, priceRange]
+                          [0, priceRange],
                         );
                         setShowMobileFilters(false);
                       }}
@@ -1252,7 +1286,7 @@ export default function AllProductsPage({
                             "", // sortValue
                             false, // inStockValue
                             [1, 100000], // priceRange (default)
-                            "" // searchQuery
+                            "", // searchQuery
                           );
                         }}
                         className="flex items-center gap-1 mt-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -1356,7 +1390,7 @@ export default function AllProductsPage({
                         currentPage,
                         sortBy,
                         inStock,
-                        [0, priceRange]
+                        [0, priceRange],
                       )
                     }
                     className="w-full bg-gray-100 text-gray-800 py-2 px-3 rounded-md font-medium border border-gray-200 
@@ -1410,7 +1444,7 @@ export default function AllProductsPage({
                                   const isCatSelected =
                                     selectedCategory === cat.id;
                                   setSelectedCategory(
-                                    isCatSelected ? null : cat.id
+                                    isCatSelected ? null : cat.id,
                                   );
                                   handleCategorySelect(cat.slug, cat.id);
                                   setSelectedSubcategory(null);
@@ -1418,7 +1452,7 @@ export default function AllProductsPage({
                                   fetchProductsByCategory(
                                     isCatSelected ? null : cat.id,
                                     null,
-                                    null
+                                    null,
                                   );
                                 }}
                                 className={`flex items-center justify-between w-full px-1 py-1 text-sm font-medium transition-colors duration-300 group ${
@@ -1478,16 +1512,16 @@ export default function AllProductsPage({
 
                                                   if (isSubSelected) {
                                                     setSelectedSubcategory(
-                                                      null
+                                                      null,
                                                     );
                                                     router.push(
-                                                      `/products/category/${cat.slug}`
+                                                      `/products/category/${cat.slug}`,
                                                     ); // go back to just category
                                                   } else {
                                                     handleSubcategorySelect(
                                                       cat.slug,
                                                       sub.slug,
-                                                      sub.id
+                                                      sub.id,
                                                     );
                                                   }
 
@@ -1496,7 +1530,7 @@ export default function AllProductsPage({
                                                     isSubSelected
                                                       ? null
                                                       : sub.id,
-                                                    null
+                                                    null,
                                                   );
                                                 }}
                                                 className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
@@ -1567,14 +1601,14 @@ export default function AllProductsPage({
                                                                 setSelectedSubSubcategory(
                                                                   isSubSubSelected
                                                                     ? null
-                                                                    : subsub.id
+                                                                    : subsub.id,
                                                                 );
 
                                                                 handleSubSubcategorySelect(
                                                                   cat.slug,
                                                                   sub.slug,
                                                                   subsub.slug,
-                                                                  subsub.id
+                                                                  subsub.id,
                                                                 );
 
                                                                 fetchProductsByCategory(
@@ -1582,7 +1616,7 @@ export default function AllProductsPage({
                                                                   selectedSubcategory,
                                                                   isSubSubSelected
                                                                     ? null
-                                                                    : subsub.id
+                                                                    : subsub.id,
                                                                 );
                                                               }}
                                                               className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
@@ -1597,18 +1631,18 @@ export default function AllProductsPage({
                                                                 <Circle className="w-3 h-3 text-gray-300" />
                                                               )}
                                                               {decodeHtml(
-                                                                subsub.name
+                                                                subsub.name,
                                                               )}
                                                             </motion.button>
                                                           );
-                                                        }
+                                                        },
                                                       )}
                                                     </motion.div>
                                                   )}
                                               </AnimatePresence>
                                             </div>
                                           );
-                                        }
+                                        },
                                       )}
                                     </motion.div>
                                   )}
@@ -1700,7 +1734,7 @@ export default function AllProductsPage({
                     {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => {
                       const startPage = Math.max(
                         1,
-                        Math.min(currentPage - 1, totalPages - 3)
+                        Math.min(currentPage - 1, totalPages - 3),
                       );
                       const pageNumber = startPage + i;
 
@@ -1839,6 +1873,224 @@ export default function AllProductsPage({
                 </div>
               )}
 
+              {/* ⭐ Best Seller Section */}
+              {isNewarrivalsPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isCorporateEssentialsPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isMostSavedPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isWellnessPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isReturnGiftsPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isFeaturedPage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isCorporatePage && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ⭐ BOGO Offers Section */}
               {isBogo && (
                 <div className="w-full my-0 md:my-10 mb-4">
@@ -1902,7 +2154,7 @@ export default function AllProductsPage({
                   {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => {
                     const startPage = Math.max(
                       1,
-                      Math.min(currentPage - 1, totalPages - 3)
+                      Math.min(currentPage - 1, totalPages - 3),
                     );
                     const pageNumber = startPage + i;
 
@@ -2088,7 +2340,7 @@ export default function AllProductsPage({
                                         ((Number(product.price) -
                                           Number(product.promo_price)) /
                                           Number(product.price)) *
-                                          100
+                                          100,
                                       )}
                                       % OFF
                                     </span>
@@ -2190,7 +2442,7 @@ export default function AllProductsPage({
               {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => {
                 const startPage = Math.max(
                   1,
-                  Math.min(currentPage - 1, totalPages - 3)
+                  Math.min(currentPage - 1, totalPages - 3),
                 );
                 const pageNumber = startPage + i;
 

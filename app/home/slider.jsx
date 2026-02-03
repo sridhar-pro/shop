@@ -11,7 +11,7 @@ export function ImagesSliderDemo() {
   const [mobileImages, setMobileImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < 768 : false
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
@@ -39,17 +39,54 @@ export function ImagesSliderDemo() {
           mobileRes.json(),
         ]);
 
-        const formattedDesktop = Object.values(desktopData).map((item) => ({
-          src: `${baseUrl}${item.image}`,
-          href: item.link || "#",
-          title: item.title || "",
-        }));
+        const normalizeDesktop = (item) => {
+          const src = item.video
+            ? `${baseUrl}${item.video}`
+            : item.image
+              ? `${baseUrl}${item.image}`
+              : null;
 
-        const formattedMobile = Object.values(mobileData).map((item) => ({
-          src: `${baseUrl}${item.image}`,
-          href: item.link || "#",
-          title: item.title || "",
-        }));
+          const type = item.type
+            ? item.type // explicit type wins
+            : item.video
+              ? "video"
+              : "image";
+
+          return {
+            src,
+            href: item.link || "#",
+            title: item.title || "",
+            type,
+          };
+        };
+
+        const normalizeMobile = (item) => {
+          // mobile legacy formats
+          const media = item.image || item.banner || item.video || null;
+
+          const src = media
+            ? media.startsWith("http")
+              ? media
+              : `${baseUrl}${media}`
+            : null;
+
+          const type = item.type
+            ? item.type // new format
+            : media?.endsWith(".mp4")
+              ? "video" // file extension detection (future proof)
+              : "image";
+
+          return {
+            src,
+            href: item.link || "#",
+            title: item.title || "",
+            type,
+          };
+        };
+
+        const formattedDesktop =
+          Object.values(desktopData).map(normalizeDesktop);
+        const formattedMobile = Object.values(mobileData).map(normalizeMobile);
 
         setDesktopImages(formattedDesktop);
         setMobileImages(formattedMobile);
@@ -82,6 +119,7 @@ export function ImagesSliderDemo() {
   }, []);
 
   const images = isMobile ? mobileImages : desktopImages;
+  const currentSlide = images[currentIndex] || null; // ✅ safe & sexy
 
   // 👆 Swipe support
   const swipeHandlers = useSwipeable({
@@ -101,11 +139,18 @@ export function ImagesSliderDemo() {
   // ⏱️ Auto slide
   useEffect(() => {
     if (images.length <= 1) return;
+
+    if (currentSlide?.type === "video") {
+      // handled by video onEnded
+      return;
+    }
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, 5000);
+
     return () => clearInterval(interval);
-  }, [images]);
+  }, [images, currentIndex]);
 
   return (
     <div className="px-2 lg:px-8 mt-2 lg:mt-4">
@@ -132,16 +177,30 @@ export function ImagesSliderDemo() {
                 transition={{ duration: 0.6 }}
                 className="absolute inset-0 block w-full h-full lg:rounded-2xl overflow-hidden"
               >
-                <Image
-                  src={images[currentIndex]?.src || "/fallback.png"}
-                  alt={images[currentIndex]?.title || "Slide"}
-                  fill
-                  className="object-contain lg:rounded-2xl"
-                  priority={true} // force it!
-                  fetchPriority="high"
-                  loading="eager"
-                  sizes="(max-width: 768px) 100vw, 90vw"
-                />
+                {images[currentIndex]?.type === "video" ? (
+                  <video
+                    src={currentSlide.src}
+                    autoPlay
+                    muted
+                    playsInline
+                    onEnded={() => {
+                      setCurrentIndex((prev) => (prev + 1) % images.length);
+                    }}
+                    className="object-contain w-full h-full lg:rounded-2xl"
+                    loop={false}
+                  />
+                ) : (
+                  <Image
+                    src={images[currentIndex].src || "/fallback.png"}
+                    alt={images[currentIndex]?.title || "Slide"}
+                    fill
+                    className="object-contain lg:rounded-2xl"
+                    priority={true}
+                    fetchPriority="high"
+                    loading="eager"
+                    sizes="(max-width: 768px) 100vw, 90vw"
+                  />
+                )}
               </motion.a>
             </AnimatePresence>
 
@@ -151,7 +210,7 @@ export function ImagesSliderDemo() {
                 <button
                   onClick={() =>
                     setCurrentIndex(
-                      (prev) => (prev - 1 + images.length) % images.length
+                      (prev) => (prev - 1 + images.length) % images.length,
                     )
                   }
                   className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-2 shadow transition z-50"

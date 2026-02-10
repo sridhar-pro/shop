@@ -31,8 +31,10 @@ const OrderSummary = () => {
   const [couponMessage, setCouponMessage] = useState("");
   const [bogoOffers, setBogoOffers] = useState([]);
 
+  const [customizedTexts, setCustomizedTexts] = useState({});
+
   // Limited-deal config
-  const LIMITED_DEAL_CODE = "TEST30"; //TEST50 //FLATY100
+  const LIMITED_DEAL_CODE = "FLATY100"; //TEST50 //FLATY100
   const LIMITED_DEAL_DURATION = 600; // seconds (10 minutes)
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION);
@@ -102,6 +104,19 @@ const OrderSummary = () => {
       const cartData = response?.cart_data;
       if (!cartData) return;
 
+      // ✍️ Customized print texts (per item)
+      const textsMap = {};
+
+      Object.values(cartData.contents || {}).forEach((item) => {
+        if (item?.customize_text) {
+          textsMap[item.rowid] = item.customize_text;
+        }
+      });
+
+      setCustomizedTexts(textsMap);
+
+      console.log("🧾 Custom print texts (per item):", textsMap);
+
       // 🛒 Extract items
       const itemsArray = Object.values(cartData.contents || {}).map((item) => ({
         rowid: item.rowid,
@@ -134,7 +149,7 @@ const OrderSummary = () => {
 
             localStorage.setItem(
               "cartItemPreview",
-              JSON.stringify(minimalCartPreview)
+              JSON.stringify(minimalCartPreview),
             );
           }
         }
@@ -188,7 +203,7 @@ const OrderSummary = () => {
             } catch (e) {
               console.warn(
                 "Could not persist last_applied_coupon from cartData",
-                e
+                e,
               );
             }
           }
@@ -226,7 +241,7 @@ const OrderSummary = () => {
             } catch (e) {
               console.warn(
                 "Could not persist last_applied_coupon from cartData (silent)",
-                e
+                e,
               );
             }
           }
@@ -413,13 +428,13 @@ const OrderSummary = () => {
       if (!ok) {
         console.info(
           "Server didn't remove limited deal coupon (applyCoupon returned):",
-          res
+          res,
         );
       }
     } catch (err) {
       console.error(
         "Failed to remove limited deal coupon (via applyCoupon '0'):",
-        err
+        err,
       );
     } finally {
       // clear local flags + refresh totals (silent so it won't touch coupon UI)
@@ -452,7 +467,7 @@ const OrderSummary = () => {
           clearInterval(interval);
           // call async remover (do not await here)
           removeLimitedDeal().catch((e) =>
-            console.error("removeLimitedDeal failed", e)
+            console.error("removeLimitedDeal failed", e),
           );
           return 0;
         }
@@ -550,7 +565,7 @@ const OrderSummary = () => {
 
       const cartItemsArray = Object.values(cartDataAPI.contents || {});
       const itemToRemove = cartItemsArray.find(
-        (item) => item.product_id === productId
+        (item) => item.product_id === productId,
       );
       if (!itemToRemove) throw new Error("Item not found in cart");
 
@@ -649,49 +664,67 @@ const OrderSummary = () => {
         ) : (
           <>
             {/* 🛍 Cart Items */}
+            {/* 🛍 Cart Items */}
             <AnimatePresence>
               {cartItems.map((item) => (
                 <motion.div
-                  key={item.id}
+                  key={item.rowid}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center justify-between gap-4 border-b border-gray-200 py-3"
+                  className="border-b border-gray-200 py-3"
                 >
-                  <div className="flex items-start gap-4 flex-1">
-                    <img
-                      src={getImageSrc(item.image)}
-                      alt={item.name}
-                      className="w-16 h-16 rounded-md object-cover"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">
-                        {decodeHTML(item.name)} <br /> x {item.qty}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        ₹{(item.price * item.qty).toFixed(2)}
-                      </p>
-                      {item.deliveryDays && (
-                        <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
-                          <Truck className="w-3.5 h-3.5 text-red-700" />
-                          Delivered in {item.deliveryDays} days
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <img
+                        src={getImageSrc(item.image)}
+                        alt={item.name}
+                        className="w-16 h-16 rounded-md object-cover"
+                      />
+
+                      <div>
+                        <p className="text-sm font-medium">
+                          {decodeHTML(item.name)} <br /> x {item.qty}
                         </p>
-                      )}
+
+                        <p className="text-sm text-gray-600 mt-1">
+                          ₹{(item.price * item.qty).toFixed(2)}
+                        </p>
+
+                        {item.deliveryDays && (
+                          <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
+                            <Truck className="w-3.5 h-3.5" />
+                            Delivered in {item.deliveryDays} days
+                          </p>
+                        )}
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => removeItem(item.product_id)}
+                      className="text-gray-500 hover:text-black transition p-1"
+                      disabled={processingItems[item.product_id]}
+                    >
+                      {processingItems[item.product_id] ? (
+                        <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></span>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => removeItem(item.product_id)}
-                    className="text-gray-500 hover:text-black transition p-1 flex-shrink-0 flex items-center justify-center w-6 h-6 relative"
-                    disabled={processingItems[item.product_id]}
-                  >
-                    {processingItems[item.product_id] ? (
-                      <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></span>
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  {/* ✅ Custom Print Text — ONLY HERE */}
+                  {customizedTexts[item.rowid] && (
+                    <div className="mt-2 ml-20 px-3 py-2 rounded-md border border-dashed border-[#A00300]/40 bg-[#A00300]/5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A00300] mb-0.5">
+                        Custom Print
+                      </p>
+                      <p className="text-xs font-medium text-gray-900 break-words">
+                        “{customizedTexts[item.rowid]}”
+                      </p>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -748,7 +781,6 @@ const OrderSummary = () => {
                 {couponMessage}
               </span>
             ) : null}
-
             {/* 📦 Summary */}
             <div className="border-t pt-4 space-y-2 text-sm">
               <div className="flex justify-between">
@@ -875,8 +907,8 @@ const OrderSummary = () => {
                               {isOfferApplied
                                 ? "APPLIED"
                                 : applyingOffer
-                                ? "Applying"
-                                : "APPLY"}
+                                  ? "Applying"
+                                  : "APPLY"}
                             </button>
                           </div>
 

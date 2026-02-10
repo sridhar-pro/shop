@@ -38,16 +38,24 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
 
+  const [loading, setLoading] = useState(false);
+
   const { getValidToken } = useAuth();
 
+  const safeJson = async (res) => {
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
   const handleSendOTP = async () => {
+    if (loading) return; // 🛑 safety guard
+
+    setLoading(true);
     try {
       const token = await getValidToken();
-      const payload = {
-        mobile_number: mobileNumber.startsWith("91")
-          ? mobileNumber
-          : `91${mobileNumber}`,
-      };
 
       const res = await fetch("/api/mobile_login", {
         method: "POST",
@@ -55,34 +63,36 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          mobile_number: mobileNumber.startsWith("91")
+            ? mobileNumber
+            : `91${mobileNumber}`,
+        }),
       });
 
-      const data = await res.json();
-      // console.log("Mobile Login Response 👉", data);
+      const data = await safeJson(res);
 
-      if (res.ok) {
-        // Only proceed if backend accepted mobile number
-        setOtpSent(true);
-        setCurrentFlow("otp");
-      } else {
-        console.error("Mobile login failed ❌", data);
+      if (!res.ok) {
+        toast.error(data?.message || data?.error || "Failed to send OTP ❌");
+        return;
       }
+
+      setOtpSent(true);
+      setCurrentFlow("otp");
     } catch (error) {
       console.error("Mobile Login API Error ❌", error);
+      toast.error("Unable to process request. Please try again.");
+    } finally {
+      setLoading(false); // ✅ always unlock
     }
   };
 
   const handleVerifyOTP = async () => {
+    if (loading) return; // 🛑 safety guard
+
+    setLoading(true);
     try {
       const token = await getValidToken();
-
-      const payload = {
-        mobile_number: mobileNumber.startsWith("91")
-          ? mobileNumber
-          : `91${mobileNumber}`,
-        otp,
-      };
 
       const res = await fetch("/api/verify_otp", {
         method: "POST",
@@ -90,59 +100,57 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          mobile_number: mobileNumber.startsWith("91")
+            ? mobileNumber
+            : `91${mobileNumber}`,
+          otp,
+        }),
       });
 
-      const data = await res.json();
-      // console.log("Verify OTP Response 👉", data);
+      const data = await safeJson(res);
 
-      if (res.ok && data.status === "success") {
-        const { company_id, user_id, group_id, name } = data.data; // ✅ include group_id
-        const { access_token, refresh_token } = data.token;
+      if (!res.ok || data?.status !== "success") {
+        toast.error(
+          data?.message || data?.error || "OTP verification failed ❌",
+        );
+        return;
+      }
 
-        // Store session data, including group_id
-        handleLogin({
-          company_id,
-          name,
-          user_id,
-          access_token,
-          refresh_token,
-          group_id,
-        });
+      const { company_id, user_id, group_id, name } = data.data;
+      const { access_token, refresh_token } = data.token;
 
-        toast.success(data.message || "You are successfully logged in! 🎉");
+      handleLogin({
+        company_id,
+        name,
+        user_id,
+        access_token,
+        refresh_token,
+        group_id,
+      });
 
-        // Conditional redirect based on group_id
-        if (group_id == 4) {
-          localStorage.setItem("access_token", access_token); // store for external URL
-          window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
-        } else {
-          router.push(from || "/"); // existing behavior for group_id 3
-        }
+      toast.success(data.message || "You are successfully logged in! 🎉");
+
+      if (group_id == 4) {
+        localStorage.setItem("access_token", access_token);
+        window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
       } else {
-        // Handle both structured and unstructured errors
-        const errMsg =
-          data.message ||
-          data.error ||
-          (typeof data === "string" ? data : "OTP verification failed ❌");
-
-        toast.error(errMsg);
-        console.warn("OTP verification failed ❌", data);
+        router.push(from || "/");
       }
     } catch (error) {
-      toast.error("Something went wrong ❌");
       console.error("OTP Verification Error ❌", error);
+      toast.error("Something went wrong ❌");
+    } finally {
+      setLoading(false); // ✅ always unlock
     }
   };
 
   const handleReSendOTP = async () => {
+    if (loading) return; // 🛑 safety guard
+
+    setLoading(true);
     try {
       const token = await getValidToken();
-      const payload = {
-        mobile_number: mobileNumber.startsWith("91")
-          ? mobileNumber
-          : `91${mobileNumber}`,
-      };
 
       const res = await fetch("/api/resend_otp", {
         method: "POST",
@@ -150,44 +158,38 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          mobile_number: mobileNumber.startsWith("91")
+            ? mobileNumber
+            : `91${mobileNumber}`,
+        }),
       });
 
-      const data = await res.json();
-      // console.log("Mobile Login Response 👉", data);
+      const data = await safeJson(res);
 
-      if (res.ok) {
-        // Only proceed if backend accepted mobile number
-        setOtpSent(true);
-        setCurrentFlow("otp");
-
-        // ✅ Success toast
-        toast.success(
-          data.message ||
-            "OTP has been re-sent successfully! 📲 Check your phone."
-        );
-      } else {
-        const errMsg =
-          data.message ||
-          data.error ||
-          "Failed to resend OTP ❌ Please try again.";
-        toast.error(errMsg);
-        console.error("Resend OTP failed ❌", data);
+      if (!res.ok) {
+        toast.error(data?.message || data?.error || "Failed to resend OTP ❌");
+        return;
       }
+
+      toast.success(data?.message || "OTP has been re-sent successfully! 📲");
+
+      setOtpSent(true);
+      setCurrentFlow("otp");
     } catch (error) {
-      toast.error("Something went wrong while resending OTP ❌");
-      console.error("Mobile Login API Error ❌", error);
+      console.error("Resend OTP Error ❌", error);
+      toast.error("Unable to resend OTP. Please try again.");
+    } finally {
+      setLoading(false); // ✅ always unlock
     }
   };
 
   const handleMailLogin = async () => {
+    if (loading) return; // 🛑 safety guard
+
+    setLoading(true);
     try {
       const token = await getValidToken();
-
-      const payload = {
-        email: emailLogin, // ✅ from state
-        password, // ✅ from state
-      };
 
       const res = await fetch("/api/email_login", {
         method: "POST",
@@ -195,47 +197,62 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email: emailLogin, password }),
       });
 
-      const data = await res.json();
-      // console.log("Email Login Response 👉", data);
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
 
-      if (res.ok && data.status === "success") {
-        const { company_id, user_id, group_id, name } = data.data; // ✅ include group_id
-        const { access_token, refresh_token } = data.token;
+      if (!res.ok || data?.status !== "success") {
+        toast.dismiss(); // 🔥 important
+        toast.error(
+          data?.message || data?.error || "Invalid email or password ❌",
+          { toastId: "email-login-error" }, // 🔒 prevents swallow
+        );
+        return;
+      }
 
-        // Store session data, including group_id
-        handleLogin({
-          company_id,
-          name,
-          user_id,
-          access_token,
-          refresh_token,
-          group_id,
-        });
+      const { company_id, user_id, group_id, name } = data.data;
+      const { access_token, refresh_token } = data.token;
 
-        toast.success(data.message || "You are successfully logged in! 🎉");
+      handleLogin({
+        company_id,
+        name,
+        user_id,
+        access_token,
+        refresh_token,
+        group_id,
+      });
 
-        // Conditional redirect based on group_id
-        if (group_id == 4) {
-          // Store access_token in sessionStorage for external URL
-          sessionStorage.setItem("access_token", access_token);
-          window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
-        } else {
-          router.push(from || "/"); // existing behavior
-        }
+      toast.success(data.message || "Login successful 🎉");
+
+      if (group_id == 4) {
+        sessionStorage.setItem("access_token", access_token);
+        window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
       } else {
-        toast.error(data.message || "OTP verification failed ❌");
+        router.push(from || "/");
       }
     } catch (error) {
-      toast.error("Something went wrong ❌");
       console.error("Email Login API Error ❌", error);
+      toast.error("Something went wrong ❌");
+    } finally {
+      setLoading(false); // ✅ always unlock
     }
   };
 
+  const handleEmailSubmit = (e) => {
+    e.preventDefault(); // ⛔ prevent page reload
+    handleMailLogin();
+  };
+
   const handleRegister = async () => {
-    // ✅ Validation
+    if (loading) return;
+
+    // ✅ Validation FIRST
     if (!firstName.trim()) return toast.error("First Name is required");
     if (!lastName.trim()) return toast.error("Last Name is required");
     if (!email.trim()) return toast.error("Email is required");
@@ -244,13 +261,16 @@ export default function LoginPage() {
     if (!/^\d{10}$/.test(mobile))
       return toast.error("Mobile number must be 10 digits");
 
+    setLoading(true); // ✅ AFTER validation
+
     try {
       const token = await getValidToken();
+
       const payload = {
         first_name: firstName,
         last_name: lastName,
         mobile_number: mobile.startsWith("91") ? mobile : `91${mobile}`,
-        email: email,
+        email,
       };
 
       const res = await fetch("/api/register", {
@@ -262,25 +282,23 @@ export default function LoginPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      // console.log("Registration Response : ", data);
+      const data = await safeJson(res);
 
       if (res.ok && data?.success) {
-        // ✅ Skip the drama, straight to login
         toast.success("Registration successful! Redirecting to login...");
         setCurrentFlow("initial");
       } else {
-        // ❌ Show error toast
-        const messageToShow =
+        toast.error(
           data?.keycloak_message === "USER_EXISTS"
-            ? data?.keycloak_message || "User already exists ❌"
-            : data?.message || "Registration failed ❌";
-
-        toast.error(messageToShow);
+            ? "User already exists ❌"
+            : data?.message || "Registration failed ❌",
+        );
       }
     } catch (error) {
       console.error("Register API Error ❌", error);
       toast.error("Something went wrong. Please try again!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -318,13 +336,17 @@ export default function LoginPage() {
   };
 
   const handleForgetSendMail = async () => {
+    if (loading) return;
+
+    // ✅ Validation FIRST
     if (!email?.trim()) return toast.error("Email is required 📧");
     if (!/\S+@\S+\.\S+/.test(email))
-      return toast.error("Please enter a valid email address");
+      return toast.error("Invalid email format ❌");
+
+    setLoading(true);
 
     try {
       const token = await getValidToken();
-      const payload = { email };
 
       const res = await fetch("/api/forget_password", {
         method: "POST",
@@ -332,29 +354,23 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
 
-      // 🧩 Some backends return message instead of success
-      const isActuallySuccess =
-        res.ok ||
-        data?.success === true ||
-        data?.message?.toLowerCase().includes("sent successfully");
-
-      if (isActuallySuccess) {
-        toast.success("Password reset email sent! Check your inbox");
-        setCurrentFlow("checkmail");
-      } else {
-        const errorMsg =
-          data?.message || "Failed to send password reset mail ❌";
-        toast.error(errorMsg);
-        console.error("Forget email failed ❌", data);
+      if (!res.ok) {
+        toast.error(data?.message || "Failed to send reset email ❌");
+        return;
       }
+
+      toast.success("Password reset email sent! 📧");
+      setCurrentFlow("checkmail");
     } catch (error) {
-      console.error("API Error ❌", error);
+      console.error("Forget Password Error ❌", error);
       toast.error("Something went wrong. Please try again!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -533,10 +549,23 @@ export default function LoginPage() {
           >
             <Button
               onClick={handleSendOTP}
-              className="w-full h-12 text-black bg-white hover:bg-gray-950 hover:text-white !font-extrabold uppercase !rounded-full shadow-lg border-0 "
+              disabled={loading}
+              className={`w-full h-12 !font-extrabold uppercase !rounded-full shadow-lg border-0
+    ${
+      loading
+        ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+        : "bg-white hover:bg-gray-950 hover:text-white text-black"
+    }
+  `}
             >
-              <Send className="mr-2 h-4 w-4" />
-              Send OTP
+              {loading ? (
+                "Sending OTP..."
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send OTP
+                </>
+              )}
             </Button>
           </motion.div>
         </CardContent>
@@ -595,21 +624,29 @@ export default function LoginPage() {
           >
             <Button
               onClick={handleVerifyOTP}
-              className="w-full h-12 bg-gradient-to-r from-white to-gray-50 
-             hover:from-black hover:to-gray-950 text-black hover:text-white 
-             font-medium rounded-xl shadow-lg border-0"
+              disabled={loading}
+              className={`w-full h-12 rounded-xl shadow-lg border-0
+    ${
+      loading
+        ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+        : "bg-gradient-to-r from-white to-gray-50 hover:from-black hover:to-gray-950 text-black hover:text-white"
+    }
+  `}
             >
-              Verify & Sign In
+              {loading ? "Verifying..." : "Verify & Sign In"}
             </Button>
           </motion.div>
 
           <div className="text-center">
             <Button
               variant="ghost"
-              className="text-orange-50 hover:text-orange-100"
               onClick={handleReSendOTP}
+              disabled={loading}
+              className={`text-orange-50
+    ${loading ? "opacity-50 cursor-not-allowed" : "hover:text-orange-100"}
+  `}
             >
-              Resend OTP
+              {loading ? "Resending..." : "Resend OTP"}
             </Button>
           </div>
         </CardContent>
@@ -655,80 +692,94 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Email input */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="email"
-              className="text-sm font-medium text-gray-100"
-            >
-              Email Address
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={emailLogin}
-              onChange={(e) => setEmailLogin(e.target.value)} // ✅ track state
-              placeholder="you@example.com"
-              className="h-12 border-2 border-gray-200 rounded-xl placeholder:text-white"
-            />
-          </div>
+        <CardContent>
+          <form onSubmit={handleEmailSubmit}>
+            <div className="space-y-6">
+              {/* Email */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-medium text-gray-100"
+                >
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={emailLogin}
+                  onChange={(e) => setEmailLogin(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-12 border-2 border-gray-200 rounded-xl placeholder:text-white"
+                />
+              </div>
 
-          {/* Password input */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="password"
-              className="text-sm font-medium text-gray-100"
-            >
-              Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)} // ✅ track state
-                placeholder="Enter your password"
-                className="h-12 pr-12 border-2 border-gray-200 rounded-xl placeholder:text-white"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:text-gray-100 "
-                onClick={() => setShowPassword(!showPassword)}
+              {/* Password */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-gray-100"
+                >
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="h-12 pr-12 border-2 border-gray-200 rounded-xl placeholder:text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-white" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-white" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Forgot password */}
+              <div className="text-right">
+                <Button
+                  type="button"
+                  onClick={() => setCurrentFlow("forget")}
+                  variant="ghost"
+                  className="text-sm text-orange-50 hover:text-orange-100 p-0 underline"
+                >
+                  Forgot password?
+                </Button>
+              </div>
+
+              {/* Submit */}
+              <motion.div
+                variants={buttonVariants}
+                whileHover={!loading ? "hover" : undefined}
+                whileTap={!loading ? "tap" : undefined}
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-white" />
-                ) : (
-                  <Eye className="h-4 w-4 text-white" />
-                )}
-              </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full h-12 !font-extrabold !rounded-full shadow-lg border-0
+            ${
+              loading
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-white hover:bg-gray-900 text-black hover:text-white"
+            }
+          `}
+                >
+                  {loading ? "Signing in..." : "Sign In"}
+                </Button>
+              </motion.div>
             </div>
-          </div>
-
-          {/* Forgot password */}
-          <div className="text-right">
-            <Button
-              onClick={() => setCurrentFlow("forget")}
-              variant="ghost"
-              className="text-sm text-orange-50 hover:text-orange-100 p-0 underline"
-            >
-              Forgot password?
-            </Button>
-          </div>
-
-          {/* Sign In */}
-          <motion.div
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={handleMailLogin}
-          >
-            <Button className="w-full h-12 bg-white hover:bg-gray-900 text-black hover:text-white !font-extrabold !rounded-full shadow-lg border-0">
-              Sign In
-            </Button>
-          </motion.div>
+          </form>
         </CardContent>
       </Card>
     </motion.div>
@@ -847,9 +898,16 @@ export default function LoginPage() {
           >
             <Button
               onClick={handleRegister}
-              className="w-full h-12 bg-gradient-to-r hover:from-black hover:to-gray-900 from-white to-gray-50 hover:text-white text-black font-extrabold text-sm rounded-xl shadow-lg border-0"
+              disabled={loading}
+              className={`w-full h-12 font-extrabold text-sm rounded-xl shadow-lg border-0
+    ${
+      loading
+        ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+        : "bg-gradient-to-r from-white to-gray-50 hover:from-black hover:to-gray-900 text-black hover:text-white"
+    }
+  `}
             >
-              Register Now
+              {loading ? "Registering..." : "Register Now"}
             </Button>
           </motion.div>
 
@@ -928,10 +986,23 @@ export default function LoginPage() {
           >
             <Button
               onClick={handleForgetSendMail}
-              className="w-full h-12 text-black bg-white hover:bg-gray-950 hover:text-white !font-extrabold uppercase !rounded-full shadow-lg border-0 "
+              disabled={loading}
+              className={`w-full h-12 !font-extrabold uppercase !rounded-full shadow-lg border-0
+    ${
+      loading
+        ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+        : "bg-white hover:bg-gray-950 text-black hover:text-white"
+    }
+  `}
             >
-              <Send className="mr-2 h-4 w-4" />
-              Send Mail
+              {loading ? (
+                "Sending Mail..."
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Mail
+                </>
+              )}
             </Button>
           </motion.div>
         </CardContent>
@@ -941,14 +1012,14 @@ export default function LoginPage() {
 
   const renderCheckMail = () => (
     <motion.div
-      key="mobile"
+      key="checkmail"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="w-full max-w-md mx-auto -translate-y-0 md:-translate-y-16 "
+      className="w-full max-w-md mx-auto -translate-y-0 md:-translate-y-16"
     >
-      <div className="mb-3">
+      <div className="mb-6 text-center">
         <Image
           src="/home_yuukke.png"
           alt="Yuukke Logo"
@@ -957,10 +1028,26 @@ export default function LoginPage() {
           className="mx-auto"
         />
 
-        <p className="text-center text-2xl !font-extrabold text-red-200 mt-10">
-          Check Your mail and Update your password!
+        <p className="text-center text-2xl !font-extrabold text-red-200 mt-8">
+          Check your mail and update your password!
         </p>
       </div>
+
+      {/* 🔙 Back to Sign In */}
+      <motion.div
+        variants={buttonVariants}
+        whileHover="hover"
+        whileTap="tap"
+        className="flex justify-center mt-6"
+      >
+        <Button
+          onClick={() => setCurrentFlow("initial")}
+          className="px-8 h-12 bg-white text-black hover:bg-gray-900 hover:text-white 
+                   !font-extrabold !rounded-full shadow-lg border-0"
+        >
+          Back to Sign In
+        </Button>
+      </motion.div>
     </motion.div>
   );
 

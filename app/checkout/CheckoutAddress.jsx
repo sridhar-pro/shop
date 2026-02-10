@@ -27,6 +27,7 @@ const CheckoutAddress = ({
   shipping,
   onSuccess,
   onFailure,
+  customizedTexts, // ✅ ADD THIS
 }) => {
   const razorRef = useRef(null);
   // Debounce timer ref
@@ -265,7 +266,7 @@ const CheckoutAddress = ({
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
 
   // 🔥 Limited-time hot deal config
-  const LIMITED_DEAL_CODE = "TEST30"; // same as OrderSummary
+  const LIMITED_DEAL_CODE = "FLATY100"; // same as OrderSummary
   const LIMITED_DEAL_DURATION = 600; // 10 minutes in seconds (or your value)
 
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
@@ -1564,7 +1565,10 @@ const CheckoutAddress = ({
 
             {/* 🛍 Cart Items */}
             {cartItems.map((item) => (
-              <div key={item.id} className="flex items-start gap-4 mt-6 mb-4">
+              <div
+                key={item.rowid}
+                className="flex items-start gap-4 mt-6 mb-4"
+              >
                 <img
                   src={getImageSrc(item.image)}
                   alt={item.name}
@@ -1586,6 +1590,18 @@ const CheckoutAddress = ({
                       <Truck className="w-3.5 h-3.5 text-red-700" />
                       Delivered in {item.deliveryDays} days
                     </p>
+                  )}
+
+                  {/* ✍️ Custom Print */}
+                  {customizedTexts?.[item.rowid] && (
+                    <div className="mt-2 px-2 py-1 rounded-md border border-dashed border-[#A00300]/40 bg-[#A00300]/5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A00300]">
+                        Custom Print
+                      </p>
+                      <p className="text-xs font-medium text-gray-800 break-words">
+                        “{customizedTexts[item.rowid]}”
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

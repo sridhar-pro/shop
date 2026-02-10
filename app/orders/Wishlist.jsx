@@ -219,7 +219,9 @@ const Wishlist = () => {
                       const payload = {
                         selected_country: "IN",
                         product_id: item.id,
-                        historypincode: 614624,
+                        historypincode: Number(
+                          localStorage.getItem("user_pincode") || 600001,
+                        ),
                         qty: 1,
                         cart_id: cartId,
                         variant_id: item?.variant_id ? [item.variant_id] : [],
@@ -233,17 +235,16 @@ const Wishlist = () => {
                             "Content-Type": "application/json",
                           },
                         });
-                      
+
                         const data = await res.json();
-                      
+
                         if (data?.status === "success" && data?.token) {
                           localStorage.setItem("authToken", data.token);
                           return data.token;
                         }
-                      
+
                         throw new Error("Authentication failed");
                       };
-                      
 
                       let token = localStorage.getItem("authToken");
                       if (!token) token = await fetchToken();
@@ -279,10 +280,10 @@ const Wishlist = () => {
 
                       // 🛒 Update local cart
                       const existingCart = JSON.parse(
-                        localStorage.getItem("cart_data") || "[]"
+                        localStorage.getItem("cart_data") || "[]",
                       );
                       const existingItemIndex = existingCart.findIndex(
-                        (c) => c.id === item.id
+                        (c) => c.id === item.id,
                       );
 
                       const updatedCart =
@@ -290,7 +291,7 @@ const Wishlist = () => {
                           ? existingCart.map((c, i) =>
                               i === existingItemIndex
                                 ? { ...c, qty: c.qty + 1 }
-                                : c
+                                : c,
                             )
                           : [
                               ...existingCart,
@@ -301,7 +302,7 @@ const Wishlist = () => {
                                 price: parseFloat(
                                   (item.price || "0")
                                     .toString()
-                                    .replace(/[^\d.]/g, "")
+                                    .replace(/[^\d.]/g, ""),
                                 ),
                                 image: item.image,
                                 variant_id: item?.variant_id || null,
@@ -311,7 +312,7 @@ const Wishlist = () => {
 
                       localStorage.setItem(
                         "cart_data",
-                        JSON.stringify(updatedCart)
+                        JSON.stringify(updatedCart),
                       );
                       setCartItems(updatedCart);
 

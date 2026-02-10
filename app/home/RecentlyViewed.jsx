@@ -23,6 +23,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useTranslation } from "react-i18next";
 import WishlistButton from "@/app/components/WishlistButton";
+import { trackProductHistory } from "../utils/productHistory";
 
 const RecentlyViewed = () => {
   const { t } = useTranslation();
@@ -172,7 +173,7 @@ const RecentlyViewed = () => {
 
   const toggleWishlist = (slug) => {
     setWishlist((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
     );
   };
 
@@ -271,8 +272,8 @@ const RecentlyViewed = () => {
       hasPromo && product.promo_price
         ? Number(product.promo_price)
         : product.sale_price
-        ? Number(product.sale_price)
-        : Number(product.price);
+          ? Number(product.sale_price)
+          : Number(product.price);
 
     const originalPrice = Number(product.price);
     const discountPercent = hasPromo
@@ -376,7 +377,7 @@ const RecentlyViewed = () => {
                   const matches =
                     product.image_g?.match(/src="([^"]+)"/g) || [];
                   const urls = matches.map((src) =>
-                    src.replace(/src="|"/g, "")
+                    src.replace(/src="|"/g, ""),
                   );
                   hoverImage = urls[1] || null;
                 }
@@ -520,7 +521,7 @@ const RecentlyViewed = () => {
                     {Math.round(
                       ((Number(product.price) - Number(product.promo_price)) /
                         Number(product.price)) *
-                        100
+                        100,
                     )}
                     {t("% OFF")}
                   </span>
@@ -544,7 +545,7 @@ const RecentlyViewed = () => {
                         value={selectedVariant?.id}
                         onChange={(e) => {
                           const v = variants.find(
-                            (v) => String(v.id) === e.target.value
+                            (v) => String(v.id) === e.target.value,
                           );
                           setSelectedVariants((prev) => ({
                             ...prev,
@@ -661,8 +662,8 @@ const RecentlyViewed = () => {
             {products.map((product) =>
               renderProductCard(
                 product,
-                "min-w-[230px] sm:min-w-[260px] lg:min-w-[280px]"
-              )
+                "min-w-[230px] sm:min-w-[260px] lg:min-w-[280px]",
+              ),
             )}
           </div>
         </motion.div>
@@ -770,7 +771,7 @@ const RecentlyViewed = () => {
                         >
                           <Image
                             src={getImageSrc(
-                              mainImage || quickViewProduct.image
+                              mainImage || quickViewProduct.image,
                             )}
                             alt={quickViewProduct.name || "Image not found!"}
                             fill
@@ -790,14 +791,14 @@ const RecentlyViewed = () => {
                           quickViewProduct.image_g.match(/src="([^"]+)"/g) ||
                           [];
                         const imageUrls = matches.map((src) =>
-                          src.replace(/src="|"/g, "")
+                          src.replace(/src="|"/g, ""),
                         );
                         const allImages = [
                           getImageSrcThumbs(quickViewProduct.image),
                           ...imageUrls,
                         ].filter(
                           (img, index, self) =>
-                            img && self.indexOf(img) === index
+                            img && self.indexOf(img) === index,
                         );
 
                         return allImages.map((img, i) => (
@@ -877,7 +878,7 @@ const RecentlyViewed = () => {
                                   ((Number(quickViewProduct.price) -
                                     Number(quickViewProduct.promo_price)) /
                                     Number(quickViewProduct.price)) *
-                                    100
+                                    100,
                                 )}
                                 {t("% OFF")}
                               </span>
@@ -967,7 +968,7 @@ const RecentlyViewed = () => {
                             if (isAdding) return;
                             setIsAdding(true);
                             await new Promise((resolve) =>
-                              setTimeout(resolve, 2500)
+                              setTimeout(resolve, 2500),
                             );
 
                             try {
@@ -982,7 +983,10 @@ const RecentlyViewed = () => {
                               const payload = {
                                 selected_country: "IN",
                                 product_id: quickViewProduct.id,
-                                historypincode: 614624,
+                                historypincode: Number(
+                                  localStorage.getItem("user_pincode") ||
+                                    600001,
+                                ),
                                 qty: quantity,
                                 cart_id: cartId,
                                 variant_id: selectedVariants?.[
@@ -1045,17 +1049,26 @@ const RecentlyViewed = () => {
                               if (result.status !== "success") {
                                 console.warn(
                                   "Backend cart sync failed:",
-                                  result
+                                  result,
                                 );
                                 return;
                               }
 
+                              // ✅ Track successful cart addition (Quick View)
+                              trackProductHistory({
+                                token, // 👈 reuse the same token
+                                productId: quickViewProduct.id,
+                                cartCount: quantity,
+                                warehouseId:
+                                  quickViewProduct?.seller?.warehouse_id,
+                              });
+
                               const existingCart = JSON.parse(
-                                localStorage.getItem("cart_data") || "[]"
+                                localStorage.getItem("cart_data") || "[]",
                               );
 
                               const existingItemIndex = existingCart.findIndex(
-                                (item) => item.id === quickViewProduct.id
+                                (item) => item.id === quickViewProduct.id,
                               );
 
                               const selectedVariantId =
@@ -1064,7 +1077,7 @@ const RecentlyViewed = () => {
 
                               const variantPrice = Number(
                                 selectedVariants?.[quickViewProduct.id]
-                                  ?.price || 0
+                                  ?.price || 0,
                               );
 
                               const basePrice =
@@ -1083,7 +1096,7 @@ const RecentlyViewed = () => {
                                   ? existingCart.map((item, i) =>
                                       i === existingItemIndex
                                         ? { ...item, qty: item.qty + quantity }
-                                        : item
+                                        : item,
                                     )
                                   : [
                                       ...existingCart,
@@ -1103,7 +1116,7 @@ const RecentlyViewed = () => {
 
                               localStorage.setItem(
                                 "cart_data",
-                                JSON.stringify(updatedCart)
+                                JSON.stringify(updatedCart),
                               );
                               setCartItems(updatedCart);
 
@@ -1120,7 +1133,7 @@ const RecentlyViewed = () => {
                                       cart_id: newCartId,
                                       coupon_code: "0",
                                     }),
-                                  }
+                                  },
                                 );
 
                                 if (!couponRes.ok)
@@ -1130,7 +1143,7 @@ const RecentlyViewed = () => {
                               } catch (couponError) {
                                 console.error(
                                   "Error applying coupon after addToCart:",
-                                  couponError
+                                  couponError,
                                 );
                               }
 
@@ -1156,25 +1169,25 @@ const RecentlyViewed = () => {
                                         Authorization: `Bearer ${retryToken}`,
                                       },
                                       body: JSON.stringify({ cart_id: cartId }),
-                                    }
+                                    },
                                   );
 
                                   const taxData = await retryTaxRes.json();
                                   localStorage.setItem(
                                     "cart_tax_details",
-                                    JSON.stringify(taxData)
+                                    JSON.stringify(taxData),
                                   );
                                 } else {
                                   const taxData = await taxRes.json();
                                   localStorage.setItem(
                                     "cart_tax_details",
-                                    JSON.stringify(taxData)
+                                    JSON.stringify(taxData),
                                   );
                                 }
                               } catch (taxError) {
                                 console.error(
                                   "Failed to fetch tax details:",
-                                  taxError
+                                  taxError,
                                 );
                               }
 
@@ -1230,7 +1243,9 @@ const RecentlyViewed = () => {
                         const payload = {
                           selected_country: "IN",
                           product_id: quickViewProduct.id,
-                          historypincode: 614624,
+                          historypincode: Number(
+                            localStorage.getItem("user_pincode") || 600001,
+                          ),
                           qty: quantity,
                           cart_id: cartId,
                         };
@@ -1282,6 +1297,14 @@ const RecentlyViewed = () => {
 
                           const result = await response.json();
 
+                          // ✅ Track successful cart addition (Quick View)
+                          trackProductHistory({
+                            token, // 👈 reuse the same token
+                            productId: quickViewProduct.id,
+                            cartCount: quantity,
+                            warehouseId: quickViewProduct?.seller?.warehouse_id,
+                          });
+
                           try {
                             const taxRes = await fetch("/api/getTax", {
                               method: "POST",
@@ -1307,19 +1330,19 @@ const RecentlyViewed = () => {
                               const taxData = await retryTaxRes.json();
                               localStorage.setItem(
                                 "cart_tax_details",
-                                JSON.stringify(taxData)
+                                JSON.stringify(taxData),
                               );
                             } else {
                               const taxData = await taxRes.json();
                               localStorage.setItem(
                                 "cart_tax_details",
-                                JSON.stringify(taxData)
+                                JSON.stringify(taxData),
                               );
                             }
                           } catch (taxError) {
                             console.error(
                               "Failed to fetch tax details:",
-                              taxError
+                              taxError,
                             );
                           }
 

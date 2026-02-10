@@ -28,6 +28,7 @@ const CheckoutForm = ({
   total,
   tax = 0,
   shipping = 0,
+  customizedTexts, // ✅ NEW
 }) => {
   const razorRef = useRef(null);
 
@@ -63,9 +64,14 @@ const CheckoutForm = ({
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  useEffect(() => {
+    console.log("🧪 [CheckoutForm] customizedTexts:", customizedTexts);
+    console.log("🧪 [CheckoutForm] cartItems:", cartItems);
+  }, [customizedTexts, cartItems]);
+
   function useHistorySaver(
     { name = "", email = "", contact = "" },
-    opts = { logging: true }
+    opts = { logging: true },
   ) {
     const lastSentRef = useRef({ name: null, email: null, contact: null });
     const nameTimerRef = useRef(null);
@@ -134,7 +140,7 @@ const CheckoutForm = ({
         console.log(
           "%c[history_save payload]",
           "color:#A00300; font-weight:bold;",
-          JSON.stringify(body, null, 2)
+          JSON.stringify(body, null, 2),
         );
       } catch {}
 
@@ -145,8 +151,8 @@ const CheckoutForm = ({
         typeof fetchWithAuth === "function"
           ? fetchWithAuth
           : typeof fetchWithAuthHis === "function"
-          ? fetchWithAuthHis
-          : null;
+            ? fetchWithAuthHis
+            : null;
 
       if (authFetch) {
         try {
@@ -291,8 +297,8 @@ const CheckoutForm = ({
         ...emptyForm,
         ...Object.fromEntries(
           Object.entries(parsed).filter(([key]) =>
-            Object.prototype.hasOwnProperty.call(emptyForm, key)
-          )
+            Object.prototype.hasOwnProperty.call(emptyForm, key),
+          ),
         ),
       };
     } catch (err) {
@@ -318,7 +324,7 @@ const CheckoutForm = ({
       email: formData.email,
       contact: formData.contact,
     },
-    { logging: true }
+    { logging: true },
   );
 
   const handleChange = (e) => {
@@ -536,7 +542,7 @@ const CheckoutForm = ({
       window.dispatchEvent(
         new CustomEvent("orderIdDataUpdated", {
           detail: result?.order_id, // send just what you need
-        })
+        }),
       );
 
       // Trigger Razorpay manually after state is updated
@@ -546,7 +552,7 @@ const CheckoutForm = ({
     } catch (err) {
       console.error("🚨 Order creation error:", err);
       toast.error(
-        err.message || "Something went wrong while creating the order."
+        err.message || "Something went wrong while creating the order.",
       );
 
       // ❗ Only re-enable on error
@@ -559,7 +565,7 @@ const CheckoutForm = ({
   const [isApplied, setIsApplied] = useState(false);
 
   // Limited-deal config
-  const LIMITED_DEAL_CODE = "TEST30"; //Test50  //FLATY100
+  const LIMITED_DEAL_CODE = "FLATY100"; //Test50  //FLATY100
   const LIMITED_DEAL_DURATION = 600; // ⭐ NEW: 10 minutes in seconds
 
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
@@ -621,7 +627,7 @@ const CheckoutForm = ({
       } catch (e) {
         console.warn(
           "Error clearing limited_deal_expiry after manual coupon",
-          e
+          e,
         );
       }
 
@@ -648,7 +654,7 @@ const CheckoutForm = ({
 
       // Keep discount amount in sync
       setCouponValue(
-        appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0
+        appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0,
       );
 
       if (appliedCoupon) {
@@ -660,7 +666,7 @@ const CheckoutForm = ({
       try {
         localStorage.setItem(
           "cart_tax_details",
-          JSON.stringify(summaryResponse)
+          JSON.stringify(summaryResponse),
         );
       } catch (e) {
         console.warn("Error saving cart_tax_details", e);
@@ -670,7 +676,7 @@ const CheckoutForm = ({
       window.dispatchEvent(
         new CustomEvent("local-storage-update", {
           detail: { key: "cart_tax_details" },
-        })
+        }),
       );
     } catch (err) {
       console.error("❌ Error applying coupon or fetching cart summary:", err);
@@ -742,7 +748,7 @@ const CheckoutForm = ({
         try {
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse)
+            JSON.stringify(summaryResponse),
           );
         } catch (e) {
           console.warn("Error saving cart_tax_details", e);
@@ -751,7 +757,7 @@ const CheckoutForm = ({
         window.dispatchEvent(
           new CustomEvent("local-storage-update", {
             detail: { key: "cart_tax_details" },
-          })
+          }),
         );
       }
 
@@ -782,7 +788,7 @@ const CheckoutForm = ({
             coupon_code: LIMITED_DEAL_CODE,
             ip_address: clientIp, // ⚠️ client-sent IP
             cart_items: JSON.parse(
-              localStorage.getItem("cartItemPreview") || "[]"
+              localStorage.getItem("cartItemPreview") || "[]",
             ),
           }),
           keepalive: true,
@@ -863,13 +869,13 @@ const CheckoutForm = ({
 
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse)
+            JSON.stringify(summaryResponse),
           );
 
           window.dispatchEvent(
             new CustomEvent("local-storage-update", {
               detail: { key: "cart_tax_details" },
-            })
+            }),
           );
         }
       } catch (e) {
@@ -915,7 +921,7 @@ const CheckoutForm = ({
           clearInterval(interval);
           // Fire and forget – do not await here
           removeLimitedDeal().catch((e) =>
-            console.error("removeLimitedDeal failed", e)
+            console.error("removeLimitedDeal failed", e),
           );
           return 0;
         }
@@ -1052,30 +1058,40 @@ const CheckoutForm = ({
         <div className={`space-y-6 ${!isSummaryOpen ? "hidden" : ""} lg:block`}>
           {/* 🛍 Cart Items */}
           {cartItems.map((item) => (
-            <div key={item.id} className="flex items-start gap-4 mt-6">
+            <div key={item.rowid} className="flex items-start gap-4 mt-6">
               <img
                 src={getImageSrc(item.image)}
                 alt={item.name}
                 className="w-16 h-16 rounded-md object-cover"
               />
+
               <div className="flex-1">
                 <p className="text-sm font-medium">
-                  {item.name} <br /> x {item.qty}
+                  <span dangerouslySetInnerHTML={{ __html: item.name }} />{" "}
+                  <br />x {item.qty}
                 </p>
 
                 <p className="text-sm mt-1 text-right">
-                  ₹
-                  {(
-                    Number(item.price?.toString().replace(/[^0-9.-]+/g, "")) *
-                    Number(item.qty)
-                  ).toFixed(2)}
+                  ₹{(Number(item.price) * Number(item.qty)).toFixed(2)}
                 </p>
 
                 {item.deliveryDays && (
                   <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5 text-red-700" />
+                    <Truck className="w-3.5 h-3.5" />
                     Delivered in {item.deliveryDays} days
                   </p>
+                )}
+
+                {/* ✅ CUSTOM PRINT — THIS WAS MISSING / WRONG */}
+                {customizedTexts?.[item.rowid] && (
+                  <div className="mt-2 px-2 py-1 rounded-md border border-dashed border-[#A00300]/40 bg-[#A00300]/5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A00300]">
+                      Custom Print
+                    </p>
+                    <p className="text-xs font-medium text-gray-800 break-words">
+                      “{customizedTexts[item.rowid]}”
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1168,6 +1184,7 @@ const CheckoutForm = ({
             shipping={shipping}
             onSuccess={onPaymentSuccess}
             onFailure={onPaymentFailure}
+            customizedTexts={customizedTexts} // ✅ ADD THIS
           />
         </div>
 
@@ -1405,7 +1422,7 @@ const CheckoutForm = ({
                         } catch (err) {
                           console.error(
                             "🚨 Error fetching shipping data:",
-                            err
+                            err,
                           );
                           setFormError((prev) => ({
                             ...prev,
@@ -1488,8 +1505,8 @@ const CheckoutForm = ({
                                 {applyingOffer
                                   ? "Applying..."
                                   : offerApplied
-                                  ? "Applied"
-                                  : "APPLY"}
+                                    ? "Applied"
+                                    : "APPLY"}
                               </button>
                             </div>
 
@@ -1519,29 +1536,40 @@ const CheckoutForm = ({
 
                 {/* 🛍 Cart Items */}
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-start gap-4 mt-6">
+                  <div key={item.rowid} className="flex items-start gap-4 mt-6">
                     <img
                       src={getImageSrc(item.image)}
                       alt={item.name}
                       className="w-16 h-16 rounded-md object-cover"
                     />
+
                     <div className="flex-1">
                       <p className="text-sm font-medium">
-                        {item.name} <br /> x {item.qty}
+                        <span dangerouslySetInnerHTML={{ __html: item.name }} />
+                        <br />x {item.qty}
                       </p>
+
                       <p className="text-sm mt-1 text-right">
-                        ₹
-                        {(
-                          Number(
-                            item.price?.toString().replace(/[^0-9.-]+/g, "")
-                          ) * Number(item.qty)
-                        ).toFixed(2)}
+                        ₹{(Number(item.price) * Number(item.qty)).toFixed(2)}
                       </p>
+
                       {item.deliveryDays && (
                         <p className="text-xs text-red-700 mt-0.5 flex items-center gap-1">
                           <Truck className="w-3.5 h-3.5 text-red-700" />
                           Delivered in {item.deliveryDays} days
                         </p>
+                      )}
+
+                      {/* ✅ Custom Print */}
+                      {customizedTexts?.[item.rowid] && (
+                        <div className="mt-2 px-2 py-1 rounded-md border border-dashed border-[#A00300]/40 bg-[#A00300]/5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A00300]">
+                            Custom Print
+                          </p>
+                          <p className="text-xs font-medium text-gray-800 break-words">
+                            “{customizedTexts[item.rowid]}”
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>

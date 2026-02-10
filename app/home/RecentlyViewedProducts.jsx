@@ -48,6 +48,25 @@ const renderTitleSection = () => (
   </motion.div>
 );
 
+const isPromoActive = (startDate, endDate) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // start of today (LOCAL)
+
+  if (startDate) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    if (today < start) return false;
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // end of that day (LOCAL)
+    if (today > end) return false;
+  }
+
+  return true;
+};
+
 export default function RecentlyViewedProducts() {
   const [items, setItems] = useState([]);
   const { isLoggedIn } = useSession(); // 👈 from SessionContext
@@ -85,15 +104,21 @@ export default function RecentlyViewedProducts() {
           const isOutOfStock =
             typeof product.quantity === "number" && product.quantity <= 0;
 
-          const hasPromo =
-            typeof product.promo_price === "number" &&
-            product.promo_price > 0 &&
-            product.promo_price < product.price;
+          const promoStillValid =
+            product.promotion === "1" &&
+            isPromoActive(product.start_date, product.end_date);
 
-          const finalBasePrice = Number(product.price || 0);
-          const finalPromoPrice = hasPromo
-            ? Number(product.promo_price || 0)
-            : null;
+          const basePrice = Number(product.price);
+          const promoPrice = Number(product.promo_price);
+
+          const hasPromo =
+            promoStillValid &&
+            !isNaN(promoPrice) &&
+            promoPrice > 0 &&
+            promoPrice < basePrice;
+
+          const finalBasePrice = basePrice;
+          const finalPromoPrice = hasPromo ? promoPrice : null;
 
           const discountPercent =
             hasPromo && finalBasePrice > 0
@@ -185,7 +210,7 @@ export default function RecentlyViewedProducts() {
               {/* Product Info */}
               <div className="flex flex-col h-full">
                 <div className="min-h-[50px] md:min-h-[60px]">
-                  {product.promo_tag && (
+                  {promoStillValid && product.promo_tag && (
                     <div className="mb-1 md:mb-2">
                       <span className="inline-flex items-center bg-gradient-to-r from-[#A00300] to-[#D62D20] text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-[2px] md:py-1 rounded-tl-lg rounded-br-lg shadow-md">
                         {product.promo_tag}
@@ -239,7 +264,7 @@ export default function RecentlyViewedProducts() {
                 </div>
 
                 {/* Price section */}
-                <div className="mt-0">
+                {/* <div className="mt-0">
                   <div className="space-y-1 mt-1">
                     {hasPromo ? (
                       <>
@@ -274,7 +299,7 @@ export default function RecentlyViewedProducts() {
                       </div>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             </motion.div>
           );

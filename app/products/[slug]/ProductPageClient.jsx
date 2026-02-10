@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import useMetaUpdater from "@/app/hooks/useMetaUpdater";
 import WishlistButton from "@/app/components/WishlistButton";
 import { useSession } from "@/app/context/SessionContext";
+import { trackProductHistory } from "@/app/utils/productHistory";
 
 export default function ProductPageClient() {
   const { t } = useTranslation();
@@ -44,6 +45,18 @@ export default function ProductPageClient() {
   const [showPopupenq, setShowPopupenq] = useState(false);
   const [sms, setSms] = useState("");
   const [loadingenq, setLoadingenq] = useState(false);
+
+  const [personalisedText, setPersonalisedText] = useState(() => {
+    if (typeof window === "undefined") return "";
+
+    try {
+      const key = `personalised_text_product_${product?.id}`;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored)?.text || "" : "";
+    } catch {
+      return "";
+    }
+  });
 
   const { getValidToken } = useAuth();
   const [product, setProduct] = useState(null);
@@ -72,8 +85,47 @@ export default function ProductPageClient() {
     }
   }, [product?.id]);
 
+  useEffect(() => {
+    if (!product?.id) return;
+
+    const key = `personalised_text_product_${product.id}`;
+
+    if (personalisedText?.trim()) {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          text: personalisedText,
+          updatedAt: Date.now(),
+        }),
+      );
+
+      console.log("💾 Personalised Text Auto-Saved:", {
+        key,
+        value: personalisedText,
+      });
+    }
+  }, [personalisedText, product?.id]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    const key = `personalised_text_product_${product.id}`;
+    const stored = localStorage.getItem(key);
+
+    if (stored) {
+      try {
+        setPersonalisedText(JSON.parse(stored)?.text || "");
+        console.log("🔄 Personalised Text Restored:", key);
+      } catch {
+        setPersonalisedText("");
+      }
+    }
+  }, [product?.id]);
+
   const [showPopup, setShowPopup] = useState(false);
-  const [pincode, setPincode] = useState("600001");
+  const [pincode, setPincode] = useState(() => {
+    return localStorage.getItem("user_pincode") || "600001";
+  });
   const [city, setCity] = useState("Chennai"); // default city
   const [locationUpdated, setLocationUpdated] = useState(false);
 
@@ -119,7 +171,11 @@ export default function ProductPageClient() {
       const result = data?.data?.data;
 
       if (result?.pincode && result?.country === "IN" && result?.city) {
-        setCity(result.city); // ✅ dynamically set city from API
+        setCity(result.city);
+        setPincode(result.pincode); // ✅ keep state in sync
+
+        // 💾 Persist for cart, history, checkout, etc
+        localStorage.setItem("user_pincode", result.pincode);
         setShowPopup(false);
         setLocationUpdated(true); // ✅ mark update
 
@@ -444,7 +500,9 @@ export default function ProductPageClient() {
           dimensions: p.dimensions,
           specifications: p.specifications,
           image: p.p_image || "/placeholder-product.jpg",
-          image_g: p.product_image || [],
+          image_g: Array.isArray(p.product_image)
+            ? [...p.product_image].reverse()
+            : [],
           store_details: p.store_details || [],
           sellerproduct: p.sellerproduct || [],
           related_items: p.related_items || [],
@@ -457,6 +515,9 @@ export default function ProductPageClient() {
           minimum_order_qty: p.minimum_order_qty,
           minimum_order_limit: p.minimum_order_limit,
           offers: p.offers,
+          // ✅ NEW FLAG
+          customize: p.customize === "1", // boolean for easy checks
+
           bogo_offer: p.bogo_offer
             ? Array.isArray(p.bogo_offer)
               ? p.bogo_offer.map((b) => ({ ...b, bogo_title: b.title }))
@@ -559,6 +620,67 @@ export default function ProductPageClient() {
     }
   }, [product]);
 
+  const hitProductHistory = async (product) => {
+    if (!product?.id) return;
+
+    try {
+      const token = await getValidToken();
+      if (!token) return;
+
+      const payload = {
+        product_id: product.id,
+        view_count: 1,
+        cart_count: 0,
+        warehouse_id: product?.seller?.warehouse_id,
+      };
+
+      await fetch("/api/product_history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      // silent fail — history should never break UX
+      console.error("📊 Product history failed:", err);
+    }
+  };
+
+  const persistPersonalisedText = (cartId, productId) => {
+    if (!personalisedText?.trim()) {
+      console.log("🟡 Personalised Text SKIPPED (empty or whitespace only)");
+      return;
+    }
+
+    const storageKey = `personalised_text_${cartId}_${productId}`;
+    const payload = {
+      text: personalisedText.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+
+      // ✅ SUCCESS LOG
+      console.group("✅ Personalised Text Stored");
+      console.log("📦 Storage Key:", storageKey);
+      console.log("📝 Stored Text:", payload.text);
+      console.log("🕒 Timestamp:", payload.createdAt);
+      console.log("📍 Location: localStorage");
+      console.groupEnd();
+    } catch (e) {
+      console.error("❌ Failed to store personalised text", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    hitProductHistory(product);
+  }, [product?.id]);
+
   const handleBuyNow = async () => {
     // ✅ Stock check first
     const availableQty =
@@ -600,9 +722,14 @@ export default function ProductPageClient() {
           Array.isArray(product.variants) && product.variants.length > 0
             ? selectedVariants?.[product.id]?.id || product.variants[0].id
             : [],
-        historypincode: 614624,
+        historypincode: Number(
+          localStorage.getItem("user_pincode") || pincode || 600001,
+        ),
         qty: quantity,
         cart_id: cartId,
+        ...(personalisedText?.trim() && {
+          customize_text: personalisedText.trim(),
+        }),
       };
 
       // 3️⃣ Get or refresh token
@@ -653,6 +780,37 @@ export default function ProductPageClient() {
 
       const result = await response.json();
       // console.log("Add to cart result:", result);
+
+      const toastId = toast.loading("Processing your order...");
+
+      // ❌ Backend-level error handling (HTTP 200 but logical failure)
+      if (result?.status === "error") {
+        const message =
+          result?.errors?.[0] ||
+          result?.error ||
+          "Unable to add items to cart.";
+
+        // ⛔ IMPORTANT: dismiss loading toast first
+        toast.dismiss(toastId);
+
+        // ✅ Show backend error ONLY
+        toast.error(`🚫 ${message}`, {
+          autoClose: 3000,
+        });
+
+        return; // 🛑 HARD STOP — nothing else runs
+      }
+
+      // ✅ Track successful cart addition (Quick View)
+      trackProductHistory({
+        token, // 👈 reuse the same token
+        productId: product.id,
+        cartCount: quantity,
+        warehouseId: product?.seller?.warehouse_id,
+      });
+
+      // 💾 STORE HERE
+      persistPersonalisedText(cartId, product.id);
 
       // 5️⃣ Fetch tax details
       try {
@@ -928,13 +1086,18 @@ export default function ProductPageClient() {
       const payload = {
         selected_country: "IN",
         product_id: product.id,
-        historypincode: 614624,
+        historypincode: Number(
+          localStorage.getItem("user_pincode") || pincode || 600001,
+        ),
         variant_id:
           Array.isArray(product.variants) && product.variants.length > 0
             ? selectedVariants?.[product.id]?.id || product.variants[0].id // ✅ variant id if available
             : [], // ✅ no variants → empty array
         qty: quantity,
         cart_id: cartId,
+        ...(personalisedText?.trim() && {
+          customize_text: personalisedText.trim(),
+        }),
         ...(matchingOffer && {
           is_offer: true,
           offer_price: matchingOffer.offer_price,
@@ -942,6 +1105,7 @@ export default function ProductPageClient() {
       };
 
       // console.log("2.Variant ID :", payload.variant_id);
+      console.log("Payload data:", payload);
 
       const response = await fetch("/api/addcart", {
         method: "POST",
@@ -959,6 +1123,32 @@ export default function ProductPageClient() {
 
       const result = await response.json();
       // console.log("✅ Synced with backend cart:", result);
+
+      // ❌ Backend-level error handling (HTTP 200 but logical failure)
+      if (result?.status === "error") {
+        const message =
+          result?.errors?.[0] ||
+          result?.error ||
+          "Unable to add items to cart.";
+
+        // ✅ Show backend error ONLY
+        toast.error(`🚫 ${message}`, {
+          autoClose: 3000,
+        });
+
+        return; // 🛑 HARD STOP — nothing else runs
+      }
+
+      // ✅ Track successful cart addition (Quick View)
+      trackProductHistory({
+        token, // 👈 reuse the same token
+        productId: product.id,
+        cartCount: quantity,
+        warehouseId: product?.seller?.warehouse_id,
+      });
+
+      // 💾 Store personalised text ONLY on success
+      persistPersonalisedText(cartId, product.id);
 
       // Update tax details
       try {
@@ -1061,7 +1251,9 @@ export default function ProductPageClient() {
       const payload = {
         selected_country: "IN",
         product_id: product.id,
-        historypincode: 614624,
+        historypincode: Number(
+          localStorage.getItem("user_pincode") || pincode || 600001,
+        ),
         variant_id:
           Array.isArray(product.variants) && product.variants.length > 0
             ? selectedVariants?.[product.id]?.id || product.variants[0].id
@@ -1070,6 +1262,9 @@ export default function ProductPageClient() {
         cart_id: cartId,
         is_offer: true,
         offer_price: offer.offer_price,
+        ...(personalisedText?.trim() && {
+          customize_text: personalisedText.trim(),
+        }),
       };
 
       const response = await fetch("/api/addcart", {
@@ -1087,6 +1282,32 @@ export default function ProductPageClient() {
       }
 
       const result = await response.json();
+
+      // ❌ Backend-level error handling (HTTP 200 but logical failure)
+      if (result?.status === "error") {
+        const message =
+          result?.errors?.[0] ||
+          result?.error ||
+          "Unable to add items to cart.";
+
+        // ✅ Show backend error ONLY
+        toast.error(`🚫 ${message}`, {
+          autoClose: 3000,
+        });
+
+        return; // 🛑 HARD STOP — nothing else runs
+      }
+
+      // ✅ Track successful cart addition (Quick View)
+      trackProductHistory({
+        token, // 👈 reuse the same token
+        productId: product.id,
+        cartCount: quantity,
+        warehouseId: product?.seller?.warehouse_id,
+      });
+
+      // 💾 Store personalised text ONLY on success
+      persistPersonalisedText(cartId, product.id);
 
       // Update tax details
       try {
@@ -1180,6 +1401,11 @@ export default function ProductPageClient() {
       });
     }
   };
+
+  const isCustomizationRequired =
+    product?.customize && !personalisedText?.trim();
+
+  const isBlocked = isAdding || isCustomizationRequired;
 
   // Main product display
   return (
@@ -1685,6 +1911,72 @@ export default function ProductPageClient() {
               </div>
             </div>
           )}
+          {/* ✍️ Personalised Text (Mobile) */}
+          {product?.customize && (
+            <div className="flex lg:hidden flex-col gap-3 font-odop mt-4 px-4">
+              {/* Label */}
+              <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Personalised Text :
+              </label>
+
+              {/* Input Area */}
+              <div className="flex flex-col gap-2 w-full">
+                <input
+                  type="text"
+                  maxLength={30}
+                  placeholder="Enter text to print"
+                  value={personalisedText || ""}
+                  onChange={(e) => setPersonalisedText(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-md
+        text-sm font-medium text-gray-800
+        focus:outline-none focus:ring-2 focus:ring-[#A00300]/40
+        transition-all
+        ${
+          !personalisedText
+            ? "border-red-400 focus:border-red-500"
+            : "border-gray-300 focus:border-[#A00300]"
+        }`}
+                />
+
+                {/* 🔴 Required message indicator */}
+                {!personalisedText && (
+                  <p className="text-xs text-red-600 font-medium">
+                    Please enter a personalised message to add this item to cart
+                  </p>
+                )}
+
+                {/* Helper row */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">
+                    Example:
+                    <span className="italic"> “Home Sweet Home”</span>
+                  </span>
+
+                  <span
+                    className={`font-medium ${
+                      (personalisedText?.length || 0) > 25
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {personalisedText?.length || 0}/30
+                  </span>
+                </div>
+
+                {/* Preview */}
+                {personalisedText && (
+                  <div className="mt-2 p-3 bg-gray-50 border border-dashed border-gray-300 rounded-md">
+                    <p className="text-xs text-gray-500 uppercase mb-1 tracking-wide">
+                      Preview
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 break-words">
+                      “{personalisedText}”
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Column 2 - Product Details (35%) - Scrollable */}
@@ -2030,6 +2322,61 @@ export default function ProductPageClient() {
                       </div>
                     );
                   })()}
+
+                {/* ✍️ Personalised Text (Desktop) */}
+                {product?.customize && (
+                  <div className="hidden lg:flex items-start gap-4 font-odop mt-4">
+                    {/* Label */}
+                    <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide pt-1">
+                      Personalised Text :
+                    </label>
+
+                    {/* Input Area */}
+                    <div className="flex flex-col gap-2 w-full max-w-md">
+                      <input
+                        type="text"
+                        maxLength={30}
+                        placeholder="Enter text to print"
+                        value={personalisedText || ""}
+                        onChange={(e) => setPersonalisedText(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md
+        text-sm font-medium text-gray-800
+        focus:outline-none focus:ring-2 focus:ring-[#A00300]/40 focus:border-[#A00300]
+        placeholder:text-gray-400 transition-all"
+                      />
+
+                      {/* Helper row */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-500">
+                          Example:
+                          <span className="italic"> “Home Sweet Home”</span>
+                        </span>
+
+                        <span
+                          className={`font-medium ${
+                            (personalisedText?.length || 0) > 25
+                              ? "text-red-600"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {personalisedText?.length || 0}/30
+                        </span>
+                      </div>
+
+                      {/* Preview */}
+                      {personalisedText && (
+                        <div className="mt-2 p-3 bg-gray-50 border border-dashed border-gray-300 rounded-md">
+                          <p className="text-xs text-gray-500 uppercase mb-1 tracking-wide">
+                            Preview
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900 break-words">
+                            “{personalisedText}”
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Highlights */}
@@ -2765,50 +3112,72 @@ export default function ProductPageClient() {
             <div className="space-y-3">
               <div className="flex flex-col gap-3">
                 {/* Add to Cart */}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={isAdding}
-                  className={`group relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold shadow-none border border-black transition-all duration-300 ease-in-out cursor-pointer ${
-                    isAdding
-                      ? "opacity-60 cursor-not-allowed"
-                      : "hover:border-transparent"
-                  }`}
-                  style={{ isolation: "isolate" }}
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-white">
-                    <ShoppingCart className="w-5 h-5" />
-                    {isAdding ? t("Adding...") : t("Add to Cart")}
-                  </span>
-                  <span
-                    className="absolute left-0 top-0 h-full w-0 bg-black transition-all duration-300 ease-in-out group-hover:w-full z-[1] rounded-lg"
-                    style={{
-                      transitionProperty: "width, background-color",
-                      willChange: "width",
-                    }}
-                  />
-                  <span className="absolute inset-0 z-[-1] rounded-lg border border-transparent group-hover:border-white" />
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isBlocked}
+                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold
+          border border-black transition-all duration-300 ease-in-out
+          ${isBlocked ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
+        `}
+                    style={{ isolation: "isolate" }}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-white">
+                      <ShoppingCart className="w-5 h-5" />
+                      {isAdding ? t("Adding...") : t("Add to Cart")}
+                    </span>
+
+                    {!isCustomizationRequired && (
+                      <span className="absolute left-0 top-0 h-full w-0 bg-black transition-all duration-300 group-hover:w-full z-[1] rounded-lg" />
+                    )}
+                  </button>
+
+                  {/* Tooltip */}
+                  {isCustomizationRequired && (
+                    <div
+                      className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2
+          whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white
+          opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-odop"
+                    >
+                      Please enter a personalised message
+                    </div>
+                  )}
+                </div>
 
                 {/* Buy Now */}
+                <div className="relative group">
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={isCustomizationRequired}
+                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold
+          border border-white transition-all duration-300 ease-in-out
+          ${isCustomizationRequired ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
+        `}
+                    style={{ isolation: "isolate" }}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-black text-white">
+                      <CreditCard className="w-5 h-5" />
+                      {t("Buy Now")}
+                    </span>
 
-                <button
-                  onClick={handleBuyNow}
-                  className={`group relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold shadow-none border border-white transition-all duration-300 ease-in-out hover:border-transparent cursor-pointer`}
-                  style={{ isolation: "isolate" }}
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-black text-white">
-                    <CreditCard className="w-5 h-5" />
-                    {t("Buy Now")}
-                  </span>
-                  <span
-                    className="absolute left-0 top-0 h-full w-0 bg-white transition-all duration-300 ease-in-out group-hover:w-full z-[1] rounded-lg"
-                    style={{
-                      transitionProperty: "width, background-color",
-                      willChange: "width",
-                    }}
-                  />
-                  <span className="absolute inset-0 z-[-1] rounded-lg border border-transparent group-hover:border-black bg-black" />
-                </button>
+                    {!isCustomizationRequired && (
+                      <span className="absolute left-0 top-0 h-full w-0 bg-white transition-all duration-300 group-hover:w-full z-[1] rounded-lg" />
+                    )}
+
+                    <span className="absolute inset-0 z-[-1] rounded-lg bg-black" />
+                  </button>
+
+                  {/* Tooltip */}
+                  {isCustomizationRequired && (
+                    <div
+                      className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2
+          whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white
+          opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-odop"
+                    >
+                      Please enter a personalised message
+                    </div>
+                  )}
+                </div>
               </div>
 
               <WishlistButton productId={product.id} variant="full" />

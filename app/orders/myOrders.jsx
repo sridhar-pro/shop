@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Truck,
   Star,
+  PackageSearch,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -390,7 +391,7 @@ const MyOrders = () => {
                                 } catch (err) {
                                   console.error(
                                     "❌ Error fetching view details:",
-                                    err
+                                    err,
                                   );
                                 }
                               }}
@@ -407,11 +408,13 @@ const MyOrders = () => {
                     ))
                   ) : (
                     <tr>
-                      <td
-                        colSpan="6"
-                        className="text-center py-6 text-gray-600"
-                      >
-                        No orders found.
+                      <td colSpan="6" className="py-8">
+                        <div className="flex flex-col items-center justify-center text-gray-500">
+                          <PackageSearch className="w-10 h-10 mb-2 text-gray-400" />
+                          <span className="text-sm font-medium">
+                            No orders found.
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -501,7 +504,7 @@ const MyOrders = () => {
                           } catch (err) {
                             console.error(
                               "❌ Error fetching view details:",
-                              err
+                              err,
                             );
                           }
                         }}
@@ -564,7 +567,7 @@ const MyOrders = () => {
                         >
                           {p}
                         </button>
-                      )
+                      ),
                     )}
                   </div>
 
@@ -727,7 +730,7 @@ const MyOrders = () => {
                                 updateField(
                                   item.product_id,
                                   "headline",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                             />
@@ -742,7 +745,7 @@ const MyOrders = () => {
                                 updateField(
                                   item.product_id,
                                   "written_review",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                             />
@@ -774,7 +777,7 @@ const MyOrders = () => {
                       onClick={() =>
                         handleCancelPackage(
                           group.items[0]?.shiprocket_order_id,
-                          gIdx
+                          gIdx,
                         )
                       }
                       className="px-5 py-2 rounded-lg bg-[#a00300] text-white hover:bg-red-700"

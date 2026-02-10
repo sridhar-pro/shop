@@ -453,7 +453,6 @@ const SellerShopPage = () => {
 
                       const data = await response.json().catch(() => null);
                       console.log("📦 API Response Data:", data);
-
                       if (!response.ok) {
                         console.error("🚨 Add-to-cart API failed:", data);
                         toast.error(
@@ -592,75 +591,78 @@ const SellerShopPage = () => {
       {/* 🌟 Hero Section */}
       {/* 🌟 Hero Section (Theme 1 – Mixed Media Slider) */}
       {hasMedia && (
-        <header className="relative w-full overflow-hidden shadow-md">
-          <div className="flex flex-col md:flex-row w-full">
-            {/* 🎥 / 🖼️ MEDIA AREA */}
-            <div className="relative w-full md:w-3/4 aspect-[16/9] md:aspect-[16/6] bg-black">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentIndex}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  transition={{ duration: 0.6 }}
-                  className="absolute inset-0"
-                >
-                  {currentMedia.type === "video" ? (
-                    <video
-                      src={currentMedia.src}
-                      autoPlay
-                      muted
-                      playsInline
-                      onEnded={() =>
-                        setCurrentIndex((prev) => (prev + 1) % media.length)
-                      }
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={currentMedia.src}
-                      alt="Seller media"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+        <header className="relative w-full overflow-hidden">
+          <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-black">
+            {/* 🎥 MEDIA */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="absolute inset-0"
+              >
+                {currentMedia.type === "video" ? (
+                  <video
+                    src={currentMedia.src}
+                    autoPlay
+                    muted
+                    playsInline
+                    onEnded={() =>
+                      setCurrentIndex((prev) => (prev + 1) % media.length)
+                    }
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src={currentMedia.src}
+                    alt="Seller media"
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
 
-              {/* Pagination dots */}
-              {media.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-50">
-                  {media.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentIndex(i)}
-                      className={`w-2.5 h-2.5 rounded-full transition ${
-                        i === currentIndex
-                          ? "bg-red-600 scale-110"
-                          : "bg-red-600/40"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+            {/* 🌑 Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
+
+            {/* 🏷️ Floating Logo + Name */}
+            <div className="absolute bottom-8 left-6 md:left-10 z-20 flex items-center gap-5">
+              <div className="bg-white/90 backdrop-blur-xl p-3 rounded-2xl shadow-xl">
+                <img
+                  src={getImageSrc(shopData.store_logo)}
+                  alt={shopData.name}
+                  className="h-14 w-14 md:h-20 md:w-20 object-contain"
+                />
+              </div>
+
+              <div className="text-white">
+                <h1 className="text-2xl md:text-4xl font-bold capitalize leading-tight">
+                  {shopData.name}
+                </h1>
+                <p className="text-sm md:text-base text-white/80 mt-1">
+                  Crafted with love • Curated for you
+                </p>
+              </div>
             </div>
 
-            {/* 🏷️ LOGO PANEL */}
-            <div
-              className="hidden md:flex w-1/4 flex-col items-center justify-center text-center p-6"
-              style={{
-                backgroundColor: palette.section1_color,
-                color: palette.text_color,
-              }}
-            >
-              <img
-                src={getImageSrc(shopData.store_logo)}
-                alt={shopData.name}
-                className="h-28 md:h-40 mb-4 rounded-lg shadow bg-white p-3"
-              />
-              <h1 className="text-2xl md:text-3xl font-bold capitalize">
-                {shopData.name}
-              </h1>
-            </div>
+            {/* 🔴 Pagination */}
+            {media.length > 1 && (
+              <div className="absolute bottom-6 right-6 z-20 flex gap-2">
+                {media.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentIndex(i)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      i === currentIndex
+                        ? "w-8 bg-red-600"
+                        : "w-2 bg-white/40 hover:bg-white/70"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </header>
       )}

@@ -23,6 +23,7 @@ export default function CheckoutPage({ formData }) {
   const [tax, setTax] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [customizedTexts, setCustomizedTexts] = useState({});
 
   const [couponValue, setCouponValue] = useState(0);
 
@@ -99,6 +100,20 @@ export default function CheckoutPage({ formData }) {
 
       // ✅ If cart_data is missing or contents empty, redirect
       const cartData = response?.cart_data;
+
+      // ✍️ Collect personalised text per item
+      const textsMap = {};
+
+      Object.values(cartData.contents || {}).forEach((item) => {
+        if (item?.customize_text) {
+          textsMap[item.rowid] = item.customize_text;
+        }
+      });
+
+      setCustomizedTexts(textsMap);
+
+      console.log("✍️ Checkout personalised texts:", textsMap);
+
       const isEmpty =
         !cartData ||
         !cartData.contents ||
@@ -262,7 +277,7 @@ export default function CheckoutPage({ formData }) {
     return () => {
       window.removeEventListener(
         "razorpayPaymentIdUpdated",
-        handlePaymentIdUpdate
+        handlePaymentIdUpdate,
       );
     };
   }, []);
@@ -327,7 +342,7 @@ export default function CheckoutPage({ formData }) {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener(
         "local-storage-update",
-        handleCustomStorageUpdate
+        handleCustomStorageUpdate,
       );
     };
   }, []);
@@ -385,7 +400,7 @@ export default function CheckoutPage({ formData }) {
         const token = await getValidToken();
         if (!token && isLoggedIn) {
           console.error(
-            "🔐 Auth token missing! Skipping payment notification."
+            "🔐 Auth token missing! Skipping payment notification.",
           );
           return;
         }
@@ -402,7 +417,7 @@ export default function CheckoutPage({ formData }) {
         };
         localStorage.setItem(
           "order_confirmation",
-          JSON.stringify(orderConfirmation)
+          JSON.stringify(orderConfirmation),
         );
         const savedName = localStorage.getItem("checkout_name");
         const savedEmail = localStorage.getItem("checkout_email");
@@ -460,11 +475,27 @@ export default function CheckoutPage({ formData }) {
 
           keysToRemove.forEach((key) => localStorage.removeItem(key));
 
+          // ✅ Remove ALL personalised text entries (safe + scalable)
+          const removedPersonalisedKeys = [];
+
+          Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith("personalised_text_")) {
+              localStorage.removeItem(key);
+              removedPersonalisedKeys.push(key);
+            }
+          });
+
+          // 🔔 Notify app state
           window.dispatchEvent(
             new CustomEvent("cart-cleared", {
-              detail: { clearedKeys: keysToRemove },
-            })
+              detail: {
+                clearedKeys: keysToRemove,
+                clearedPersonalisedKeys: removedPersonalisedKeys,
+              },
+            }),
           );
+
+          console.log("🧼 Cart & personalised messages cleared successfully");
 
           // console.log("🧼 Cart data cleared after successful payment.");
         } catch (err) {
@@ -841,7 +872,9 @@ export default function CheckoutPage({ formData }) {
                             ₹
                             {(
                               Number(
-                                item.price?.toString().replace(/[^0-9.-]+/g, "")
+                                item.price
+                                  ?.toString()
+                                  .replace(/[^0-9.-]+/g, ""),
                               ) * Number(item.qty)
                             ).toFixed(2)}
                           </p>
@@ -904,6 +937,7 @@ export default function CheckoutPage({ formData }) {
                 subtotal={subtotal}
                 tax={tax}
                 shipping={shipping}
+                customizedTexts={customizedTexts} // ✅ ADD THIS
               />
 
               {/* Right: Sticky Summary */}

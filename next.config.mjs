@@ -256,6 +256,10 @@ const nextConfig = {
         source: "/api/recentlyviewed",
         destination: `${BASE_API}/getRecentlyViewed`,
       },
+      {
+        source: "/api/product_history",
+        destination: `${BASE_API}/product_history`,
+      },
 
       {
         source: "/api/save_prebook_gift",

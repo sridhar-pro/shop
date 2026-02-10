@@ -30,7 +30,7 @@ async function getProduct(slug) {
         id: slug.split("-").pop() || "",
       }),
       cache: "no-store",
-    }
+    },
   );
 
   const data = await res.json();
@@ -58,13 +58,13 @@ export async function generateMetadata({ params: paramsPromise }) {
   const imgs = product.product_image?.length
     ? product.product_image
     : product.p_image
-    ? [product.p_image]
-    : [];
+      ? [product.p_image]
+      : [];
 
   const resolvedImages = imgs.map((img) =>
     img.startsWith("http")
       ? img
-      : `https://marketplace.yuukke.com/assets/uploads/${img}`
+      : `https://marketplace.yuukke.com/assets/uploads/${img}`,
   );
 
   // JSON-LD Schema

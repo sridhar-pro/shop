@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import WishlistButton from "@/app/components/WishlistButton";
 import { usePathname } from "next/navigation";
 import { fetchWithAuthGlobal } from "@/app/utils/fetchWithAuth";
+import { trackProductHistory } from "@/app/utils/productHistory";
 
 const FeaturedProducts = () => {
   const { t } = useTranslation();
@@ -1211,7 +1212,10 @@ const FeaturedProducts = () => {
                               const payload = {
                                 selected_country: "IN",
                                 product_id: quickViewProduct.id,
-                                historypincode: 614624,
+                                historypincode: Number(
+                                  localStorage.getItem("user_pincode") ||
+                                    600001,
+                                ),
                                 qty: quantity,
                                 cart_id: cartId,
                                 variant_id: selectedVariants?.[
@@ -1292,6 +1296,15 @@ const FeaturedProducts = () => {
                                 );
                                 return;
                               }
+
+                              // ✅ Track successful cart addition (Quick View)
+                              trackProductHistory({
+                                token, // 👈 reuse the same token
+                                productId: quickViewProduct.id,
+                                cartCount: quantity,
+                                warehouseId:
+                                  quickViewProduct?.seller?.warehouse_id,
+                              });
 
                               // ✅ Proceed only if success
 
@@ -1499,7 +1512,9 @@ const FeaturedProducts = () => {
                         const payload = {
                           selected_country: "IN",
                           product_id: quickViewProduct.id,
-                          historypincode: 614624,
+                          historypincode: Number(
+                            localStorage.getItem("user_pincode") || 600001,
+                          ),
                           qty: quantity,
                           cart_id: cartId,
                         };
@@ -1555,6 +1570,14 @@ const FeaturedProducts = () => {
                           // 5. Final result
                           const result = await response.json();
                           // console.log("Add to cart result:", result);
+
+                          // ✅ Track successful cart addition (Quick View)
+                          trackProductHistory({
+                            token, // 👈 reuse the same token
+                            productId: quickViewProduct.id,
+                            cartCount: quantity,
+                            warehouseId: quickViewProduct?.seller?.warehouse_id,
+                          });
 
                           // 🆕 6. Get Tax API call (only if addcart was successful)
                           // 🧾 Tax data fetch

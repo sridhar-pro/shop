@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
-import { setLocalStorageWithEvent } from "../utils/storageEvents";
 import { useAuth } from "../utils/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -217,7 +216,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const payload = {
         selected_country: "IN",
-        historypincode: 614624,
+        historypincode: Number(localStorage.getItem("user_pincode") || 600001),
         cart_id: cartId,
         product_ids: cartItems.map((item) => item.product_id.toString()),
         qty: cartItems.map((item) => item.qty),
@@ -269,7 +268,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const payload = {
         selected_country: "IN",
-        historypincode: 614624,
+        historypincode: Number(localStorage.getItem("user_pincode") || 600001),
         cart_id: cartId,
 
         // 👇 Special fields for Qty Update only

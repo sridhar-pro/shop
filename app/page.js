@@ -6,6 +6,7 @@ import { ImagesSliderDemo } from "./home/slider";
 import { WobbleCardDemo } from "./home/card";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import FallingHearts from "./components/FallingHearts";
 
 // ⏳ Product card skeleton loader
 const LoadingFallback = ({ count = 6 }) => (
@@ -30,7 +31,7 @@ const RecentlyViewedProducts = dynamic(
   {
     ssr: false,
     loading: () => <LoadingFallback />,
-  }
+  },
 );
 
 const LogoSlider = dynamic(() => import("./home/LogoSlider"), {
@@ -66,6 +67,7 @@ const WishlistProducts = dynamic(() => import("./home/WishlistProducts"), {
 export default function Home() {
   return (
     <>
+      <FallingHearts />
       <ImagesSliderDemo />
 
       {/* 🌀 Lazy-loaded spinner wheel */}

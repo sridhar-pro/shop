@@ -38,16 +38,16 @@ const SpinnerWheel = () => {
   }, []);
 
   // ⏰ Check last spin time
-  useEffect(() => {
-    const lastSpin = localStorage.getItem("lastSpinTime");
-    if (lastSpin) {
-      const hoursPassed =
-        (Date.now() - parseInt(lastSpin, 10)) / (1000 * 60 * 60);
-      if (hoursPassed < 24) {
-        setCanSpin(false);
-      }
-    }
-  }, []);
+  // useEffect(() => {
+  //   const lastSpin = localStorage.getItem("lastSpinTime");
+  //   if (lastSpin) {
+  //     const hoursPassed =
+  //       (Date.now() - parseInt(lastSpin, 10)) / (1000 * 60 * 60);
+  //     if (hoursPassed < 24) {
+  //       setCanSpin(false);
+  //     }
+  //   }
+  // }, []);
 
   const fetchCoupons = async () => {
     setLoading(true);
@@ -55,7 +55,7 @@ const SpinnerWheel = () => {
       const data = await fetchWithAuthGlobal(
         "/api/spin_wheel",
         { method: "POST", body: {} },
-        getValidToken
+        getValidToken,
       );
 
       console.log("Spinner :", data);
@@ -64,7 +64,7 @@ const SpinnerWheel = () => {
 
       // ⛔ Check if ALL coupon codes are 0
       const allZero = data.coupons.every(
-        (c) => c.coupon_code === "0" || c.coupon_code === 0
+        (c) => c.coupon_code === "0" || c.coupon_code === 0,
       );
 
       if (allZero) {
@@ -121,7 +121,7 @@ const SpinnerWheel = () => {
   // 🎟️ Format slices
   const slices = coupons.map((c) => ({
     option: formatOptionText(
-      c.coupon_desc.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase()) // Capitalize each word
+      c.coupon_desc.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase()), // Capitalize each word
     ),
   }));
   const winningCoupon = prizeNumber !== null ? coupons[prizeNumber] : null;
@@ -134,7 +134,7 @@ const SpinnerWheel = () => {
   };
 
   // 🚫 If coupons are empty AND not loading → hide spinner entirely
-  if (!loading && coupons.length === 0) return null;
+  if (isOpen && !loading && coupons.length === 0) return null;
 
   return (
     <>
@@ -246,12 +246,12 @@ const SpinnerWheel = () => {
                         {slices.length === 0 || loading
                           ? "Loading..."
                           : !spinReady
-                          ? "Checking..."
-                          : !canSpin
-                          ? "Spinned"
-                          : mustSpin
-                          ? "Spinning..."
-                          : "Spin Now"}
+                            ? "Checking..."
+                            : !canSpin
+                              ? "Spinned"
+                              : mustSpin
+                                ? "Spinning..."
+                                : "Spin Now"}
                       </span>
                     </button>
                   </div>

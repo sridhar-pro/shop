@@ -104,59 +104,61 @@ export default function Footer() {
   // console.log("Complete footer data:", footerData);
 
   return (
-    <footer className="bg-white text-sm text-[#911439]">
+    <footer className="bg-white text-sm text-[#911439] font-odop">
       {/* Subscribe Section */}
       {pathname === "/" && (
-        <div className="w-full py-6 bg-white p-4">
-          <div className="flex flex-col md:flex-row items-center md:justify-between gap-6 md:gap-10 px-4 max-w-[105rem] mx-auto">
-            {/* Left side */}
-            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-40 ml-0 md:ml-6 text-center md:text-left">
-              <Image
-                src="/subscribe.webp"
-                alt="Logo"
-                width={80}
-                height={80}
-                className="object-contain mx-auto md:mx-0"
-              />
-              <p className="text-[#911439] font-semibold text-2xl md:text-[2rem]">
-                Get offers in your inbox
-              </p>
-            </div>
-
-            {/* Right side */}
-            <div className="flex flex-col w-full md:w-auto mt-4 md:mt-0">
-              <div className="flex flex-col md:flex-row gap-4 md:gap-2 items-start md:items-center">
-                <div className="p-[1px] rounded bg-gradient-to-r from-red-700 to-red-800 w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
-                  <input
-                    type="email"
-                    placeholder="Enter your mail here"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded outline-none bg-white text-black text-sm sm:text-base"
-                  />
-                </div>
-
-                <button
-                  onClick={handleSubscribe}
-                  className="bg-gradient-to-r from-blue-950 to-red-900 text-white px-4 py-2 rounded-sm hover:from-blue-800 hover:to-blue-950 transition w-full md:w-56"
-                >
-                  Subscribe Me!
-                </button>
+        <section className="w-full bg-white">
+          <div className="max-w-[85rem] mx-auto px-6 lg:px-12 py-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              {/* Left Side */}
+              <div className="flex items-center gap-6 text-center lg:text-left">
+                <Image
+                  src="/subscribe.webp"
+                  alt="Subscribe"
+                  width={80}
+                  height={80}
+                  className="object-contain hidden md:flex"
+                />
+                <p className="text-[#911439] font-semibold text-xl md:text-2xl uppercase">
+                  Get offers in your inbox
+                </p>
               </div>
 
-              {subscribed && (
-                <p className="flex items-center gap-2 text-green-600 font-semibold text-sm mt-2">
-                  <MailCheck className="w-4 h-4" />
-                  Subscribed as {email}
-                </p>
-              )}
+              {/* Right Side */}
+              <div className="w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+                  <div className="flex-1 p-[1px] rounded-md bg-gradient-to-r from-red-700 to-red-800">
+                    <input
+                      type="email"
+                      placeholder="Enter your mail here"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-2 rounded-md outline-none bg-white text-black"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSubscribe}
+                    className="px-6 py-2 rounded-md bg-gradient-to-r from-blue-950 to-red-900 text-white hover:opacity-90 transition whitespace-nowrap"
+                  >
+                    Subscribe Me!
+                  </button>
+                </div>
+
+                {subscribed && (
+                  <p className="flex items-center gap-2 text-green-600 font-semibold text-sm mt-3">
+                    <MailCheck className="w-4 h-4" />
+                    Subscribed as {email}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Footer Links Section */}
-      <div className="w-full px-4">
+      <div className="w-full px-4 hidden">
         <div className="w-full mx-auto px-0 md:px-6 py-6">
           {footerData.map((section, index) => (
             <div
@@ -228,13 +230,13 @@ export default function Footer() {
       </div>
 
       {/* Footer Bottom Section */}
-      <div className="border-t border-gray-300 mt-0 pt-0">
+      <div className="border-t border-gray-300 mt-0 pt-0 hidden">
         <div className="max-w-[105rem] mx-auto px-6 py-4">
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
             {/* Logo on the far left (or center on mobile) */}
             <div className="md:w-1/4 w-full flex justify-center md:justify-start">
               <Image
-                src="/logo.png"
+                src="/new-logo.png"
                 alt="Logo"
                 width={160} // w-40 = 160px
                 height={64} // h-16 = 64px (you can use md height conditionally in layout)
@@ -243,7 +245,7 @@ export default function Footer() {
             </div>
 
             {/* Text & Payment icons */}
-            <div className="md:w-3/4 w-full flex flex-col items-center md:items-end text-center md:text-left text-gray-700 text-xs md:text-base font-medium">
+            <div className="md:w-3/4 w-full flex flex-col items-center md:items-end text-center md:text-left text-gray-700 text-xs md:text-base">
               <p className="max-w-7xl">
                 Your one-stop destination for an unparalleled shopping
                 experience. We pride ourselves on offering a diverse and
@@ -298,7 +300,7 @@ export default function Footer() {
 
       {/* Bottom Footer Bar */}
       <div
-        className="bg-gradient-to-r from-blue-950 to-[#911439] text-white text-sm px-4 sm:px-8 md:px-16 lg:px-20 py-6"
+        className="bg-gradient-to-r from-blue-950 to-[#911439] text-white text-sm px-4 sm:px-8 md:px-16 lg:px-20 py-6 hidden"
         translate="no"
       >
         <div className="flex flex-col gap-4 md:gap-6 md:flex-row md:items-center md:justify-between text-center md:text-left">

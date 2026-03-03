@@ -21,7 +21,6 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { useTranslation } from "react-i18next";
 import WishlistButton from "@/app/components/WishlistButton";
 import { usePathname } from "next/navigation";
-import { fetchWithAuthGlobal } from "@/app/utils/fetchWithAuth";
 import { trackProductHistory } from "@/app/utils/productHistory";
 
 const FeaturedProducts = () => {
@@ -36,6 +35,12 @@ const FeaturedProducts = () => {
   const [wellnessProducts, setWellnessProducts] = useState([]);
   const [corporateProducts, setCorporateProducts] = useState([]);
   const [returnProducts, setReturnProducts] = useState([]);
+
+  const [getTitle9, setGetTitle9] = useState([]);
+  const [getTitle10, setGetTitle10] = useState([]);
+  const [getTitle11, setGetTitle11] = useState([]);
+  const [getTitle12, setGetTitle12] = useState([]);
+
   const [error, setError] = useState(null);
   const [wishlist, setWishlist] = useState([]);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
@@ -149,6 +154,26 @@ const FeaturedProducts = () => {
           key: "return",
           url: "/api/getReturnGifts",
           setter: setReturnProducts,
+        },
+        {
+          key: "gettitle9",
+          url: "/api/getTitle9",
+          setter: setGetTitle9,
+        },
+        {
+          key: "gettitle10",
+          url: "/api/getTitle10",
+          setter: setGetTitle10,
+        },
+        {
+          key: "gettitle11",
+          url: "/api/getTitle11",
+          setter: setGetTitle11,
+        },
+        {
+          key: "gettitle12",
+          url: "/api/getTitle12",
+          setter: setGetTitle12,
         },
       ];
 
@@ -336,6 +361,10 @@ const FeaturedProducts = () => {
         wellness: slugs?.wellness?.slug || null,
         corporate: slugs?.gift?.slug || null,
         return: slugs?.return?.slug || null,
+        gettitle9: slugs?.gettitle9?.slug || null,
+        gettitle10: slugs?.gettitle10?.slug || null,
+        gettitle11: slugs?.gettitle11?.slug || null,
+        gettitle12: slugs?.gettitle12?.slug || null,
       });
 
       setStorageLoaded(true); // <--- NEW
@@ -352,6 +381,10 @@ const FeaturedProducts = () => {
     festival: "MS01--71e2a9cd",
     featured: "FE01--318f9ji",
     corporate: "CP01--3jhfdkjs",
+    gettitle9: "G01--3f7a9c2d",
+    gettitle10: "G02--8bd14e6f",
+    gettitle11: "G03--c29fa781",
+    gettitle12: "G04--6e5b3d90",
   };
 
   const slugify = (title) =>
@@ -368,31 +401,58 @@ const FeaturedProducts = () => {
 
     return (
       <motion.div
-        className="relative mb-20 flex flex-col items-center"
+        className="relative  flex flex-col items-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Title with underline image */}
-        <motion.h3
-          className="relative text-center text-[28px] md:text-[30px] font-semibold text-[#A00300] uppercase"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          {t(title)}
-        </motion.h3>
+        <div className="relative mb-20 flex flex-col items-center">
+          {/* Title container */}
+          <div className="relative w-full text-center font-odop px-6 md:px-12 lg:px-20">
+            {/* Background ghost text */}
+            <motion.h3
+              className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            >
+              {t(title).split(" ")[0]}
+            </motion.h3>
 
-        {/* View All link */}
-        <motion.a
-          href={btnLink}
-          className="mt-2 text-[12px]  font-medium text-[#000d45] hover:text-[var(--primary-color)] underline underline-offset-4 transition-all duration-300"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.96 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-        >
-          {t("View All Products →")}
-        </motion.a>
+            {/* Foreground main title */}
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center px-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+            >
+              <h2 className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
+                {t(title)}
+              </h2>
+            </motion.div>
+          </div>
+
+          {/* View All link */}
+          <motion.a
+            href={btnLink}
+            className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.4 }}
+          >
+            <span className="relative">
+              {t("View All Products")}
+              <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+            </span>
+            <motion.span
+              className="inline-block text-[14px]"
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.3 }}
+            >
+              →
+            </motion.span>
+          </motion.a>
+        </div>
       </motion.div>
     );
   };
@@ -421,7 +481,7 @@ const FeaturedProducts = () => {
         whileInView="visible"
         viewport={{ once: true, margin: "0px 0px -100px 0px" }}
         variants={containerVariants}
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-0 md:px-20"
       >
         {products.map((product) => {
           const now = new Date();
@@ -492,7 +552,7 @@ const FeaturedProducts = () => {
               key={product.id}
               variants={itemVariants}
               whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
-              className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full ${
+              className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full font-odop ${
                 isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
               }`}
             >
@@ -650,7 +710,7 @@ const FeaturedProducts = () => {
                   )}
                   <Link href={`/products/${product.slug}`} passHref>
                     <h3
-                      className={`text-xs md:text-base font-semibold line-clamp-2 mb-0.5 md:mb-1 capitalize ${
+                      className={`text-xs md:text-base line-clamp-2 mb-0.5 md:mb-1 capitalize ${
                         isOutOfStock
                           ? "text-gray-500"
                           : "text-gray-950 hover:text-[#A00300]"
@@ -726,8 +786,8 @@ const FeaturedProducts = () => {
                     ) : (
                       <div className="flex items-baseline gap-1.5 md:gap-2 flex-wrap">
                         <p
-                          className={`text-sm md:text-lg font-bold ${
-                            isOutOfStock ? "text-gray-500" : "text-gray-950"
+                          className={`text-sm md:text-lg font-medium ${
+                            isOutOfStock ? "text-gray-500" : "text-[#A00300]"
                           }`}
                         >
                           ₹
@@ -848,7 +908,7 @@ const FeaturedProducts = () => {
     (quickVariants.length > 0 ? quickVariants[0] : null);
 
   return (
-    <div className="px-4 md:px-20 py-20">
+    <div className="px-4 md:px-0 py-20">
       <div className="homepage-wrapper">
         {error && <ErrorBox message={error} />}
 
@@ -897,30 +957,123 @@ const FeaturedProducts = () => {
           </>
         ) : (
           <>
-            {[
-              { key: "arrival", products: newArrivalProducts, margin: "" },
-              { key: "gift", products: giftProducts, margin: "mt-32" },
-              { key: "featured", products: featuredProducts, margin: "mt-32" },
-              { key: "festival", products: festivalProducts, margin: "mt-32" },
-              { key: "wellness", products: wellnessProducts, margin: "mt-20" },
-              {
-                key: "corporate",
-                products: corporateProducts,
-                margin: "mt-32",
-              },
-              { key: "return", products: returnProducts, margin: "mt-32" },
-            ].map(
-              ({ key, products, margin }, index) =>
-                products?.length > 0 && (
-                  <div key={key} className={margin}>
-                    {renderTitleSection(
-                      products[0]?.homePageTitle || "You may also like",
-                      key,
-                    )}
-                    {renderProductCards(products)}
-                  </div>
-                ),
-            )}
+            <section className="relative overflow-hidden">
+              {/* ===== Soft Organic Background Shapes ===== */}
+              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
+                {/* Right Organic Shape */}
+                <motion.div
+                  animate={{ y: [0, -40, 0], x: [0, 20, 0] }}
+                  transition={{
+                    duration: 18,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute -right-40 top-20 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80"
+                />
+
+                {/* Left Organic Shape */}
+                <motion.div
+                  animate={{ y: [0, 50, 0], x: [0, -25, 0] }}
+                  transition={{
+                    duration: 22,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute -left-40 bottom-10 w-[350px] h-[350px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-70"
+                />
+
+                {/* Very subtle brand tint wash */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white via-[#fff9f9] to-white opacity-70" />
+              </div>
+
+              {[
+                { key: "arrival", products: newArrivalProducts, margin: "" },
+                { key: "return", products: returnProducts, margin: "mt-32" },
+                { key: "gift", products: giftProducts, margin: "mt-32" },
+                {
+                  key: "featured",
+                  products: featuredProducts,
+                  margin: "mt-32",
+                },
+                {
+                  key: "festival",
+                  products: festivalProducts,
+                  margin: "mt-32",
+                },
+                {
+                  key: "wellness",
+                  products: wellnessProducts,
+                  margin: "mt-20",
+                },
+                {
+                  key: "corporate",
+                  products: corporateProducts,
+                  margin: "mt-32",
+                },
+                {
+                  key: "gettitle9",
+                  products: getTitle9,
+                  margin: "mt-32",
+                },
+                {
+                  key: "gettitle10",
+                  products: getTitle10,
+                  margin: "mt-32",
+                },
+                {
+                  key: "gettitle11",
+                  products: getTitle11,
+                  margin: "mt-32",
+                },
+                {
+                  key: "gettitle12",
+                  products: getTitle12,
+                  margin: "mt-32",
+                },
+              ].map(
+                ({ key, products, margin }, index) =>
+                  products?.length > 0 && (
+                    <div
+                      key={key}
+                      className={`relative overflow-hidden ${margin}`}
+                    >
+                      {/* ===== Alternating Organic Shape ===== */}
+                      <div className="absolute inset-0 -z-10 pointer-events-none">
+                        {index % 2 === 0 ? (
+                          /* RIGHT SIDE SHAPE */
+                          <motion.div
+                            animate={{ y: [0, -40, 0], x: [0, 20, 0] }}
+                            transition={{
+                              duration: 20,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }}
+                            className="absolute -right-40 top-10 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80"
+                          />
+                        ) : (
+                          /* LEFT SIDE SHAPE */
+                          <motion.div
+                            animate={{ y: [0, 50, 0], x: [0, -25, 0] }}
+                            transition={{
+                              duration: 22,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }}
+                            className="absolute -left-40 top-10 w-[420px] h-[420px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-80"
+                          />
+                        )}
+                      </div>
+
+                      {renderTitleSection(
+                        products[0]?.homePageTitle || "You may also like",
+                        key,
+                      )}
+
+                      {renderProductCards(products)}
+                    </div>
+                  ),
+              )}
+            </section>
           </>
         )}
       </div>
@@ -1214,7 +1367,7 @@ const FeaturedProducts = () => {
                                 product_id: quickViewProduct.id,
                                 historypincode: Number(
                                   localStorage.getItem("user_pincode") ||
-                                    600001,
+                                    600002,
                                 ),
                                 qty: quantity,
                                 cart_id: cartId,
@@ -1513,7 +1666,7 @@ const FeaturedProducts = () => {
                           selected_country: "IN",
                           product_id: quickViewProduct.id,
                           historypincode: Number(
-                            localStorage.getItem("user_pincode") || 600001,
+                            localStorage.getItem("user_pincode") || 600002,
                           ),
                           qty: quantity,
                           cart_id: cartId,

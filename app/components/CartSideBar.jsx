@@ -216,7 +216,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const payload = {
         selected_country: "IN",
-        historypincode: Number(localStorage.getItem("user_pincode") || 600001),
+        historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         cart_id: cartId,
         product_ids: cartItems.map((item) => item.product_id.toString()),
         qty: cartItems.map((item) => item.qty),
@@ -268,7 +268,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const payload = {
         selected_country: "IN",
-        historypincode: Number(localStorage.getItem("user_pincode") || 600001),
+        historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         cart_id: cartId,
 
         // 👇 Special fields for Qty Update only
@@ -454,7 +454,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[90] bg-transparent backdrop-blur-md transition-opacity"
+            className="fixed inset-0 z-[90] bg-transparent backdrop-blur-md transition-opacity font-odop"
             onClick={onClose}
           />
 
@@ -529,7 +529,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
                           {/* Product Info */}
                           <div className="flex-1 min-w-0 h-16 flex flex-col justify-between">
                             <div className="flex justify-between items-start">
-                              <h3 className="font-medium text-sm sm:text-lg line-clamp-2 pr-2">
+                              <h3 className="text-sm sm:text-lg line-clamp-2 pr-2">
                                 {decodeHTML(item.name)}
                               </h3>
                               <button
@@ -545,7 +545,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
                               </button>
                             </div>
 
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mt-2">
                               <span className="font-medium flex items-center text-sm sm:text-base">
                                 {/* <IndianRupee className="w-3 h-3 mr-1" /> */}
                                 {item.subtotal}

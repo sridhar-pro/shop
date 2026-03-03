@@ -25,6 +25,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "marketplace.betalearnings.com" },
       { protocol: "https", hostname: "marketplace.yuukke.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
 
@@ -259,6 +260,10 @@ const nextConfig = {
       {
         source: "/api/product_history",
         destination: `${BASE_API}/product_history`,
+      },
+      {
+        source: "/api/sherise_x_submit",
+        destination: `${BASE_API}/sherise_x_submit`,
       },
 
       {

@@ -220,7 +220,7 @@ const Wishlist = () => {
                         selected_country: "IN",
                         product_id: item.id,
                         historypincode: Number(
-                          localStorage.getItem("user_pincode") || 600001,
+                          localStorage.getItem("user_pincode") || 600002,
                         ),
                         qty: 1,
                         cart_id: cartId,

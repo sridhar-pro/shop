@@ -437,7 +437,7 @@ const SellerShopPage = () => {
                         variant_id: [],
                         qty: 1,
                         cart_id: cartId,
-                        historypincode: 600001,
+                        historypincode: 600002,
                       };
 
                       console.log("📤 Sending Add-to-Cart Payload:", payload);
@@ -878,7 +878,7 @@ const SellerShopPage = () => {
                         variant_id: [],
                         qty: 1,
                         cart_id: cartId,
-                        historypincode: 600001,
+                        historypincode: 600002,
                       };
 
                       const response = await fetch("/api/addcart", {

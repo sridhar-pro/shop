@@ -207,35 +207,53 @@ const RecentlyViewed = () => {
     }));
   };
 
-  const renderTitleSection = (title) => (
+  // 🔹 Title section (no i18n here, just plain text)
+  const renderTitleSection = () => (
     <motion.div
-      className="relative mb-20 flex flex-col items-center"
+      className="relative mb-10 flex flex-col items-center font-odop"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h3
-        className="relative text-center text-[28px] md:text-[30px] font-semibold text-[#A00300] uppercase"
+      <motion.div
+        className="relative text-center mb-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6 }}
       >
-        {t(title)}
-      </motion.h3>
+        {/* Background big faded text */}
+        <h3 className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]">
+          Viewed
+        </h3>
 
-      <motion.div
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.96 }}
-        transition={{ delay: 0.5, duration: 0.4 }}
-        className="mt-2"
-      >
-        <Link
-          href="/products"
-          className="text-[12px] font-medium text-[#000d45] hover:text-[var(--primary-color)] underline underline-offset-4 transition-all duration-300"
-        >
-          View All Products →
-        </Link>
+        {/* Foreground main title */}
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
+            Recently Viewed
+          </span>
+        </span>
       </motion.div>
+
+      {/* View All link */}
+      <motion.a
+        href="/products"
+        className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+      >
+        <span className="relative">
+          View All Products
+          <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+        </span>
+        <motion.span
+          className="inline-block text-[14px]"
+          whileHover={{ x: 4 }}
+          transition={{ duration: 0.3 }}
+        >
+          →
+        </motion.span>
+      </motion.a>
     </motion.div>
   );
 
@@ -317,7 +335,7 @@ const RecentlyViewed = () => {
         key={product.id}
         variants={itemVariants}
         whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
-        className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full ${
+        className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full font-odop ${
           isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
         } ${extraWrapperClasses}`}
       >
@@ -456,7 +474,7 @@ const RecentlyViewed = () => {
 
             <Link href={`/products/${product.slug}`} passHref>
               <h3
-                className={`text-xs md:text-base font-semibold line-clamp-2 mb-0.5 md:mb-1 capitalize ${
+                className={`text-xs md:text-base line-clamp-2 mb-0.5 md:mb-1 capitalize ${
                   isOutOfStock
                     ? "text-gray-500"
                     : "text-gray-950 hover:text-[#A00300]"
@@ -484,7 +502,7 @@ const RecentlyViewed = () => {
                     </svg>
                   ))}
                 </div>
-                <span className="text-[10px] md:text-xs text-gray-600 ml-1 font-odop">
+                <span className="text-[10px] md:text-xs text-[#A00300] ml-1 font-odop">
                   ({Number(review.toFixed(1))})
                 </span>
               </div>
@@ -530,7 +548,7 @@ const RecentlyViewed = () => {
                 <div className="flex items-baseline gap-1.5 md:gap-2 flex-wrap">
                   <p
                     className={`text-sm md:text-lg font-bold ${
-                      isOutOfStock ? "text-gray-500" : "text-gray-950"
+                      isOutOfStock ? "text-gray-500" : "text-[#A00300]"
                     }`}
                   >
                     ₹
@@ -985,7 +1003,7 @@ const RecentlyViewed = () => {
                                 product_id: quickViewProduct.id,
                                 historypincode: Number(
                                   localStorage.getItem("user_pincode") ||
-                                    600001,
+                                    600002,
                                 ),
                                 qty: quantity,
                                 cart_id: cartId,
@@ -1244,7 +1262,7 @@ const RecentlyViewed = () => {
                           selected_country: "IN",
                           product_id: quickViewProduct.id,
                           historypincode: Number(
-                            localStorage.getItem("user_pincode") || 600001,
+                            localStorage.getItem("user_pincode") || 600002,
                           ),
                           qty: quantity,
                           cart_id: cartId,

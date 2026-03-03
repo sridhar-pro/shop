@@ -1456,7 +1456,7 @@ const CheckoutForm = ({
               )}
             </div>
 
-            <div className="w-full lg:w-[400px] order-2 lg:order-none sticky lg:top-0 h-fit lg:h-screen overflow-y-auto py-8 border-t lg:border-t-0 lg:border-l border-gray-300 block md:hidden">
+            <div className="w-full lg:w-[400px] order-2 lg:order-none sticky lg:top-0 h-fit lg:h-screen overflow-y-auto py-8 border-t lg:border-t-0 lg:border-l border-gray-300 block lg:hidden">
               <div className="space-y-6">
                 {/* 💸 More Offers */}
                 {bogoOffers.length > 0 && (

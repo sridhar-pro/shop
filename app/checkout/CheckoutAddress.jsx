@@ -47,6 +47,7 @@ const CheckoutAddress = ({
   const [loadingadd, setLoadingadd] = useState(true);
 
   const [code, setCode] = useState("");
+  const [errors, setErrors] = useState({});
 
   const [couponMessage, setCouponMessage] = useState(""); // <-- new state
   const [couponValue, setCouponValue] = useState(0);
@@ -769,7 +770,16 @@ const CheckoutAddress = ({
 
   // Handle form field changes
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value } = e.target;
+
+    if (name === "phone" || name === "postal_code") {
+      value = value.replace(/\D/g, "");
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // remove error instantly when user types
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   // Handle address update
@@ -859,6 +869,8 @@ const CheckoutAddress = ({
   };
 
   const validateAddressForm = () => {
+    let newErrors = {};
+
     const requiredFields = [
       "line1",
       "line2",
@@ -870,26 +882,25 @@ const CheckoutAddress = ({
       "phone",
     ];
 
-    for (let field of requiredFields) {
+    requiredFields.forEach((field) => {
       if (!formData[field]?.trim()) {
-        toast.error(`Please enter ${field.replace("_", " ")}`);
-        return false;
+        newErrors[field] = "This field is required";
       }
+    });
+
+    const cleanPhone = formData.phone.replace(/\D/g, "");
+    const cleanPostal = formData.postal_code.replace(/\D/g, "");
+
+    if (cleanPhone && cleanPhone.length !== 10) {
+      newErrors.phone = "Phone must be 10 digits";
     }
 
-    // 📱 Phone → exactly 10 digits
-    if (!/^\d{10}$/.test(formData.phone)) {
-      toast.error("Phone number must be exactly 10 digits");
-      return false;
+    if (cleanPostal && cleanPostal.length !== 6) {
+      newErrors.postal_code = "Postal code must be 6 digits";
     }
 
-    // 📮 Postal Code → exactly 6 digits (India style)
-    if (!/^\d{6}$/.test(formData.postal_code)) {
-      toast.error("Postal code must be exactly 6 digits");
-      return false;
-    }
-
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   // Handle delete address
@@ -1322,16 +1333,24 @@ const CheckoutAddress = ({
               </h2>
               <form onSubmit={handleAddAddress} className="space-y-3">
                 {Object.keys(formData).map((field) => (
-                  <input
-                    key={field}
-                    type="text"
-                    name={field}
-                    placeholder={field.replace("_", " ").toUpperCase()}
-                    value={formData[field]}
-                    onChange={handleChange}
-                    required
-                    className="w-full border p-2 rounded-lg "
-                  />
+                  <div key={field}>
+                    <input
+                      type="text"
+                      name={field}
+                      placeholder={field.replace("_", " ").toUpperCase()}
+                      value={formData[field]}
+                      onChange={handleChange}
+                      className={`w-full border p-2 rounded-lg outline-none transition
+        ${errors[field] ? "border-red-500 focus:ring-2 focus:ring-red-300" : "border-gray-300 focus:ring-2 focus:ring-green-300"}
+      `}
+                    />
+
+                    {errors[field] && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors[field]}
+                      </p>
+                    )}
+                  </div>
                 ))}
                 <div className="flex justify-end space-x-3 mt-4">
                   <button
@@ -1362,16 +1381,24 @@ const CheckoutAddress = ({
               </h2>
               <form onSubmit={handleUpdateAddress} className="space-y-3">
                 {Object.keys(formData).map((field) => (
-                  <input
-                    key={field}
-                    type="text"
-                    name={field}
-                    placeholder={field.replace("_", " ").toUpperCase()}
-                    value={formData[field]}
-                    onChange={handleChange}
-                    required
-                    className="w-full border p-2 rounded-lg "
-                  />
+                  <div key={field}>
+                    <input
+                      type="text"
+                      name={field}
+                      placeholder={field.replace("_", " ").toUpperCase()}
+                      value={formData[field]}
+                      onChange={handleChange}
+                      className={`w-full border p-2 rounded-lg outline-none transition
+        ${errors[field] ? "border-red-500 focus:ring-2 focus:ring-red-300" : "border-gray-300 focus:ring-2 focus:ring-green-300"}
+      `}
+                    />
+
+                    {errors[field] && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors[field]}
+                      </p>
+                    )}
+                  </div>
                 ))}
                 <div className="flex justify-end space-x-3 mt-4">
                   <button
@@ -1558,7 +1585,7 @@ const CheckoutAddress = ({
               </motion.div>
             </AnimatePresence>
           </div>
-          <div className=" block md:hidden">
+          <div className=" block lg:hidden">
             <h1 className="text-xl font-[800] tracking-tight mt-8">
               Order Summary
             </h1>

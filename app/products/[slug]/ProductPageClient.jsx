@@ -124,7 +124,7 @@ export default function ProductPageClient() {
 
   const [showPopup, setShowPopup] = useState(false);
   const [pincode, setPincode] = useState(() => {
-    return localStorage.getItem("user_pincode") || "600001";
+    return localStorage.getItem("user_pincode") || "600002";
   });
   const [city, setCity] = useState("Chennai"); // default city
   const [locationUpdated, setLocationUpdated] = useState(false);
@@ -723,7 +723,7 @@ export default function ProductPageClient() {
             ? selectedVariants?.[product.id]?.id || product.variants[0].id
             : [],
         historypincode: Number(
-          localStorage.getItem("user_pincode") || pincode || 600001,
+          localStorage.getItem("user_pincode") || pincode || 600002,
         ),
         qty: quantity,
         cart_id: cartId,
@@ -1087,7 +1087,7 @@ export default function ProductPageClient() {
         selected_country: "IN",
         product_id: product.id,
         historypincode: Number(
-          localStorage.getItem("user_pincode") || pincode || 600001,
+          localStorage.getItem("user_pincode") || pincode || 600002,
         ),
         variant_id:
           Array.isArray(product.variants) && product.variants.length > 0
@@ -1252,7 +1252,7 @@ export default function ProductPageClient() {
         selected_country: "IN",
         product_id: product.id,
         historypincode: Number(
-          localStorage.getItem("user_pincode") || pincode || 600001,
+          localStorage.getItem("user_pincode") || pincode || 600002,
         ),
         variant_id:
           Array.isArray(product.variants) && product.variants.length > 0
@@ -1409,7 +1409,7 @@ export default function ProductPageClient() {
 
   // Main product display
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative font-odop">
       <ToastContainer position="bottom-right" />
 
       {/* Breadcrumb Navigation */}
@@ -2039,7 +2039,7 @@ export default function ProductPageClient() {
                   </div>
                 )}
 
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 uppercase hidden md:flex">
+                <h1 className="text-2xl sm:text-3xl  text-gray-900 uppercase hidden md:flex">
                   {product.name}
                 </h1>
 
@@ -2583,7 +2583,7 @@ export default function ProductPageClient() {
 
               {/* Description */}
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center uppercase">
+                <h3 className="text-xl text-gray-900 mb-4 flex items-center uppercase">
                   <Info className="w-5 h-5 text-[#A00300] mr-1 mb-1" />
                   {t("Product Details")}
                 </h3>
@@ -2923,7 +2923,7 @@ export default function ProductPageClient() {
                           "Seller Information"}
                       </h4>
 
-                      {product.store_details?.[0]?.address && (
+                      {/* {product.store_details?.[0]?.address && (
                         <div className="text-sm text-gray-600 mt-2">
                           <p className="flex items-center justify-center">
                             <MapPin className="w-4 h-4 mr-1 text-[#A00300]" />
@@ -2932,7 +2932,7 @@ export default function ProductPageClient() {
                             {product.store_details[0].country}
                           </p>
                         </div>
-                      )}
+                      )} */}
 
                       {(() => {
                         const type = product.seller?.business_type;
@@ -3116,7 +3116,7 @@ export default function ProductPageClient() {
                   <button
                     onClick={handleAddToCart}
                     disabled={isBlocked}
-                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold
+                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-medium
           border border-black transition-all duration-300 ease-in-out
           ${isBlocked ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
         `}
@@ -3149,7 +3149,7 @@ export default function ProductPageClient() {
                   <button
                     onClick={handleBuyNow}
                     disabled={isCustomizationRequired}
-                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-bold
+                    className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-medium
           border border-white transition-all duration-300 ease-in-out
           ${isCustomizationRequired ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
         `}
@@ -3351,7 +3351,7 @@ export default function ProductPageClient() {
                     {/* Product Info */}
                     <div className="flex flex-col ml-4">
                       <h4
-                        className="text-sm font-semibold text-gray-950 hover:text-[#A00300] transition-colors mb-1 capitalize 
+                        className="text-sm  text-gray-950 hover:text-[#A00300] transition-colors mb-1 capitalize 
                line-clamp-2 md:line-clamp-none"
                         style={{ maxWidth: "30ch", wordBreak: "break-word" }}
                       >
@@ -3368,7 +3368,7 @@ export default function ProductPageClient() {
                       <div className="flex justify-between items-baseline gap-1.5 flex-wrap">
                         {/* Left: Price and strikethrough */}
                         <div className="flex items-baseline gap-1.5">
-                          <p className="text-sm font-bold text-[#A00300]">
+                          <p className="text-sm font-medium text-[#A00300]">
                             ₹
                             {hasValidPromo
                               ? Number(item.promo_price).toFixed(2)
@@ -3384,7 +3384,7 @@ export default function ProductPageClient() {
 
                         {/* Right: % OFF */}
                         {hasValidPromo && (
-                          <span className="text-[10px] font-bold text-red-600 ml-auto">
+                          <span className="text-[10px] font-medium text-red-600 ml-auto">
                             {Math.round(
                               ((Number(item.price) - Number(item.promo_price)) /
                                 Number(item.price)) *

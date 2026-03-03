@@ -6,7 +6,6 @@ import { ImagesSliderDemo } from "./home/slider";
 import { WobbleCardDemo } from "./home/card";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import FallingHearts from "./components/FallingHearts";
 
 // ⏳ Product card skeleton loader
 const LoadingFallback = ({ count = 6 }) => (
@@ -67,7 +66,6 @@ const WishlistProducts = dynamic(() => import("./home/WishlistProducts"), {
 export default function Home() {
   return (
     <>
-      <FallingHearts />
       <ImagesSliderDemo />
 
       {/* 🌀 Lazy-loaded spinner wheel */}
@@ -75,10 +73,11 @@ export default function Home() {
 
       {/* 🧩 Lazy-loaded sections with skeleton fallback */}
       <WobbleCardDemo />
+
+      <Products />
       <RecentlyViewedProducts />
       <RecentlyViewed />
       <WishlistProducts />
-      <Products />
       <Testimonial />
       <LogoSlider />
     </>

@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 
 export function ImagesSliderDemo() {
+  const [streamLink, setStreamLink] = useState(null);
   const [desktopImages, setDesktopImages] = useState([]);
   const [mobileImages, setMobileImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,18 +27,26 @@ export function ImagesSliderDemo() {
       setLoading(true);
 
       try {
-        const [desktopRes, mobileRes] = await Promise.all([
+        const [desktopRes, mobileRes, configRes] = await Promise.all([
           fetch("/api/slider"),
           fetch("/api/mobslider"),
+          fetch("/api/mConfig"), // ✅ new API added
         ]);
 
         if (!desktopRes.ok) throw new Error("Failed to fetch desktop slider");
         if (!mobileRes.ok) throw new Error("Failed to fetch mobile slider");
+        if (!configRes.ok) throw new Error("Failed to fetch config");
 
-        const [desktopData, mobileData] = await Promise.all([
+        const [desktopData, mobileData, configData] = await Promise.all([
           desktopRes.json(),
           mobileRes.json(),
+          configRes.json(),
         ]);
+
+        const rawStream = configData?.settings?.stream_link?.trim();
+
+        const streamUrl =
+          rawStream && rawStream.startsWith("http") ? rawStream : null;
 
         const normalizeDesktop = (item) => {
           const src = item.video
@@ -46,11 +55,7 @@ export function ImagesSliderDemo() {
               ? `${baseUrl}${item.image}`
               : null;
 
-          const type = item.type
-            ? item.type // explicit type wins
-            : item.video
-              ? "video"
-              : "image";
+          const type = item.type ? item.type : item.video ? "video" : "image";
 
           return {
             src,
@@ -61,7 +66,6 @@ export function ImagesSliderDemo() {
         };
 
         const normalizeMobile = (item) => {
-          // mobile legacy formats
           const media = item.image || item.banner || item.video || null;
 
           const src = media
@@ -71,9 +75,9 @@ export function ImagesSliderDemo() {
             : null;
 
           const type = item.type
-            ? item.type // new format
+            ? item.type
             : media?.endsWith(".mp4")
-              ? "video" // file extension detection (future proof)
+              ? "video"
               : "image";
 
           return {
@@ -86,17 +90,34 @@ export function ImagesSliderDemo() {
 
         const formattedDesktop =
           Object.values(desktopData).map(normalizeDesktop);
+
         const formattedMobile = Object.values(mobileData).map(normalizeMobile);
+
+        // ✅ Inject YouTube stream as first slide (if exists)
+        if (streamUrl) {
+          const youtubeSlide = {
+            src: streamUrl,
+            href: "#",
+            title: "Live Stream",
+            type: "youtube",
+          };
+
+          formattedDesktop.unshift(youtubeSlide);
+          formattedMobile.unshift(youtubeSlide);
+        }
 
         setDesktopImages(formattedDesktop);
         setMobileImages(formattedMobile);
 
-        // Preload all images (after first)
+        // Preload only images (avoid video/youtube preload)
         const allImages = [...formattedDesktop, ...formattedMobile];
-        allImages.slice(1).forEach(({ src }) => {
-          const img = new window.Image();
-          img.src = src;
-        });
+        allImages
+          .filter((item) => item.type === "image")
+          .slice(1)
+          .forEach(({ src }) => {
+            const img = new window.Image();
+            img.src = src;
+          });
       } catch (err) {
         console.error("Slider fetch error:", err);
       } finally {
@@ -114,6 +135,7 @@ export function ImagesSliderDemo() {
         setIsMobile(window.innerWidth < 768);
       }, 200);
     };
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -140,11 +162,8 @@ export function ImagesSliderDemo() {
   useEffect(() => {
     if (images.length <= 1) return;
 
-    if (currentSlide?.type === "video") {
-      // handled by video onEnded
+    if (currentSlide?.type === "video" || currentSlide?.type === "youtube")
       return;
-    }
-
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, 5000);
@@ -187,7 +206,14 @@ export function ImagesSliderDemo() {
                       setCurrentIndex((prev) => (prev + 1) % images.length);
                     }}
                     className="object-contain w-full h-full lg:rounded-2xl"
-                    loop={false}
+                  />
+                ) : currentSlide?.type === "youtube" && currentSlide?.src ? (
+                  <iframe
+                    src={`${currentSlide.src}&autoplay=1&mute=1`}
+                    title="Live Stream"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    className="w-full h-full lg:rounded-2xl"
                   />
                 ) : (
                   <Image
@@ -195,9 +221,7 @@ export function ImagesSliderDemo() {
                     alt={images[currentIndex]?.title || "Slide"}
                     fill
                     className="object-contain lg:rounded-2xl"
-                    priority={true}
-                    fetchPriority="high"
-                    loading="eager"
+                    priority
                     sizes="(max-width: 768px) 100vw, 90vw"
                   />
                 )}
@@ -245,11 +269,6 @@ export function ImagesSliderDemo() {
                   aria-label={`Go to slide ${index + 1}`}
                 />
               ))}
-            </div>
-
-            {/* Gradient Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-40 overflow-hidden">
-              <div className="absolute bottom-0 left-0 w-full h-full bg-gradient-to-t from-[#A00300]/20 to-transparent" />
             </div>
           </>
         )}

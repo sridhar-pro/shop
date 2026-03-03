@@ -34,7 +34,7 @@ const SearchBar = () => {
         window.dispatchEvent(
           new CustomEvent("guest-search-updated", {
             detail: { term: cleanedTerm },
-          })
+          }),
         );
       } catch (storageError) {
         console.error("Failed to store guest search term:", storageError);
@@ -62,7 +62,7 @@ const SearchBar = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (res.data?.products) {
@@ -112,7 +112,7 @@ const SearchBar = () => {
     if (query.trim()) {
       router.push(
         `/products/query?query=${encodeURIComponent(query)}`,
-        { scroll: false } // 👈 ensures it re-renders content
+        { scroll: false }, // 👈 ensures it re-renders content
       );
       setIsActive(false);
       setShowDropdown(false);
@@ -214,7 +214,7 @@ const SearchBar = () => {
                 <button
                   onClick={() => {
                     router.push(
-                      `/products/query?query=${encodeURIComponent(query)}`
+                      `/products/query?query=${encodeURIComponent(query)}`,
                     );
                     setIsActive(false);
                     setShowDropdown(false);

@@ -18,33 +18,50 @@ const getImageSrc = (src) => src || "/placeholder-product.jpg";
 // 🔹 Title section (no i18n here, just plain text)
 const renderTitleSection = () => (
   <motion.div
-    className="relative mb-10 flex flex-col items-center"
+    className="relative mb-10 flex flex-col items-center font-odop"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     transition={{ duration: 0.5 }}
   >
-    <motion.h3
-      className="relative text-center text-[28px] md:text-[30px] font-semibold text-[#A00300] uppercase"
+    <motion.div
+      className="relative text-center mb-4"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.6 }}
     >
-      Recently Viewed
-    </motion.h3>
+      {/* Background big faded text */}
+      <h3 className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]">
+        Viewed
+      </h3>
 
-    <motion.div
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ delay: 0.5, duration: 0.4 }}
-      className="mt-2"
-    >
-      <Link
-        href="/products"
-        className="text-[12px] font-medium text-[#000d45] hover:text-[var(--primary-color)] underline underline-offset-4 transition-all duration-300"
-      >
-        View All Products →
-      </Link>
+      {/* Foreground main title */}
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
+          Recently Viewed
+        </span>
+      </span>
     </motion.div>
+
+    {/* View All link */}
+    <motion.a
+      href="/products"
+      className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.4 }}
+    >
+      <span className="relative">
+        View All Products
+        <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+      </span>
+      <motion.span
+        className="inline-block text-[14px]"
+        whileHover={{ x: 4 }}
+        transition={{ duration: 0.3 }}
+      >
+        →
+      </motion.span>
+    </motion.a>
   </motion.div>
 );
 
@@ -148,14 +165,14 @@ export default function RecentlyViewedProducts() {
               initial="hidden"
               animate="visible"
               whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
-              className={`relative group rounded-3xl p-3 md:p-6 flex flex-col h-full ${
+              className={`relative group rounded-3xl p-3 md:p-6 flex flex-col h-full font-odop ${
                 isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
               }`}
             >
               {/* Out of Stock Overlay */}
               {isOutOfStock && (
                 <div className="absolute inset-0 bg-white/10 z-20 rounded-2xl flex items-center justify-center">
-                  <span className="bg-[#A00300] text-white text-sm font-bold px-3 py-1 rounded-lg">
+                  <span className="bg-[#A00300] text-white text-sm px-3 py-1 rounded-lg">
                     Out of Stock
                   </span>
                 </div>
@@ -212,7 +229,7 @@ export default function RecentlyViewedProducts() {
                 <div className="min-h-[50px] md:min-h-[60px]">
                   {promoStillValid && product.promo_tag && (
                     <div className="mb-1 md:mb-2">
-                      <span className="inline-flex items-center bg-gradient-to-r from-[#A00300] to-[#D62D20] text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-[2px] md:py-1 rounded-tl-lg rounded-br-lg shadow-md">
+                      <span className="inline-flex items-center bg-gradient-to-r from-[#A00300] to-[#D62D20] text-white text-[10px] md:text-xs px-2 md:px-3 py-[2px] md:py-1 rounded-tl-lg rounded-br-lg shadow-md">
                         {product.promo_tag}
                       </span>
                     </div>
@@ -220,7 +237,7 @@ export default function RecentlyViewedProducts() {
 
                   {product.bogo_value && (
                     <div className="relative inline-block mt-2 mb-2">
-                      <span className="inline-flex items-center gap-1 bg-gradient-to-r from-black to-gray-900 text-white text-xs md:text-sm font-bold px-2 py-[2px] rounded-tr-lg rounded-bl-lg shadow-md">
+                      <span className="inline-flex items-center gap-1 bg-gradient-to-r from-black to-gray-900 text-white text-xs md:text-sm  px-2 py-[2px] rounded-tr-lg rounded-bl-lg shadow-md">
                         {product.bogo_value}
                       </span>
                     </div>
@@ -228,7 +245,7 @@ export default function RecentlyViewedProducts() {
 
                   <Link href={`/products/${product.slug}`} passHref>
                     <h3
-                      className={`text-xs md:text-base font-semibold line-clamp-2 mb-0.5 md:mb-1 capitalize ${
+                      className={`text-xs md:text-base line-clamp-2 mb-0.5 md:mb-1 capitalize ${
                         isOutOfStock
                           ? "text-gray-500"
                           : "text-gray-950 hover:text-[#A00300]"

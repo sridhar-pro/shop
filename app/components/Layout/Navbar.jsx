@@ -195,7 +195,7 @@ export default function Navbar() {
     <>
       {/* Top Marquee */}
       <div
-        className="bg-black text-white text-[10px] md:text-sm lg:text-base h-16 md:h-10 flex items-center justify-center  relative overflow-hidden"
+        className="bg-black text-white text-[10px] md:text-sm lg:text-base h-16 md:h-10 flex items-center justify-center  relative overflow-hidden font-odop"
         translate="no"
       >
         {/* Prev Button */}
@@ -232,13 +232,13 @@ export default function Navbar() {
       </div>
 
       {/* Main Navbar */}
-      <nav className="bg-[#f9f9f959] shadow-sm px-0 lg:px-6 py-3 top-0 z-[100]">
+      <nav className="bg-[#f9f9f959] shadow-sm px-0 lg:px-6 py-3 top-0 z-[100] font-odop">
         <div className="px-3 flex justify-around md:justify-between items-center mt-0 md:mt-5 mb-0 md:mb-5">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <div className="relative w-[125px] h-[50px] lg:w-[170px] lg:h-[45px]">
+            <div className="relative w-[135px] h-[50px] lg:w-[170px] lg:h-[45px]">
               <Image
-                src="/logo.png"
+                src="/new-logo.png"
                 alt="MyGiftBox Logo"
                 fill
                 priority
@@ -249,14 +249,14 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav Links – zoom-friendly */}
-          <div className="hidden md:flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-6 text-sm md:text-base font-medium text-neutral-600 mt-2 tracking-wider">
+          <div className="hidden md:flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-6 text-sm md:text-base  text-neutral-600 mt-2 tracking-wider">
             {/* Products Dropdown */}
             <div className="flex items-center gap-4 md:gap-6">
               {/* Products Dropdown - Updated to use group-hover like ODOP */}
               <div className="relative group">
                 <Link
                   href="/products"
-                  className="group transition-all flex items-center gap-1 py-2 px-1 font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
+                  className="group transition-all flex items-center gap-1 py-2 px-1  text-gray-700 hover:text-[#A00300] cursor-pointer"
                 >
                   {t("Products")}
                   <ChevronDown className="w-4 h-4 mt-0.5 transition-transform duration-200 group-hover:rotate-180" />
@@ -281,7 +281,7 @@ export default function Navbar() {
                           </div>
 
                           {/* 🔹 Category Name */}
-                          <span className="text-sm font-medium text-gray-800 group-hover:text-black text-center">
+                          <span className="text-sm  text-gray-800 group-hover:text-black text-center">
                             {category.name}
                           </span>
                         </Link>
@@ -300,7 +300,7 @@ export default function Navbar() {
               {/* Offers */}
               <Link
                 href={{ pathname: "/products/offers" }}
-                className="transition-all py-2 px-1 font-medium text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
+                className="transition-all py-2 px-1  text-gray-700 hover:text-[#A00300] shrink-0 whitespace-nowrap"
               >
                 {t("Offers")}
               </Link>
@@ -308,7 +308,7 @@ export default function Navbar() {
               {/* Personalized Gifting */}
               <Link
                 href={{ pathname: "/products/festival-gifting" }}
-                className="transition-all py-2 px-1 font-medium text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
+                className="transition-all py-2 px-1  text-gray-700  hover:text-[#A00300] shrink-0 whitespace-nowrap"
               >
                 {t("Personalized Gifting")}
               </Link>
@@ -317,26 +317,35 @@ export default function Navbar() {
               <Link
                 href="https://gift.yuukke.com/#featured-products"
                 aria-label="Corporate Gifting – Premium, Classic"
-                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full font-medium text-gray-700 transition-all duration-200 group shrink-0 whitespace-nowrap"
+                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-gray-700 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
               >
-                {/* HOT badge */}
-                <span className="absolute -top-3 -right-2 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm ">
-                  <Flame className="w-3 h-3" />
-                  HOT
-                </span>
-
                 <span className="whitespace-nowrap">
                   {t("Corporate Gifting")}
                 </span>
               </Link>
 
-              {/* Track Order */}
+              {/* Sherise */}
               <Link
+                href="/sherise"
+                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-[#A00300] hover:text-[#180d0d] transition-all duration-200 group shrink-0 whitespace-nowrap"
+              >
+                {/* HOT badge */}
+                <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
+                  <Flame className="w-3 h-3" />
+                  SALE
+                </span>
+                <span className="whitespace-nowrap font-medium">
+                  {t("Sherise-Week")}
+                </span>
+              </Link>
+
+              {/* Track Order */}
+              {/* <Link
                 href="/track-order"
-                className="transition-all py-2 px-1 font-medium text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
+                className="transition-all py-2 px-1 text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
               >
                 {t("Track Order")}
-              </Link>
+              </Link> */}
             </div>
           </div>
 
@@ -375,7 +384,7 @@ export default function Navbar() {
                         <div className="absolute right-0 mt-2 w-36 bg-white border rounded-lg shadow-lg z-50">
                           <Link
                             href="/orders"
-                            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition text-sm font-medium"
+                            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition text-sm"
                             onClick={() => setOpen(false)}
                           >
                             <User className="w-4 h-4" />
@@ -430,7 +439,7 @@ export default function Navbar() {
                 <ShoppingCart className="w-5 h-5 text-black cursor-pointer" />
 
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-medium rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
                     {itemCount}
                   </span>
                 )}
@@ -463,7 +472,7 @@ export default function Navbar() {
               >
                 <ShoppingCart className="w-4 h-4 text-black" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-medium rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px]  rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
                     {itemCount}
                   </span>
                 )}
@@ -563,15 +572,15 @@ export default function Navbar() {
               className="
     relative items-center
     gap-2 px-1 py-2 rounded-full
-    font-medium text-gray-700
+     text-gray-700
    
     active:translate-y-0
     transition-all duration-200 group
-    block mt-4
+    block 
   "
             >
               {/* HOT badge */}
-              <span
+              {/* <span
                 className="
       absolute -top-3 left-36
       inline-flex items-center gap-1
@@ -582,7 +591,7 @@ export default function Navbar() {
               >
                 <Flame className="w-4 h-4" />
                 HOT
-              </span>
+              </span> */}
 
               {/* Text */}
               <span className="whitespace-nowrap">Corporate Gifting</span>
@@ -599,14 +608,32 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Tracking Link */}
+            {/* Sherise – Premium */}
             <Link
+              href={{
+                pathname: "/sherise", // dedicated offers route
+              }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="relative inline-flex items-center gap-2 px-2 py-2 mt-2 rounded-full  text-gray-600 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
+            >
+              {/* HOT badge */}
+              <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
+                <Flame className="w-3 h-3" />
+                SALE
+              </span>
+              <span className="whitespace-nowrap font-medium">
+                {t("Sherise-Week")}
+              </span>
+            </Link>
+
+            {/* Tracking Link */}
+            {/* <Link
               href="/track-order"
-              className="transition-all py-2 px-1 font-medium text-gray-700 hover:text-gray-900"
+              className="transition-all py-2 px-1  text-gray-700 hover:text-gray-900"
               onClick={() => setMobileMenuOpen(false)}
             >
               {t("Track Order")}
-            </Link>
+            </Link> */}
           </div>
         )}
       </nav>

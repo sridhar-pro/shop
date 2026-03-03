@@ -221,23 +221,50 @@ const WishlistProducts = () => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.h3
-        className="relative text-center text-[28px] md:text-[30px] font-semibold text-[#A00300] uppercase"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-      >
-        {t(title)}
-      </motion.h3>
+      {/* Title container */}
+      <div className="relative w-full text-center font-odop px-6 md:px-12 lg:px-20">
+        {/* Background ghost text */}
+        <motion.h3
+          className="select-none pointer-events-none relative text-[14vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {t(title).split(" ")[0]}
+        </motion.h3>
 
+        {/* Foreground main title */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center px-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          <h2 className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
+            {t(title)}
+          </h2>
+        </motion.div>
+      </div>
+
+      {/* View All link */}
       <motion.a
         href="/products"
-        className="mt-2 text-[12px] font-medium text-[#000d45] hover:text-[var(--primary-color)] underline underline-offset-4 transition-all duration-300"
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.96 }}
+        className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.4 }}
       >
-        {t("View All Products →")}
+        <span className="relative">
+          View All Products
+          <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
+        </span>
+        <motion.span
+          className="inline-block text-[14px]"
+          whileHover={{ x: 4 }}
+          transition={{ duration: 0.3 }}
+        >
+          →
+        </motion.span>
       </motion.a>
     </motion.div>
   );
@@ -320,7 +347,7 @@ const WishlistProducts = () => {
         key={product.id}
         variants={itemVariants}
         whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
-        className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full ${
+        className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full font-odop ${
           isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
         } ${extraWrapperClass}`}
       >
@@ -459,7 +486,7 @@ const WishlistProducts = () => {
 
             <Link href={`/products/${product.slug}`} passHref>
               <h3
-                className={`text-xs md:text-base font-semibold line-clamp-2 mb-0.5 md:mb-1 capitalize ${
+                className={`text-xs md:text-base line-clamp-2 mb-0.5 md:mb-1 capitalize ${
                   isOutOfStock
                     ? "text-gray-500"
                     : "text-gray-950 hover:text-[#A00300]"
@@ -1017,7 +1044,7 @@ const WishlistProducts = () => {
                                 product_id: quickViewProduct.id,
                                 historypincode: Number(
                                   localStorage.getItem("user_pincode") ||
-                                    600001,
+                                    600002,
                                 ),
                                 qty: quantity,
                                 cart_id: cartId,
@@ -1277,7 +1304,7 @@ const WishlistProducts = () => {
                           selected_country: "IN",
                           product_id: quickViewProduct.id,
                           historypincode: Number(
-                            localStorage.getItem("user_pincode") || 600001,
+                            localStorage.getItem("user_pincode") || 600002,
                           ),
                           qty: quantity,
                           cart_id: cartId,

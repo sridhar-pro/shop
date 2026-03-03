@@ -48,7 +48,7 @@ export async function generateMetadata({ params }) {
 
   try {
     const data = await fetchWithAuth(
-      "https://marketplace.yuukke.com/api/v1/Marketv2/homeCategory"
+      "https://marketplace.yuukke.com/api/v1/Marketv2/homeCategory",
     );
 
     if (!data) {
@@ -80,7 +80,7 @@ export async function generateMetadata({ params }) {
     let matchedSubcategory = null;
     if (matchedCategory?.subcategories?.length) {
       matchedSubcategory = matchedCategory.subcategories.find(
-        (sub) => sub.slug === subCategorySlug
+        (sub) => sub.slug === subCategorySlug,
       );
     }
     subcategoryId = matchedSubcategory ? matchedSubcategory.id : null;
@@ -90,7 +90,7 @@ export async function generateMetadata({ params }) {
     let matchedSubSubcategory = null;
     if (matchedSubcategory?.sub_subcategories?.length) {
       matchedSubSubcategory = matchedSubcategory.sub_subcategories.find(
-        (subsub) => subsub.slug === subSubCategorySlug
+        (subsub) => subsub.slug === subSubCategorySlug,
       );
     }
     subSubcategoryId = matchedSubSubcategory ? matchedSubSubcategory.id : null;
@@ -135,7 +135,7 @@ export async function generateMetadata({ params }) {
         }),
 
         next: { revalidate: 60 },
-      }
+      },
     );
 
     if (!res.ok) throw new Error("API error");

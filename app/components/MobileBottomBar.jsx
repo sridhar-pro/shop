@@ -15,7 +15,7 @@ const MobileBottomBar = () => {
   if (hiddenRoutes.includes(pathname)) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white shadow-[0_-1px_6px_rgba(0,0,0,0.05)] border-t border-gray-200 md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white shadow-[0_-1px_6px_rgba(0,0,0,0.05)] border-t border-gray-200 md:hidden font-odop">
       <div className="flex justify-around items-center py-3">
         {/* Products */}
         <button

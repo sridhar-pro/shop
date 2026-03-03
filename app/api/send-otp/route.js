@@ -19,7 +19,7 @@ export async function GET(req) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const data = await apiResponse.json();
@@ -41,7 +41,7 @@ export async function GET(req) {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }

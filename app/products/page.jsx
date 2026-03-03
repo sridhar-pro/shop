@@ -121,6 +121,10 @@ export default function AllProductsPage({
   const isReturnGiftsPage = pathname.includes("/RG01--bc119f84");
   const isFeaturedPage = pathname.includes("FE01--318f9ji");
   const isCorporatePage = pathname.includes("CP01--3jhfdkjs");
+  const isGetTitle9Page = pathname?.includes("/G01--3f7a9c2d");
+  const isGetTitle10Page = pathname?.includes("/G02--8bd14e6f");
+  const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
+  const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
 
   const searchQuery = search.get("query"); // like how warehousesId or categorySlug is handled
 
@@ -354,6 +358,10 @@ export default function AllProductsPage({
         ...(isReturnGiftsPage && { return_gifts: "1" }),
         ...(isFeaturedPage && { featured_products: "1" }),
         ...(isCorporatePage && { corporate_gifts: "1" }),
+        ...(isGetTitle9Page && { title9: "1" }),
+        ...(isGetTitle10Page && { title10: "1" }),
+        ...(isGetTitle11Page && { title11: "1" }),
+        ...(isGetTitle12Page && { title12: "1" }),
       },
     };
 
@@ -629,7 +637,7 @@ export default function AllProductsPage({
 
   return (
     <>
-      <div className="min-h-screen">
+      <div className="min-h-screen font-odop">
         {/* mobile devices */}
         <div className="block md:hidden">
           {/* Mobile Action Buttons - Only visible on mobile */}
@@ -1784,31 +1792,131 @@ export default function AllProductsPage({
 
               {/* Warehouse Info Section */}
               {warehouse && (
-                <div className="flex flex-col md:flex-row items-center bg-white rounded-3xl shadow p-6 mb-8">
-                  {/* Left: Warehouse Image */}
-                  <div className="w-full md:w-1/2 flex justify-center mb-4 md:mb-0">
-                    <img
-                      src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.store_logo}`}
-                      alt={warehouse.company_name || "Warehouse Logo"}
-                      className="w-48 h-48 object-contain rounded-2xl"
-                    />
+                <div className="relative flex flex-col md:flex-row overflow-hidden rounded-3xl mb-8 shadow-2xl bg-white border border-gray-100">
+                  {/* Decorative top bar */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-0.5 z-10"
+                    style={{
+                      background:
+                        "linear-gradient(to right, transparent, #A00300, transparent)",
+                    }}
+                  />
+
+                  {/* Left: Dark Navy Logo Panel */}
+                  <div className="relative w-full md:w-2/5 flex items-center justify-center p-10 overflow-hidden">
+                    {/* Logo ring */}
+                    <div
+                      className="relative z-10 flex items-center justify-center w-40 h-40 rounded-full"
+                      style={{ border: "1px solid rgba(160,3,0,0.4)" }}
+                    >
+                      <div
+                        className="absolute inset-0 rounded-full"
+                        style={{ border: "1px dashed rgba(160,3,0,0.2)" }}
+                      />
+                      <div
+                        className="w-32 h-32 rounded-full flex items-center justify-center overflow-hidden backdrop-blur-sm"
+                        style={{
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <img
+                          src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.store_logo}`}
+                          alt={warehouse.company_name || "Warehouse Logo"}
+                          className="w-24 h-24 object-contain"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Right: Warehouse Details */}
-                  <div className="w-full md:w-1/2 md:pl-8 flex flex-col justify-center text-center md:text-left">
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-gray-950 mb-2">
+                  {/* Right: Details Panel */}
+                  <div className="w-full md:w-3/5 flex flex-col justify-center px-8 py-10 md:px-10">
+                    {/* Verified badge */}
+                    {/* <div className="mb-4 w-fit">
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs font-medium tracking-widest uppercase px-3 py-1 rounded-full"
+                        style={{
+                          color: "#A00300",
+                          background: "rgba(160,3,0,0.06)",
+                          border: "1px solid rgba(160,3,0,0.2)",
+                        }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full animate-pulse"
+                          style={{ background: "#A00300" }}
+                        />
+                        Verified Warehouse
+                      </span>
+                    </div> */}
+
+                    {/* Company name */}
+                    <h2
+                      className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight mb-3"
+                      style={{ color: "#000930" }}
+                    >
                       {warehouse.company_name}
                     </h2>
 
-                    <p className="text-gray-700 text-sm md:text-base mb-4">
-                      <span
-                        dangerouslySetInnerHTML={{ __html: warehouse.address }}
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 mb-5">
+                      <div
+                        className="h-px w-10"
+                        style={{
+                          background:
+                            "linear-gradient(to right, #A00300, transparent)",
+                        }}
                       />
-                    </p>
+                      <div
+                        className="w-1.5 h-1.5 rotate-45 flex-shrink-0"
+                        style={{ background: "#A00300" }}
+                      />
+                    </div>
+
+                    {/* Address block */}
+                    {/* <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4"
+                          style={{ color: "#A00300" }}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium tracking-widest uppercase text-gray-400 mb-1">
+                          Location
+                        </p>
+                        <p className="text-sm text-gray-600 leading-relaxed font-light">
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: warehouse.address,
+                            }}
+                          />
+                        </p>
+                      </div>
+                    </div> */}
+                  </div>
+
+                  {/* Decorative bottom-right corner lines */}
+                  <div className="absolute bottom-0 right-0 w-12 h-12 pointer-events-none">
+                    <div
+                      className="absolute bottom-0 right-0 w-px h-8"
+                      style={{ background: "rgba(160,3,0,0.2)" }}
+                    />
+                    <div
+                      className="absolute bottom-0 right-0 h-px w-8"
+                      style={{ background: "rgba(160,3,0,0.2)" }}
+                    />
                   </div>
                 </div>
               )}
-
               {/* ✅ Modern Classic Offers Section */}
               {isOffersPage && (
                 <div className="w-full my-10 mb-4">
@@ -2091,6 +2199,130 @@ export default function AllProductsPage({
                 </div>
               )}
 
+              {isGetTitle9Page && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isGetTitle10Page && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isGetTitle11Page && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isGetTitle12Page && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Featured Collection
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          {title}
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ⭐ BOGO Offers Section */}
               {isBogo && (
                 <div className="w-full my-0 md:my-10 mb-4">
@@ -2313,7 +2545,7 @@ export default function AllProductsPage({
                             )}
 
                             <h3
-                              className="text-xs sm:text-sm md:text-base font-semibold line-clamp-2 mb-1 capitalize"
+                              className="text-xs sm:text-sm md:text-base  line-clamp-2 mb-1 capitalize"
                               style={{ minHeight: "2.75rem" }}
                             >
                               {product.name}
@@ -2347,7 +2579,7 @@ export default function AllProductsPage({
                                   </div>
                                 </div>
                               ) : (
-                                <p className="text-sm md:text-lg font-bold text-gray-950">
+                                <p className="text-sm md:text-lg font-medium text-gray-950">
                                   ₹ {Number(product.price).toFixed(2)}
                                 </p>
                               )}

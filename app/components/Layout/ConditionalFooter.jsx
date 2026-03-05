@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Footer from "./Footer";
+import NewFooter from "./New-Footer";
 
 export default function ConditionalFooter() {
   const pathname = usePathname();
@@ -11,5 +11,5 @@ export default function ConditionalFooter() {
 
   if (hideFooterRoutes.includes(pathname)) return null;
 
-  return <Footer />;
+  return <NewFooter />;
 }

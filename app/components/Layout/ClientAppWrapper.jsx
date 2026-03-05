@@ -125,7 +125,7 @@ export default function ClientAppWrapper({ children }) {
               {children}
               <FlashSaleOffer />
               <ConditionalFooter />
-              <NewFooter />
+              {/* <NewFooter /> */}
             </main>
 
             <MobileBottomBar />

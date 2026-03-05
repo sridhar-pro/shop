@@ -22,6 +22,7 @@ import {
   ArrowUpDown,
   Gift,
   PackageSearch,
+  Store,
 } from "lucide-react";
 import { useAuth } from "../utils/AuthContext";
 import Image from "next/image";
@@ -125,6 +126,7 @@ export default function AllProductsPage({
   const isGetTitle10Page = pathname?.includes("/G02--8bd14e6f");
   const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
   const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
+  const isWomensday = "/products/womensday-saleweek";
 
   const searchQuery = search.get("query"); // like how warehousesId or categorySlug is handled
 
@@ -349,6 +351,7 @@ export default function AllProductsPage({
             start_date: today,
           },
         }),
+
         ...(isFestivalGifting && { best_selling: "1" }), // ✅ Added this
         ...(isBogo && { bogo: "1" }),
         ...(isNewarrivalsPage && { new_arrivals: "1" }),
@@ -362,6 +365,7 @@ export default function AllProductsPage({
         ...(isGetTitle10Page && { title10: "1" }),
         ...(isGetTitle11Page && { title11: "1" }),
         ...(isGetTitle12Page && { title12: "1" }),
+        ...(isWomensday && { title13: "1" }),
       },
     };
 
@@ -442,6 +446,8 @@ export default function AllProductsPage({
   const isSearchPage = !!searchQuery;
 
   // console.log("searchQuery:", searchQuery);
+
+  const hasVideo = warehouse?.about_video;
 
   // 👇 New Effect: reset pagination when search changes
   useEffect(() => {
@@ -1792,131 +1798,198 @@ export default function AllProductsPage({
 
               {/* Warehouse Info Section */}
               {warehouse && (
-                <div className="relative flex flex-col md:flex-row overflow-hidden rounded-3xl mb-8 shadow-2xl bg-white border border-gray-100">
-                  {/* Decorative top bar */}
+                <>
+                  <style>{`
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .wh-card { animation: fadeSlideUp 0.5s ease both; }
+      .wh-logo-wrap:hover img { transform: scale(1.04); }
+      .wh-logo-wrap img { transition: transform 0.4s ease; }
+    `}</style>
+
                   <div
-                    className="absolute top-0 left-0 right-0 h-0.5 z-10"
+                    className="wh-card relative flex flex-col md:flex-row overflow-hidden mb-8"
                     style={{
-                      background:
-                        "linear-gradient(to right, transparent, #A00300, transparent)",
+                      borderRadius: "20px",
+                      boxShadow:
+                        "0 2px 4px rgba(0,0,0,0.04), 0 12px 40px rgba(0,9,48,0.10), 0 0 0 1px rgba(0,9,48,0.07)",
+                      background: "#ffffff",
+                      minHeight: "240px",
                     }}
-                  />
-
-                  {/* Left: Dark Navy Logo Panel */}
-                  <div className="relative w-full md:w-2/5 flex items-center justify-center p-10 overflow-hidden">
-                    {/* Logo ring */}
+                  >
+                    {/* LEFT PANEL */}
                     <div
-                      className="relative z-10 flex items-center justify-center w-40 h-40 rounded-full"
-                      style={{ border: "1px solid rgba(160,3,0,0.4)" }}
+                      className={`relative flex flex-col items-center justify-center overflow-hidden flex-shrink-0
+          ${hasVideo ? "w-full md:w-[38%]" : "w-full md:w-[38%]"}`}
+                      style={{
+                        background: "#f7f7f8",
+                        padding: "44px 32px",
+                        minHeight: "240px",
+                        borderRight: "1px solid rgba(0,9,48,0.07)",
+                      }}
                     >
+                      {/* Logo or Fallback Icon */}
                       <div
-                        className="absolute inset-0 rounded-full"
-                        style={{ border: "1px dashed rgba(160,3,0,0.2)" }}
-                      />
-                      <div
-                        className="w-32 h-32 rounded-full flex items-center justify-center overflow-hidden backdrop-blur-sm"
+                        className="wh-logo-wrap flex items-center justify-center"
                         style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.1)",
+                          width: "100px",
+                          height: "100px",
+                          background: "#ffffff",
+                          borderRadius: "10px",
+                          boxShadow:
+                            "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,9,48,0.08)",
+                          border: "1px solid rgba(0,9,48,0.06)",
                         }}
                       >
-                        <img
-                          src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.store_logo}`}
-                          alt={warehouse.company_name || "Warehouse Logo"}
-                          className="w-24 h-24 object-contain"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Details Panel */}
-                  <div className="w-full md:w-3/5 flex flex-col justify-center px-8 py-10 md:px-10">
-                    {/* Verified badge */}
-                    {/* <div className="mb-4 w-fit">
-                      <span
-                        className="inline-flex items-center gap-1.5 text-xs font-medium tracking-widest uppercase px-3 py-1 rounded-full"
-                        style={{
-                          color: "#A00300",
-                          background: "rgba(160,3,0,0.06)",
-                          border: "1px solid rgba(160,3,0,0.2)",
-                        }}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full animate-pulse"
-                          style={{ background: "#A00300" }}
-                        />
-                        Verified Warehouse
-                      </span>
-                    </div> */}
-
-                    {/* Company name */}
-                    <h2
-                      className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight mb-3"
-                      style={{ color: "#000930" }}
-                    >
-                      {warehouse.company_name}
-                    </h2>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-3 mb-5">
-                      <div
-                        className="h-px w-10"
-                        style={{
-                          background:
-                            "linear-gradient(to right, #A00300, transparent)",
-                        }}
-                      />
-                      <div
-                        className="w-1.5 h-1.5 rotate-45 flex-shrink-0"
-                        style={{ background: "#A00300" }}
-                      />
-                    </div>
-
-                    {/* Address block */}
-                    {/* <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center">
-                        <svg
-                          className="w-4 h-4"
-                          style={{ color: "#A00300" }}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium tracking-widest uppercase text-gray-400 mb-1">
-                          Location
-                        </p>
-                        <p className="text-sm text-gray-600 leading-relaxed font-light">
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: warehouse.address,
+                        {warehouse.store_logo ? (
+                          <img
+                            src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.store_logo}`}
+                            alt={warehouse.company_name || "Warehouse Logo"}
+                            style={{
+                              width: "68px",
+                              height: "68px",
+                              objectFit: "contain",
                             }}
                           />
-                        </p>
+                        ) : (
+                          <Store
+                            size={36}
+                            strokeWidth={1.5}
+                            color="#000930"
+                            style={{ opacity: 0.35 }}
+                          />
+                        )}
                       </div>
-                    </div> */}
-                  </div>
 
-                  {/* Decorative bottom-right corner lines */}
-                  <div className="absolute bottom-0 right-0 w-12 h-12 pointer-events-none">
+                      {/* Company name — video layout */}
+                      {hasVideo && (
+                        <p
+                          className="text-center mt-5"
+                          style={{
+                            color: "#000930",
+                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            opacity: 0.7,
+                          }}
+                        >
+                          {warehouse.company_name}
+                        </p>
+                      )}
+
+                      {/* Red rule */}
+                      <div
+                        style={{
+                          marginTop: hasVideo ? "12px" : "16px",
+                          width: "24px",
+                          height: "2px",
+                          borderRadius: "2px",
+                          background: "#A00300",
+                          opacity: 0.7,
+                        }}
+                      />
+                    </div>
+
+                    {/* RIGHT PANEL */}
                     <div
-                      className="absolute bottom-0 right-0 w-px h-8"
-                      style={{ background: "rgba(160,3,0,0.2)" }}
-                    />
-                    <div
-                      className="absolute bottom-0 right-0 h-px w-8"
-                      style={{ background: "rgba(160,3,0,0.2)" }}
-                    />
+                      className="flex-1 flex flex-col justify-center"
+                      style={{ padding: "36px 40px", background: "#fafafa" }}
+                    >
+                      {/* No-video: company name + address */}
+                      {!hasVideo && (
+                        <>
+                          <div style={{ marginBottom: "4px" }}></div>
+
+                          <h2
+                            style={{
+                              fontSize: "clamp(1.25rem, 2.5vw, 1.75rem)",
+                              fontWeight: 800,
+                              color: "#000930",
+                              letterSpacing: "-0.025em",
+                              lineHeight: 1.2,
+                              marginBottom: "20px",
+                            }}
+                            className="capitalize"
+                          >
+                            {warehouse.company_name}
+                          </h2>
+
+                          {/* Divider */}
+                          <div className="flex items-center gap-3 mb-5">
+                            <div
+                              className="h-px w-10"
+                              style={{
+                                background:
+                                  "linear-gradient(to right, #A00300, transparent)",
+                              }}
+                            />
+                            <div
+                              className="w-1.5 h-1.5 rotate-45 flex-shrink-0"
+                              style={{ background: "#A00300" }}
+                            />
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <div></div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Video layout */}
+                      {hasVideo && (
+                        <>
+                          <div style={{ marginBottom: "14px" }}>
+                            <span
+                              style={{
+                                fontSize: "0.6rem",
+                                fontWeight: 700,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                color: "#A00300",
+                              }}
+                            >
+                              About Us
+                            </span>
+                          </div>
+
+                          <div
+                            className="relative overflow-hidden"
+                            style={{
+                              borderRadius: "12px",
+                              height: "210px",
+                              boxShadow:
+                                "0 2px 8px rgba(0,9,48,0.08), 0 0 0 1px rgba(0,9,48,0.06)",
+                            }}
+                          >
+                            <video
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                              controls
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            >
+                              <source
+                                src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.about_video}`}
+                                type="video/mp4"
+                              />
+                            </video>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
+
               {/* ✅ Modern Classic Offers Section */}
               {isOffersPage && (
                 <div className="w-full my-10 mb-4">
@@ -1965,6 +2038,37 @@ export default function AllProductsPage({
                         </span>
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
                           Yuukke Hot Picks
+                        </h2>
+                        <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-gray-700 leading-relaxed">
+                          Discover our most popular products, loved by thousands
+                          of happy customers!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isWomensday && (
+                <div className="w-full my-0 md:my-10 mb-4">
+                  <div className="relative group">
+                    {/* Decorative accent */}
+                    <div className="absolute -left-4 top-0 h-full w-1 bg-[#a00300] rounded-full"></div>
+
+                    {/* Content container */}
+                    <div className="pl-4">
+                      {/* Section header */}
+                      <div className="flex flex-col space-y-1 mb-6">
+                        <span className="text-sm uppercase tracking-wider text-[#a00300] font-medium">
+                          Women's Day
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-950">
+                          Yuukke Sale-Week
                         </h2>
                         <div className="w-20 h-1 bg-[#a00300] mt-2"></div>
                       </div>

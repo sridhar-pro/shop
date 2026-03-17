@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../utils/AuthContext";
 import { useSession } from "../context/SessionContext";
-import ScratchCardPopup from "./ScratchCard";
 import { toast } from "react-toastify";
 
 export default function CheckoutPage({ formData }) {
@@ -27,8 +26,6 @@ export default function CheckoutPage({ formData }) {
 
   const [couponValue, setCouponValue] = useState(0);
 
-  const [showScratch, setShowScratch] = useState(true);
-
   const [code, setCode] = useState("");
   const [isApplied, setIsApplied] = useState(false);
 
@@ -37,14 +34,6 @@ export default function CheckoutPage({ formData }) {
   const [bogoOffers, setBogoOffers] = useState([]);
 
   const [applyingOffer, setApplyingOffer] = useState(false); // track button state
-
-  useEffect(() => {
-    // 🎉 Auto-trigger scratch card after page load
-    const timer = setTimeout(() => {
-      setShowScratch(true);
-    }, 1500); // Delay for cinematic effect 😎
-    return () => clearTimeout(timer);
-  }, [setShowScratch]);
 
   // 🧮 Currency parser
   const parseCurrency = (val) =>
@@ -627,16 +616,6 @@ export default function CheckoutPage({ formData }) {
             </motion.div>
           ) : paymentSuccess ? (
             <>
-              {/* 🎁 Scratch Card Popup */}
-              {showScratch && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                >
-                  <ScratchCardPopup onClose={() => setShowScratch(false)} />
-                </motion.div>
-              )}
               <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}

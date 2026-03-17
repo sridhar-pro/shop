@@ -138,7 +138,7 @@ export default function ClientAppWrapper({ children }) {
               closeOnClick
               pauseOnHover
               theme="light"
-              style={{ marginBottom: "2.5rem" }}
+              style={{ marginBottom: "2.5rem", zIndex: 999999 }}
             />
 
             <LazyAnalytics />

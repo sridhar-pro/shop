@@ -426,7 +426,7 @@ const FeaturedProducts = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
             >
-              <h2 className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
+              <h2 className="text-[26px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
                 {t(title)}
               </h2>
             </motion.div>
@@ -485,11 +485,12 @@ const FeaturedProducts = () => {
       >
         {products.map((product) => {
           const now = new Date();
+
           const promoEndDate = product.end_date
-            ? new Date(product.end_date)
+            ? new Date(product.end_date + "T23:59:59")
             : null;
-          const isPromoActive =
-            promoEndDate && promoEndDate.getTime() > now.getTime();
+
+          const isPromoActive = promoEndDate ? now <= promoEndDate : false;
 
           const hasPromo =
             isPromoActive &&
@@ -508,6 +509,41 @@ const FeaturedProducts = () => {
           const discountPercent = hasPromo
             ? Math.round(((originalPrice - promoPrice) / originalPrice) * 100)
             : 0;
+
+          // Parse offers safely
+          let bestOffer = null;
+
+          try {
+            const parsedOffers = product.offers
+              ? JSON.parse(product.offers)
+              : [];
+
+            if (Array.isArray(parsedOffers) && parsedOffers.length > 0) {
+              // Remove empty / invalid offers
+              const validOffers = parsedOffers.filter((offer) => {
+                const qty = Number(offer.offer_qty);
+                const price = Number(offer.offer_price);
+
+                return (
+                  offer.offer_qty !== "" &&
+                  offer.offer_price !== "" &&
+                  !isNaN(qty) &&
+                  !isNaN(price) &&
+                  qty > 0 &&
+                  price > 0
+                );
+              });
+
+              // Pick highest quantity
+              if (validOffers.length > 0) {
+                bestOffer = validOffers.reduce((max, offer) =>
+                  Number(offer.offer_qty) > Number(max.offer_qty) ? offer : max,
+                );
+              }
+            }
+          } catch (err) {
+            console.warn("Offer parse error:", err);
+          }
 
           const showPromoTag = product.promo_tag;
           const review = Number(product.review);
@@ -531,9 +567,10 @@ const FeaturedProducts = () => {
                 frontImage: variant.front_view || null,
                 backImage: variant.back_view || null,
                 zoomImage: variant.zoom_view || null,
+                discount_price: Number(variant.discount_price) || 0, // ✅ ADD THIS
+                promo_percentage: Number(variant.promo_percentage) || 0, // optional
               }))
             : [];
-
           // ✅ Selected variant comes from global state
           const selectedVariant =
             selectedVariants[product.id] ||
@@ -542,6 +579,45 @@ const FeaturedProducts = () => {
           // ✅ Calculate final price (base + variant)
           const variantExtra = selectedVariant ? selectedVariant.price : 0;
           const finalPrice = promoPrice + variantExtra;
+
+          // Check if variants exist
+          const hasVariants = variants.length > 0;
+
+          // Base variant price
+          const variantPrice = Number(
+            selectedVariant?.price || variants[0]?.price || 0,
+          );
+
+          // Variant discount price
+          const variantDiscountPrice = Number(
+            selectedVariant?.discount_price || 0,
+          );
+
+          const variantPromoPercent = Math.max(
+            0,
+            Number(selectedVariant?.promo_percentage) || 0,
+          );
+
+          // Final base price
+          const basePrice = hasVariants ? variantPrice : Number(product.price);
+
+          // Promo base price
+          let promoBasePrice;
+          if (hasVariants) {
+            promoBasePrice =
+              hasPromo && variantPromoPercent > 0 && variantDiscountPrice > 0
+                ? variantDiscountPrice
+                : variantPrice;
+          } else {
+            // Non variant products
+            promoBasePrice =
+              hasPromo && product.promo_price
+                ? Number(product.promo_price)
+                : Number(product.price);
+          }
+
+          // Final prices
+          const displayPrice = hasPromo ? promoBasePrice : basePrice;
 
           const mainImageSrc = selectedVariant?.frontImage
             ? getImageSrc(selectedVariant.frontImage)
@@ -749,114 +825,90 @@ const FeaturedProducts = () => {
                 <div className="mt-0">
                   {/* Price Display */}
                   <div className="space-y-1 mt-1">
-                    {hasPromo ? (
-                      <>
-                        <div className="flex items-baseline gap-1.5 md:gap-2 flex-wrap">
-                          <p
-                            className={`text-sm md:text-lg font-bold ${
-                              isOutOfStock ? "text-gray-500" : "text-[#A00300]"
-                            }`}
-                          >
-                            ₹
-                            {(
-                              Number(product.promo_price) +
-                              (selectedVariant?.price || 0)
-                            ).toFixed(2)}
-                          </p>
+                    <div className="flex items-baseline gap-1.5 md:gap-2 flex-wrap">
+                      <p
+                        className={`text-sm md:text-lg font-bold ${
+                          isOutOfStock ? "text-gray-500" : "text-[#A00300]"
+                        }`}
+                      >
+                        ₹
+                        {(hasPromo && (!hasVariants || variantPromoPercent > 0)
+                          ? promoBasePrice
+                          : basePrice
+                        ).toFixed(2)}
+                      </p>
+
+                      {hasPromo &&
+                        (!hasVariants || variantPromoPercent > 0) && (
                           <p className="text-xs md:text-sm text-gray-400 line-through">
-                            ₹
-                            {(
-                              Number(product.price) +
-                              (selectedVariant?.price || 0)
-                            ).toFixed(2)}
+                            ₹{basePrice.toFixed(2)}
                           </p>
-                        </div>
-
-                        {/* Show discount badge only on mobile in next line */}
-                        <span className="block md:inline text-[10px] md:text-xs font-bold text-red-600 bg-transparent md:bg-green-100 px-1.5 md:px-2 py-[1px] md:py-0.5 rounded-lg md:ml-2">
-                          {Math.round(
-                            ((Number(product.price) -
-                              Number(product.promo_price)) /
-                              Number(product.price)) *
-                              100,
-                          )}
-                          {t("% OFF")}
-                        </span>
-                      </>
-                    ) : (
-                      <div className="flex items-baseline gap-1.5 md:gap-2 flex-wrap">
-                        <p
-                          className={`text-sm md:text-lg font-medium ${
-                            isOutOfStock ? "text-gray-500" : "text-[#A00300]"
-                          }`}
-                        >
-                          ₹
-                          {(
-                            Number(product.price) +
-                            (selectedVariant?.price || 0)
-                          ).toFixed(2)}
-                        </p>
-
-                        {variants.length > 0 && (
-                          <div className="relative ml-2 font-odop w-[90px] md:w-[110px]">
-                            <select
-                              value={selectedVariant?.id}
-                              onChange={(e) => {
-                                const v = variants.find(
-                                  (v) => String(v.id) === e.target.value,
-                                );
-                                setSelectedVariants((prev) => ({
-                                  ...prev,
-                                  [product.id]: v,
-                                }));
-                              }}
-                              className="
-        appearance-none
-        text-xs md:text-sm
-        uppercase font-medium
-        pl-3 pr-8
-        py-1.5 md:py-2
-        rounded-lg
-        border border-gray-300
-        bg-white
-        shadow-sm
-        cursor-pointer
-        w-full
-        truncate
-        focus:outline-none
-        focus:ring-2 focus:ring-[#A00300] focus:border-[#A00300]
-        hover:border-[#A00300]/70
-        transition-all duration-200
-      "
-                            >
-                              {variants.map((variant) => (
-                                <option key={variant.id} value={variant.id}>
-                                  {variant.name}
-                                </option>
-                              ))}
-                            </select>
-
-                            <span className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                              <svg
-                                className="w-4 h-4 text-gray-500"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M19 9l-7 7-7-7"
-                                />
-                              </svg>
-                            </span>
-                          </div>
                         )}
+                    </div>
+
+                    {hasPromo && (!hasVariants || variantPromoPercent > 0) && (
+                      <span className="block md:inline text-[10px] md:text-xs font-bold text-red-600 bg-transparent md:bg-green-100 px-1.5 md:px-2 py-[1px] md:py-0.5 rounded-lg md:ml-2">
+                        {hasVariants && variantPromoPercent > 0
+                          ? variantPromoPercent
+                          : Math.round(
+                              ((Number(product.price) -
+                                Number(product.promo_price)) /
+                                Number(product.price)) *
+                                100,
+                            )}
+                        {t("% OFF")}
+                      </span>
+                    )}
+
+                    {/* ✅ Variant dropdown always visible */}
+                    {variants.length > 0 && (
+                      <div className="relative mt-2 font-odop w-[90px] md:w-[110px]">
+                        <select
+                          value={selectedVariant?.id}
+                          onChange={(e) => {
+                            const v = variants.find(
+                              (v) => String(v.id) === e.target.value,
+                            );
+                            setSelectedVariants((prev) => ({
+                              ...prev,
+                              [product.id]: v,
+                            }));
+                          }}
+                          className="appearance-none text-xs md:text-sm uppercase font-medium pl-3 pr-8 py-1.5 md:py-2 rounded-lg border border-gray-300 bg-white shadow-sm cursor-pointer w-full truncate focus:outline-none focus:ring-2 focus:ring-[#A00300] focus:border-[#A00300] hover:border-[#A00300]/70 transition-all duration-200"
+                        >
+                          {variants.map((variant) => (
+                            <option key={variant.id} value={variant.id}>
+                              {variant.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <span className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                          <svg
+                            className="w-4 h-4 text-gray-500"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </span>
                       </div>
                     )}
                   </div>
+                  {bestOffer && (
+                    <div className="mt-2 mb-1">
+                      <div className="relative inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-[12px] md:text-sm font-bold px-2 md:px-3 py-[2px] md:py-1 rounded-tl-lg rounded-br-lg shadow-md">
+                        Buy {bestOffer.offer_qty} for ₹{bestOffer.offer_price}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -899,6 +951,10 @@ const FeaturedProducts = () => {
         name: variant.name,
         price: Number(variant.price),
         quantity: Number(variant.quantity),
+
+        // ⭐ ADD THESE
+        discount_price: Number(variant.discount_price) || 0,
+        promo_percentage: Number(variant.promo_percentage) || 0,
       }))
     : [];
 
@@ -987,8 +1043,8 @@ const FeaturedProducts = () => {
               </div>
 
               {[
-                { key: "arrival", products: newArrivalProducts, margin: "" },
-                { key: "return", products: returnProducts, margin: "mt-32" },
+                // { key: "arrival", products: newArrivalProducts, margin: "" },
+                { key: "return", products: returnProducts, margin: "" },
                 { key: "gift", products: giftProducts, margin: "mt-32" },
                 {
                   key: "featured",
@@ -1087,7 +1143,7 @@ const FeaturedProducts = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-4 md:py-0 overflow-y-auto"
+            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-4 md:py-0 overflow-y-auto font-odop"
             onClick={(e) =>
               e.target === e.currentTarget && setQuickViewProduct(null)
             }
@@ -1197,7 +1253,7 @@ const FeaturedProducts = () => {
                         </div>
                       )}
 
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-950 mb-2 capitalize">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-medium text-gray-950 mb-2 capitalize">
                       {quickViewProduct.name}
                     </h2>
 
@@ -1213,54 +1269,94 @@ const FeaturedProducts = () => {
                     </div>
 
                     <div className="mb-3 md:mb-4">
-                      {quickViewProduct?.price && (
-                        <>
-                          {quickViewProduct?.promotion === "1" &&
-                          quickViewProduct?.promo_price &&
+                      {(() => {
+                        const hasVariants =
+                          quickViewProduct?.product_variants &&
+                          quickViewProduct.product_variants.length > 0;
+
+                        const variantPrice = Number(
+                          selectedQuickVariant?.price || 0,
+                        );
+                        const variantDiscount = Number(
+                          selectedQuickVariant?.discount_price || 0,
+                        );
+
+                        const variantPromoPercent = Math.max(
+                          0,
+                          Number(selectedQuickVariant?.promo_percentage) || 0,
+                        );
+
+                        const productPrice = Number(
+                          quickViewProduct?.price || 0,
+                        );
+                        const productPromo = Number(
+                          quickViewProduct?.promo_price || 0,
+                        );
+
+                        const isPromoActive =
+                          quickViewProduct?.promotion === "1" &&
                           quickViewProduct?.end_date &&
-                          new Date(quickViewProduct.end_date) > new Date() ? (
-                            <>
-                              {/* ✅ Promo Price */}
-                              <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
-                                ₹
-                                {(
-                                  Number(quickViewProduct.promo_price) +
-                                  Number(selectedQuickVariant?.price || 0)
-                                ).toFixed(2)}
-                              </span>
+                          new Date(quickViewProduct.end_date + "T23:59:59") >=
+                            new Date();
 
-                              {/* ✅ Strikeout Original */}
-                              <span className="ml-2 sm:ml-4 text-lg sm:text-xl text-gray-400 line-through">
-                                ₹
-                                {(
-                                  Number(quickViewProduct.price) +
-                                  Number(selectedQuickVariant?.price || 0)
-                                ).toFixed(2)}
-                              </span>
+                        let finalPrice;
+                        let originalPrice;
+                        let discountPercent;
 
-                              {/* ✅ Discount % */}
-                              <span className="ml-2 sm:ml-4 text-sm sm:text-base text-red-600 font-semibold">
-                                {Math.round(
-                                  ((Number(quickViewProduct.price) -
-                                    Number(quickViewProduct.promo_price)) /
-                                    Number(quickViewProduct.price)) *
-                                    100,
-                                )}
-                                {t("% OFF")}
-                              </span>
-                            </>
-                          ) : (
-                            // ✅ No promo → just show total
-                            <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
-                              ₹
-                              {(
-                                Number(quickViewProduct.price) +
-                                Number(selectedQuickVariant?.price || 0)
-                              ).toFixed(2)}
+                        if (hasVariants) {
+                          const isVariantPromoValid =
+                            isPromoActive &&
+                            variantPromoPercent > 0 &&
+                            variantDiscount > 0;
+
+                          finalPrice = isVariantPromoValid
+                            ? variantDiscount
+                            : variantPrice;
+                          originalPrice = isVariantPromoValid
+                            ? variantPrice
+                            : null;
+                          discountPercent = isVariantPromoValid
+                            ? variantPromoPercent
+                            : 0;
+                        } else {
+                          const isProductPromoValid =
+                            isPromoActive &&
+                            productPromo > 0 &&
+                            productPromo < productPrice;
+
+                          finalPrice = isProductPromoValid
+                            ? productPromo
+                            : productPrice;
+                          originalPrice = isProductPromoValid
+                            ? productPrice
+                            : null;
+                          discountPercent = isProductPromoValid
+                            ? Math.round(
+                                ((productPrice - productPromo) / productPrice) *
+                                  100,
+                              )
+                            : 0;
+                        }
+                        return (
+                          <div className="flex items-baseline gap-3 flex-wrap">
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-medium text-gray-800">
+                              ₹{finalPrice.toFixed(2)}
                             </span>
-                          )}
-                        </>
-                      )}
+
+                            {originalPrice && (
+                              <span className="text-lg sm:text-xl text-gray-400 line-through">
+                                ₹{originalPrice.toFixed(2)}
+                              </span>
+                            )}
+
+                            {discountPercent > 0 && (
+                              <span className="text-sm sm:text-base text-red-600 font-medium">
+                                {discountPercent}% OFF
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* <p className="text-gray-600 leading-relaxed text-xs sm:text-sm mb-4 md:mb-6 line-clamp-3 md:line-clamp-none">

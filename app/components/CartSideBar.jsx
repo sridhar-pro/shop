@@ -178,18 +178,41 @@ const CartSidebar = ({ isOpen, onClose }) => {
       }
 
       const data = await res.json();
+
+      // ✅ Cache the full response for checkout page
+      localStorage.setItem("cart_summary_cache", JSON.stringify(data));
+
       const cart = data.cart_data || {};
 
       // Extract items from contents
-      const items = Object.values(cart.contents || {}).map((item) => ({
-        rowid: item.rowid,
-        product_id: item.product_id,
-        id: item.id,
-        name: item.name,
-        subtotal: item.subtotal || "₹0.00",
-        qty: item.qty || 1,
-        image: item.image || "/fallback.png",
-      }));
+      const items = Object.values(cart.contents || {}).map((item) => {
+        let image = item.image || "/fallback.png";
+
+        let variantId = null;
+
+        if (item.option && Array.isArray(item.options)) {
+          const selectedVariant = item.options.find(
+            (opt) => String(opt.id) === String(item.option),
+          );
+
+          if (selectedVariant?.front_view) {
+            image = selectedVariant.front_view;
+          }
+
+          variantId = selectedVariant?.id || null;
+        }
+
+        return {
+          rowid: item.rowid,
+          product_id: item.product_id,
+          variant_id: variantId,
+          id: item.id,
+          name: item.name,
+          subtotal: item.subtotal || "₹0.00",
+          qty: item.qty || 1,
+          image: image,
+        };
+      });
 
       // Extract totals
       const totals = {
@@ -259,7 +282,12 @@ const CartSidebar = ({ isOpen, onClose }) => {
     }
   };
 
-  const updateSingleItemQty = async ({ rowid, product_id, qty }) => {
+  const updateSingleItemQty = async ({
+    rowid,
+    product_id,
+    variant_id,
+    qty,
+  }) => {
     try {
       const cartId = localStorage.getItem("cart_id");
       if (!cartId) return;
@@ -271,12 +299,16 @@ const CartSidebar = ({ isOpen, onClose }) => {
         historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         cart_id: cartId,
 
-        // 👇 Special fields for Qty Update only
         is_update: 1,
         rowid: rowid,
         product_id: product_id,
-        qty: qty, // 👈 NOT ARRAY — just a number
+        qty: qty,
       };
+
+      // ✅ send variant only if exists
+      if (variant_id) {
+        payload.variant_id = variant_id;
+      }
 
       const res = await fetch("/api/addcart", {
         method: "POST",
@@ -289,20 +321,18 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
       const data = await res.json();
       console.log("📩 Qty Update Response:", data);
+
       if (data.status === "error") {
-        // 🔴 Show all errors if available
         if (Array.isArray(data.errors) && data.errors.length > 0) {
           data.errors.forEach((err) =>
             toast.error(err, { position: "top-center", autoClose: 3000 }),
           );
         } else {
-          toast.error(data.message || "Failed to update cart", {
-            position: "top-center",
-            autoClose: 3000,
-          });
+          toast.error(data.message || "Failed to update cart");
         }
         return null;
       }
+
       return data;
     } catch (err) {
       console.error("❌ updateSingleItemQty error:", err);
@@ -323,9 +353,9 @@ const CartSidebar = ({ isOpen, onClose }) => {
       const response = await updateSingleItemQty({
         rowid: currentItem.rowid,
         product_id: currentItem.product_id,
+        variant_id: currentItem.variant_id,
         qty: newQty,
       });
-
       if (response) {
         const updatedCart = cartData.map((item) =>
           item.rowid === id ? { ...item, qty: newQty } : item,
@@ -361,9 +391,9 @@ const CartSidebar = ({ isOpen, onClose }) => {
       const response = await updateSingleItemQty({
         rowid: currentItem.rowid,
         product_id: currentItem.product_id,
+        variant_id: currentItem.variant_id,
         qty: newQty,
       });
-
       if (response) {
         const updatedCart = cartData.map((item) =>
           item.rowid === id ? { ...item, qty: newQty } : item,
@@ -544,12 +574,18 @@ const CartSidebar = ({ isOpen, onClose }) => {
                                 )}
                               </button>
                             </div>
-
                             <div className="flex items-center justify-between mt-2">
-                              <span className="font-medium flex items-center text-sm sm:text-base">
-                                {/* <IndianRupee className="w-3 h-3 mr-1" /> */}
-                                {item.subtotal}
-                              </span>
+                              {/* Price + Tax note */}
+                              <div className="flex flex-col">
+                                <span className="font-medium flex items-center text-sm sm:text-base">
+                                  {item.subtotal}
+                                </span>
+                                <span className="text-[11px] text-gray-500 leading-none">
+                                  Incl. of all taxes
+                                </span>
+                              </div>
+
+                              {/* Quantity Controls */}
                               <div className="flex items-center bg-gray-50 rounded-sm overflow-hidden">
                                 <button
                                   onClick={() => decrementQty(item.rowid)}
@@ -562,7 +598,9 @@ const CartSidebar = ({ isOpen, onClose }) => {
                                 >
                                   <Minus className="w-3 h-3" />
                                 </button>
+
                                 <span className="px-2 text-sm">{item.qty}</span>
+
                                 <button
                                   onClick={() => incrementQty(item.rowid)}
                                   className="px-2 py-2 hover:bg-gray-100 transition"

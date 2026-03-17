@@ -109,7 +109,7 @@ export function WobbleCardDemo() {
                 transition={{ delay: 0.15, duration: 0.6 }}
                 className="text-[10px] tracking-[0.5em] uppercase text-[#000940] font-medium block"
               >
-                Limited Time Experience
+                Latest Collection
               </motion.span>
 
               <motion.h1
@@ -118,13 +118,12 @@ export function WobbleCardDemo() {
                 transition={{ delay: 0.3, duration: 0.7 }}
                 className="mt-4 text-4xl sm:text-5xl md:text-6xl font-light tracking-tight text-[#000940]"
               >
-                Celebrate Her
+                Discover
                 <span className="block mt-2 bg-gradient-to-r from-[#A00300] via-[#c1132c] to-[#000940] bg-clip-text text-transparent font-semibold">
-                  Women’s Day Collection
+                  New Arrivals
                 </span>
               </motion.h1>
 
-              {/* Subtle glowing divider */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: [0.3, 1, 0.3] }}

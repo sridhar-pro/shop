@@ -49,11 +49,23 @@ export default function Navbar() {
   useEffect(() => {
     if (!isAuthReady) return;
 
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+
+    const getTokenWithRetry = async () => {
+      for (let i = 0; i < 5; i++) {
+        const token = await getValidToken();
+        if (token) return token;
+        await wait(300);
+      }
+      return null;
+    };
+
     const fetchNews = async () => {
       try {
-        const token = await getValidToken();
+        const token = await getTokenWithRetry();
+
         if (!token) {
-          console.warn("⚠️ No auth token available for getNews");
+          console.warn("⚠️ Token unavailable");
           return;
         }
 
@@ -83,7 +95,7 @@ export default function Navbar() {
     };
 
     fetchNews();
-  }, [isAuthReady, getValidToken]);
+  }, [isAuthReady]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -181,6 +181,14 @@ const nextConfig = {
         destination: `${BASE_API}/viewdetails`,
       },
       {
+        source: "/api/getprofile",
+        destination: `${BASE_API}/getprofile`,
+      },
+      {
+        source: "/api/profile_update",
+        destination: `${BASE_API}/profile_update`,
+      },
+      {
         source: "/api/addreview",
         destination: `${BASE_API}/addReview`,
       },

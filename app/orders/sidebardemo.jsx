@@ -11,7 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { cn } from "../lib/utils";
-import { Package } from "lucide-react";
+import { Package, ShoppingBagIcon } from "lucide-react";
 import { useSession } from "../context/SessionContext";
 import { useSearchParams } from "next/navigation";
 import MyOrders from "./myOrders";
@@ -37,25 +37,25 @@ export function SidebarDemo() {
       onClick: () => setActivePage("MyOrders"),
       isActive: activePage === "MyOrders",
       icon: (
-        <IconBrandTabler
+        <ShoppingBagIcon
           className={`h-5 w-5 shrink-0 ${
             activePage === "MyOrders" ? "text-[#a00300]" : "text-neutral-700"
           }`}
         />
       ),
     },
-    // {
-    //   label: "Profile",
-    //   onClick: () => setActivePage("Profile"),
-    //   isActive: activePage === "Profile",
-    //   icon: (
-    //     <IconUser
-    //       className={`h-5 w-5 shrink-0 ${
-    //         activePage === "Profile" ? "text-[#a00300]" : "text-neutral-700"
-    //       }`}
-    //     />
-    //   ),
-    // },
+    {
+      label: "Profile",
+      onClick: () => setActivePage("Profile"),
+      isActive: activePage === "Profile",
+      icon: (
+        <IconUser
+          className={`h-5 w-5 shrink-0 ${
+            activePage === "Profile" ? "text-[#a00300]" : "text-neutral-700"
+          }`}
+        />
+      ),
+    },
     {
       label: "Enquiries",
       onClick: () => setActivePage("Enquiries"),
@@ -106,7 +106,7 @@ export function SidebarDemo() {
     <div
       className={cn(
         "mx-auto flex w-full flex-1 flex-col overflow-hidden rounded-md border border-neutral-200 bg-gray-100 md:flex-row ",
-        "min-h-screen h-auto font-odop"
+        "min-h-screen h-auto font-odop",
       )}
     >
       <Sidebar open={open} setOpen={setOpen}>
@@ -125,7 +125,7 @@ export function SidebarDemo() {
                     "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
                     link.isActive
                       ? "bg-red-100 text-black font-medium"
-                      : "hover:bg-gray-200"
+                      : "hover:bg-gray-200",
                   )}
                 >
                   {link.icon}
@@ -139,7 +139,7 @@ export function SidebarDemo() {
       {/* Conditional Rendering */}
 
       {activePage === "MyOrders" && <MyOrders />}
-      {/* {activePage === "Profile" && <Profile />} */}
+      {activePage === "Profile" && <Profile />}
       {activePage === "Enquiries" && <EnquiryDetails />}
       {activePage === "Addresses" && <Addresses />}
       {activePage === "Wishlist" && <Wishlist />}

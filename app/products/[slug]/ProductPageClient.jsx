@@ -781,7 +781,7 @@ export default function ProductPageClient() {
       const result = await response.json();
       // console.log("Add to cart result:", result);
 
-      const toastId = toast.loading("Processing your order...");
+      // const toastId = toast.loading("Processing your order...");
 
       // ❌ Backend-level error handling (HTTP 200 but logical failure)
       if (result?.status === "error") {
@@ -855,7 +855,7 @@ export default function ProductPageClient() {
         isLoading: false,
         autoClose: 1000,
       });
-      window.location.href = "/checkout";
+      router.push("/checkout");
     } catch (err) {
       console.error("Buy now error:", err);
       toast.update(toastId, {
@@ -953,7 +953,7 @@ export default function ProductPageClient() {
       const isPromoValid =
         product?.promo_price &&
         product?.end_date &&
-        new Date(product.end_date) > new Date();
+        new Date(product.end_date + "T23:59:59") >= new Date();
 
       // Get selected variant for this product
       const selectedVariant = selectedVariants?.[product.id] || null;
@@ -963,7 +963,7 @@ export default function ProductPageClient() {
         product.promo_price &&
         Number(product.promo_price) > 0 &&
         product.end_date &&
-        new Date(product.end_date) > new Date() &&
+        new Date(product.end_date + "T23:59:59") >= new Date() &&
         Number(product.promo_price) < Number(product.price)
           ? Number(product.promo_price)
           : Number(product.price);
@@ -1407,6 +1407,30 @@ export default function ProductPageClient() {
 
   const isBlocked = isAdding || isCustomizationRequired;
 
+  const getFinalPrice = (product) => {
+    // ✅ If variants exist → use variant price
+    if (product.variants?.length > 0) {
+      const selectedVariant = selectedVariants?.[product.id];
+      return Number(
+        selectedVariant?.price || product.variants[0]?.price || 0,
+      ).toFixed(2);
+    }
+
+    // ✅ Otherwise check promo
+    const isPromoValid =
+      product.promo_price &&
+      Number(product.promo_price) > 0 &&
+      product.end_date &&
+      new Date(product.end_date + "T23:59:59") >= new Date() &&
+      Number(product.promo_price) < Number(product.price);
+
+    const price = isPromoValid
+      ? Number(product.promo_price)
+      : Number(product.price);
+
+    return price.toFixed(2);
+  };
+
   // Main product display
   return (
     <div className="min-h-screen relative font-odop">
@@ -1675,103 +1699,101 @@ export default function ProductPageClient() {
           </div>{" "}
           {/*Mob Price Section */}
           <div className="space-y-4 px-4 mt-2" translate="no">
-            <div className="items-end gap-3 md:hidden flex">
-              <div className="flex items-baseline gap-1">
-                <IndianRupee className="w-6 h-6 text-[#A00300]" />
-                <span className="text-4xl font-bold text-[#A00300]">
-                  {(() => {
-                    const basePrice =
-                      product.promo_price &&
-                      Number(product.promo_price) > 0 &&
-                      product.end_date &&
-                      new Date(product.end_date) > new Date() &&
-                      Number(product.promo_price) < Number(product.price)
-                        ? Number(product.promo_price)
-                        : Number(product.price);
+            {(() => {
+              const hasVariants = product.variants?.length > 0;
 
-                    const variantPrice = selectedVariants?.[product.id]?.price
-                      ? Number(selectedVariants[product.id].price)
-                      : product.variants.length > 0
-                        ? Number(product.variants[0].price) // ✅ fallback to 0th
-                        : 0;
+              const selectedVariant = hasVariants
+                ? selectedVariants?.[product.id] || product.variants[0]
+                : null;
 
-                    return (basePrice + variantPrice).toFixed(2);
-                  })()}
-                </span>
-              </div>
+              const variantPrice = selectedVariant
+                ? Number(selectedVariant.price)
+                : 0;
 
-              {/* Show original price with strike-through if promo is valid */}
-              {product.promo_price &&
-                Number(product.promo_price) > 0 &&
+              const variantDiscount = selectedVariant
+                ? Number(selectedVariant.discount_price || 0)
+                : 0;
+
+              const variantPromoPercent = selectedVariant
+                ? Math.max(0, Number(selectedVariant.promo_percentage) || 0)
+                : 0;
+
+              const productPrice = Number(product.price);
+              const productPromo = Number(product.promo_price || 0);
+
+              const isProductPromoValid =
+                Number(product.promotion) === 1 &&
+                productPromo > 0 &&
                 product.end_date &&
-                new Date(product.end_date) > new Date() &&
-                Number(product.promo_price) < Number(product.price) && (
-                  <div className="items-center gap-1 hidden md:flex">
-                    <IndianRupee className="w-4 h-4 text-gray-400" />
-                    <span className="text-xl text-gray-500 line-through">
-                      {Number(product.price).toFixed(2)}
-                    </span>
+                new Date(product.end_date + "T23:59:59") >= new Date() &&
+                productPromo < productPrice;
+
+              const isVariantPromoValid =
+                Number(product.promotion) === 1 &&
+                variantPromoPercent > 0 &&
+                variantDiscount > 0;
+
+              const finalPrice = hasVariants
+                ? isVariantPromoValid
+                  ? variantDiscount
+                  : variantPrice
+                : isProductPromoValid
+                  ? productPromo
+                  : productPrice;
+
+              const originalPrice = hasVariants
+                ? isVariantPromoValid
+                  ? variantPrice
+                  : null
+                : isProductPromoValid
+                  ? productPrice
+                  : null;
+
+              const discountPercent = hasVariants
+                ? isVariantPromoValid
+                  ? variantPromoPercent
+                  : 0
+                : isProductPromoValid
+                  ? Math.round(
+                      ((productPrice - productPromo) / productPrice) * 100,
+                    )
+                  : 0;
+              return (
+                <>
+                  <div className="items-end gap-3 md:hidden flex">
+                    {/* Final Price */}
+                    <div className="flex items-baseline gap-1">
+                      <IndianRupee className="w-6 h-6 text-[#A00300]" />
+                      <span className="text-4xl font-bold text-[#A00300]">
+                        {finalPrice.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Original Price */}
+                    {originalPrice && (
+                      <div className="flex items-center gap-1">
+                        <IndianRupee className="w-4 h-4 text-gray-400" />
+                        <span className="text-xl text-gray-500 line-through">
+                          {originalPrice.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-            </div>
 
-            {/* Discount badge */}
-            {Number(product.promo_price) > 0 &&
-              Number(product.promo_price) < Number(product.price) &&
-              product.end_date &&
-              new Date(product.end_date) > new Date() && (
-                <div className="hidden md:flex items-center gap-3">
-                  <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full">
-                    <span className="font-medium">
-                      {Math.round(
-                        ((Number(product.price) - Number(product.promo_price)) /
-                          Number(product.price)) *
-                          100,
-                      )}
-                      {t("% OFF")}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-            {/* 🎨 Variants Color Selector */}
-            {product.variants.length > 0 && (
-              <div className="hidden lg:flex items-center gap-3 ">
-                <label className="text-sm font-medium text-gray-700 whitespace-nowrap uppercase">
-                  Colours:
-                </label>
-
-                <div className="flex gap-3">
-                  {product.variants.map((variant) => {
-                    const isSelected =
-                      selectedVariants?.[product.id]?.id === variant.id ||
-                      (!selectedVariants?.[product.id] &&
-                        variant.id === product.variants[0]?.id);
-
-                    return (
-                      <button
-                        key={variant.id}
-                        onClick={() =>
-                          setSelectedVariants((prev) => ({
-                            ...prev,
-                            [product.id]: variant,
-                          }))
-                        }
-                        className={`w-6 h-6 rounded-full border-2 transition-all ${
-                          isSelected
-                            ? "border-[#A00300] scale-110"
-                            : "border-gray-300 hover:border-gray-400"
-                        }`}
-                        style={{
-                          backgroundColor: variant.color || "#ccc",
-                        }}
-                        aria-label={`Select ${variant.name}`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                  {/* Discount Badge */}
+                  {discountPercent > 0 && (
+                    <div className="md:hidden flex items-center gap-3">
+                      <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                        <span className="font-medium">
+                          {discountPercent}
+                          {t("% OFF")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
           {/* ⭐ Review Stars (Mobile) */}
           {Number(product.review) > 0 && reviews.length > 0 && (
@@ -1874,43 +1896,70 @@ export default function ProductPageClient() {
             </div>
           )}
           {/* 🎨 Mob Variants Color Selector */}
-          {product.variants.length > 0 && (
-            <div className="flex md:hidden items-center gap-3 px-4 mb-2 mt-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap uppercase">
-                Colours:
-              </label>
+          {product.variants.length > 0 &&
+            (() => {
+              const hasColorVariant = product.variants.some(
+                (v) => v.type === "color",
+              );
 
-              <div className="flex gap-3">
-                {product.variants.map((variant) => {
-                  const isSelected =
-                    selectedVariants?.[product.id]?.id === variant.id ||
-                    (!selectedVariants?.[product.id] &&
-                      variant.id === product.variants[0]?.id);
+              const labelText = hasColorVariant ? "Colours" : "Options";
 
-                  return (
-                    <button
-                      key={variant.id}
-                      onClick={() =>
+              return (
+                <div className="flex md:hidden  items-start gap-4 font-odop p-4">
+                  <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide pt-1">
+                    {labelText}:
+                  </label>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    {product.variants.map((variant) => {
+                      const isSelected =
+                        selectedVariants?.[product.id]?.id === variant.id ||
+                        (!selectedVariants?.[product.id] &&
+                          variant.id === product.variants[0]?.id);
+
+                      const handleSelect = () =>
                         setSelectedVariants((prev) => ({
                           ...prev,
                           [product.id]: variant,
-                        }))
+                        }));
+
+                      if (variant.type === "color") {
+                        return (
+                          <button
+                            key={variant.id}
+                            onClick={handleSelect}
+                            className={`relative w-7 h-7 rounded-full border transition-all duration-200 ${
+                              isSelected
+                                ? "border-[#A00300] ring-2 ring-[#A00300]/30 scale-110"
+                                : "border-gray-300 hover:scale-105"
+                            }`}
+                            style={{
+                              backgroundColor: variant.color || "#ccc",
+                            }}
+                          />
+                        );
                       }
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        isSelected
-                          ? "border-[#A00300] scale-110"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
-                      style={{
-                        backgroundColor: variant.color || "#ccc",
-                      }}
-                      aria-label={`Select ${variant.name}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          )}
+
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={handleSelect}
+                          title={variant.name}
+                          className={`w-full px-3 py-2 text-xs font-semibold rounded-md uppercase
+                                truncate text-center transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-[#A00300] text-white shadow-sm"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                        >
+                          {variant.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           {/* ✍️ Personalised Text (Mobile) */}
           {product?.customize && (
             <div className="flex lg:hidden flex-col gap-3 font-odop mt-4 px-4">
@@ -2195,66 +2244,102 @@ export default function ProductPageClient() {
 
               {/* Price Section */}
               <div className="space-y-4" translate="no">
-                <div className="items-end gap-3 hidden md:flex">
-                  <div className="flex items-baseline gap-1">
-                    <IndianRupee className="w-6 h-6 text-[#A00300]" />
-                    <span className="text-4xl font-bold text-[#A00300]">
-                      {(() => {
-                        const basePrice =
-                          product.promo_price &&
-                          Number(product.promo_price) > 0 &&
-                          product.end_date &&
-                          new Date(product.end_date) > new Date() &&
-                          Number(product.promo_price) < Number(product.price)
-                            ? Number(product.promo_price)
-                            : Number(product.price);
+                {(() => {
+                  const hasVariants = product.variants?.length > 0;
 
-                        const variantPrice = selectedVariants?.[product.id]
-                          ?.price
-                          ? Number(selectedVariants[product.id].price)
-                          : product.variants.length > 0
-                            ? Number(product.variants[0].price) // ✅ fallback to 0th
-                            : 0;
+                  const selectedVariant = hasVariants
+                    ? selectedVariants?.[product.id] || product.variants[0]
+                    : null;
 
-                        return (basePrice + variantPrice).toFixed(2);
-                      })()}
-                    </span>
-                  </div>
+                  const variantPrice = selectedVariant
+                    ? Number(selectedVariant.price)
+                    : 0;
 
-                  {/* Show original price with strike-through if promo is valid */}
-                  {product.promo_price &&
-                    Number(product.promo_price) > 0 &&
+                  const variantDiscount = selectedVariant
+                    ? Number(selectedVariant.discount_price || 0)
+                    : 0;
+
+                  const variantPromoPercent = selectedVariant
+                    ? Math.max(0, Number(selectedVariant.promo_percentage) || 0)
+                    : 0;
+
+                  const productPrice = Number(product.price);
+                  const productPromo = Number(product.promo_price || 0);
+
+                  const isProductPromoValid =
+                    Number(product.promotion) === 1 &&
+                    productPromo > 0 &&
                     product.end_date &&
-                    new Date(product.end_date) > new Date() &&
-                    Number(product.promo_price) < Number(product.price) && (
-                      <div className="items-center gap-1 hidden md:flex">
-                        <IndianRupee className="w-4 h-4 text-gray-400" />
-                        <span className="text-xl text-gray-500 line-through">
-                          {Number(product.price).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                </div>
+                    new Date(product.end_date + "T23:59:59") >= new Date() &&
+                    productPromo < productPrice;
 
-                {/* Discount badge */}
-                {Number(product.promo_price) > 0 &&
-                  Number(product.promo_price) < Number(product.price) &&
-                  product.end_date &&
-                  new Date(product.end_date) > new Date() && (
-                    <div className="hidden md:flex items-center gap-3">
-                      <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full">
-                        <span className="font-medium">
-                          {Math.round(
-                            ((Number(product.price) -
-                              Number(product.promo_price)) /
-                              Number(product.price)) *
-                              100,
-                          )}
-                          {t("% OFF")}
-                        </span>
+                  const isVariantPromoValid =
+                    Number(product.promotion) === 1 &&
+                    variantPromoPercent > 0 &&
+                    variantDiscount > 0;
+
+                  const finalPrice = hasVariants
+                    ? isVariantPromoValid
+                      ? variantDiscount
+                      : variantPrice
+                    : isProductPromoValid
+                      ? productPromo
+                      : productPrice;
+
+                  const originalPrice = hasVariants
+                    ? isVariantPromoValid
+                      ? variantPrice
+                      : null
+                    : isProductPromoValid
+                      ? productPrice
+                      : null;
+
+                  const discountPercent = hasVariants
+                    ? isVariantPromoValid
+                      ? variantPromoPercent
+                      : 0
+                    : isProductPromoValid
+                      ? Math.round(
+                          ((productPrice - productPromo) / productPrice) * 100,
+                        )
+                      : 0;
+
+                  return (
+                    <>
+                      <div className="items-end gap-3 hidden md:flex">
+                        {/* Final Price */}
+                        <div className="flex items-baseline gap-1">
+                          <IndianRupee className="w-6 h-6 text-[#A00300]" />
+                          <span className="text-4xl font-bold text-[#A00300]">
+                            {finalPrice.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Original Price */}
+                        {originalPrice && (
+                          <div className="items-center gap-1 hidden md:flex">
+                            <IndianRupee className="w-4 h-4 text-gray-400" />
+                            <span className="text-xl text-gray-500 line-through">
+                              {originalPrice.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+
+                      {/* Discount Badge */}
+                      {discountPercent > 0 && (
+                        <div className="hidden md:flex items-center gap-3">
+                          <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                            <span className="font-medium">
+                              {discountPercent}
+                              {t("% OFF")}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* 🎨 Variants Color Selector */}
                 {product.variants.length > 0 &&
@@ -2308,11 +2393,11 @@ export default function ProductPageClient() {
                                 onClick={handleSelect}
                                 title={variant.name}
                                 className={`w-full px-3 py-2 text-xs font-semibold rounded-md uppercase
-                                truncate text-center transition-all duration-200 ${
-                                  isSelected
-                                    ? "bg-[#A00300] text-white shadow-sm"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
+                  truncate text-center transition-all duration-200 ${
+                    isSelected
+                      ? "bg-[#A00300] text-white shadow-sm"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
                               >
                                 {variant.name}
                               </button>
@@ -2323,15 +2408,13 @@ export default function ProductPageClient() {
                     );
                   })()}
 
-                {/* ✍️ Personalised Text (Desktop) */}
+                {/* ✍️ Personalised Text */}
                 {product?.customize && (
                   <div className="hidden lg:flex items-start gap-4 font-odop mt-4">
-                    {/* Label */}
                     <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide pt-1">
                       Personalised Text :
                     </label>
 
-                    {/* Input Area */}
                     <div className="flex flex-col gap-2 w-full max-w-md">
                       <input
                         type="text"
@@ -2340,12 +2423,11 @@ export default function ProductPageClient() {
                         value={personalisedText || ""}
                         onChange={(e) => setPersonalisedText(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-md
-        text-sm font-medium text-gray-800
-        focus:outline-none focus:ring-2 focus:ring-[#A00300]/40 focus:border-[#A00300]
-        placeholder:text-gray-400 transition-all"
+          text-sm font-medium text-gray-800
+          focus:outline-none focus:ring-2 focus:ring-[#A00300]/40 focus:border-[#A00300]
+          placeholder:text-gray-400 transition-all"
                       />
 
-                      {/* Helper row */}
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-500">
                           Example:
@@ -2363,7 +2445,6 @@ export default function ProductPageClient() {
                         </span>
                       </div>
 
-                      {/* Preview */}
                       {personalisedText && (
                         <div className="mt-2 p-3 bg-gray-50 border border-dashed border-gray-300 rounded-md">
                           <p className="text-xs text-gray-500 uppercase mb-1 tracking-wide">
@@ -2377,6 +2458,12 @@ export default function ProductPageClient() {
                     </div>
                   </div>
                 )}
+              </div>
+              {/* Tax notice */}
+              <div className="hidden md:block">
+                <p className="text-xs text-gray-500 mt-1">
+                  * Price shown is excluding taxes
+                </p>
               </div>
 
               {/* Highlights */}
@@ -2440,14 +2527,14 @@ export default function ProductPageClient() {
                         </h3>
                         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 cursor-pointer">
                           {/* Single product card (Base 1x offer with variant price) */}
-                          <div className="relative p-6 bg-white border border-gray-300 hover:border-orange-500 rounded-md text-center shadow-sm hover:shadow-md transition-all">
+                          {/* <div className="relative p-6 bg-white border border-gray-300 hover:border-orange-500 rounded-md text-center shadow-sm hover:shadow-md transition-all">
                             <p className="text-lg font-bold text-gray-800">
                               Set of 1
                             </p>
                             <p className="mt-1 text-gray-700 font-medium">
                               ₹
                               {(() => {
-                                // ✅ Base price check (promo or normal)
+                                
                                 const basePrice =
                                   product.promo_price &&
                                   Number(product.promo_price) > 0 &&
@@ -2458,7 +2545,7 @@ export default function ProductPageClient() {
                                     ? Number(product.promo_price)
                                     : Number(product.price);
 
-                                // ✅ Add variant adjustment (same as Price Section)
+                               
                                 const variantPrice = selectedVariants?.[
                                   product.id
                                 ]?.price
@@ -2474,7 +2561,7 @@ export default function ProductPageClient() {
                                 / piece
                               </span>
                             </p>
-                          </div>
+                          </div> */}
 
                           {/* Dynamic offers */}
                           {validOffers.map((offer, index) => (

@@ -379,6 +379,18 @@ const CheckoutForm = ({
   const parseCurrency = (val) =>
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
 
+  const getCachedCart = () => {
+    try {
+      const cached = localStorage.getItem("cart_summary_cache");
+      if (!cached) return null;
+
+      const parsed = JSON.parse(cached);
+      return parsed?.cart_data || null;
+    } catch {
+      return null;
+    }
+  };
+
   const states = [
     "Andhra Pradesh",
     "Arunachal Pradesh",
@@ -469,15 +481,16 @@ const CheckoutForm = ({
         return;
       }
 
-      // Prefer last_applied_coupon (covers hot deal + manual)
-      // Fallback to applied_coupon for safety
       const rawLast = localStorage.getItem("last_applied_coupon");
-      const rawApplied = localStorage.getItem("applied_coupon");
 
+      // read discount value
+      const couponValue = Number(
+        localStorage.getItem("cart_coupon_value") || 0,
+      );
+
+      // send coupon only if discount exists
       const effectiveCoupon =
-        (rawLast && rawLast !== "0" ? rawLast : null) ||
-        (rawApplied && rawApplied !== "0" ? rawApplied : null) ||
-        "";
+        rawLast && rawLast !== "0" && couponValue > 0 ? rawLast : "";
 
       const customerPayload = {
         customer: {
@@ -495,7 +508,7 @@ const CheckoutForm = ({
         },
         company_id: 0,
         cart_id: cartId,
-        coupon_code: effectiveCoupon, // 👈 now sends hot deal too
+        ...(effectiveCoupon && { coupon_code: effectiveCoupon }), // 👈 now sends hot deal too
       };
 
       console.log("📦 createOrder coupon_code =>", effectiveCoupon);
@@ -608,6 +621,7 @@ const CheckoutForm = ({
           console.warn("Error clearing coupon storage", e);
         }
 
+        localStorage.removeItem("cart_summary_cache");
         // Let OrderSummary & others refresh
         window.dispatchEvent(new Event("cart-updated"));
         return;
@@ -638,16 +652,21 @@ const CheckoutForm = ({
         console.warn("Error persisting coupon storage", e);
       }
 
+      localStorage.removeItem("cart_summary_cache");
       // Trigger global cart refresh (OrderSummary will pull latest totals)
       window.dispatchEvent(new Event("cart-updated"));
 
-      // 2️⃣ Fetch updated cart summary (tax, totals, items)
-      const summaryResponse = await fetchWithAuth("/api/getTax", {
-        method: "POST",
-        body: { cart_id: cartId },
-      });
+      let cartData = getCachedCart();
 
-      const cartData = summaryResponse?.cart_data;
+      if (!cartData) {
+        const summaryResponse = await fetchWithAuth("/api/getTax", {
+          method: "POST",
+          body: { cart_id: cartId },
+        });
+
+        cartData = summaryResponse?.cart_data;
+      }
+
       if (!cartData) return;
 
       const appliedCoupon = cartData.coupon_id && cartData.coupon_id !== "0";
@@ -666,7 +685,7 @@ const CheckoutForm = ({
       try {
         localStorage.setItem(
           "cart_tax_details",
-          JSON.stringify(summaryResponse),
+          JSON.stringify({ cart_data: cartData }),
         );
       } catch (e) {
         console.warn("Error saving cart_tax_details", e);
@@ -735,13 +754,31 @@ const CheckoutForm = ({
         console.warn("Could not persist limited_deal_expiry", e);
       }
 
-      // Refresh cart summary so couponValue & totals are correct
-      const summaryResponse = await fetchWithAuth("/api/getTax", {
-        method: "POST",
-        body: { cart_id: cartId },
-      });
+      let cartData = getCachedCart();
 
-      const cartData = summaryResponse?.cart_data;
+      if (!cartData) {
+        const summaryResponse = await fetchWithAuth("/api/getTax", {
+          method: "POST",
+          body: { cart_id: cartId },
+        });
+
+        cartData = summaryResponse?.cart_data;
+      }
+
+      if (cartData) {
+        setCouponValue(parseCurrency(cartData.coupon_value || 0));
+
+        localStorage.setItem(
+          "cart_tax_details",
+          JSON.stringify({ cart_data: cartData }),
+        );
+
+        window.dispatchEvent(
+          new CustomEvent("local-storage-update", {
+            detail: { key: "cart_tax_details" },
+          }),
+        );
+      }
       if (cartData) {
         setCouponValue(parseCurrency(cartData.coupon_value || 0));
 
@@ -761,6 +798,7 @@ const CheckoutForm = ({
         );
       }
 
+      localStorage.removeItem("cart_summary_cache");
       // Let other components (OrderSummary / header) refresh totals
       window.dispatchEvent(new Event("cart-updated"));
     } catch (err) {
@@ -858,12 +896,31 @@ const CheckoutForm = ({
       }
 
       try {
-        const summaryResponse = await fetchWithAuth("/api/getTax", {
-          method: "POST",
-          body: { cart_id: cartId },
-        });
+        let cartData = getCachedCart();
 
-        const cartData = summaryResponse?.cart_data;
+        if (!cartData) {
+          const summaryResponse = await fetchWithAuth("/api/getTax", {
+            method: "POST",
+            body: { cart_id: cartId },
+          });
+
+          cartData = summaryResponse?.cart_data;
+        }
+
+        if (cartData) {
+          setCouponValue(parseCurrency(cartData.coupon_value || 0));
+
+          localStorage.setItem(
+            "cart_tax_details",
+            JSON.stringify({ cart_data: cartData }),
+          );
+
+          window.dispatchEvent(
+            new CustomEvent("local-storage-update", {
+              detail: { key: "cart_tax_details" },
+            }),
+          );
+        }
         if (cartData) {
           setCouponValue(parseCurrency(cartData.coupon_value || 0));
 
@@ -882,6 +939,7 @@ const CheckoutForm = ({
         console.error("Failed silent refresh after removing limited deal:", e);
       }
 
+      localStorage.removeItem("cart_summary_cache");
       window.dispatchEvent(new Event("cart-updated"));
     }
   };
@@ -963,6 +1021,16 @@ const CheckoutForm = ({
     }
 
     try {
+      let cached = localStorage.getItem("cart_summary_cache");
+
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.bogo_offers) {
+          setBogoOffers(parsed.bogo_offers);
+          return;
+        }
+      }
+
       const response = await fetchWithAuth("/api/getTax", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1013,6 +1081,7 @@ const CheckoutForm = ({
       // ✅ mark offer as applied
       setOfferApplied(true);
 
+      localStorage.removeItem("cart_summary_cache");
       // ✅ refresh cart globally
       window.dispatchEvent(new Event("cart-updated"));
     } catch (error) {
@@ -1272,6 +1341,7 @@ const CheckoutForm = ({
                     className="input bg-white"
                     value={formData.lastName || ""}
                     onChange={handleChange}
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -1417,6 +1487,7 @@ const CheckoutForm = ({
                             return;
                           }
 
+                          localStorage.removeItem("cart_summary_cache");
                           // ✅ valid pincode, refresh cart
                           window.dispatchEvent(new Event("cart-updated"));
                         } catch (err) {

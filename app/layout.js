@@ -13,7 +13,7 @@ export const metadata = {
     siteName: "Yuukke",
     images: [
       {
-        url: "https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/logo_for_in.jpg",
+        url: "https://shop.yuukke.com/new-logo.png",
         alt: "Yuukke Marketplace - Explore Authentic Indian Products",
       },
     ],

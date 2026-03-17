@@ -9,27 +9,41 @@ import { FlipWords } from "../components/ui/flip-words";
 
 const CategoriesSection = () => {
   const { t } = useTranslation();
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("home_categories_cache");
+      return cached ? JSON.parse(cached) : [];
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const sliderRef = useRef(null);
   const isHoveringRef = useRef(false);
   const words = ["Skincare", "Stationery", "Gift Sets", "Food", "Home Decor's"];
 
-  /* ================= FETCH ================= */
+  /* ================= FETCH WITH CACHE ================= */
   useEffect(() => {
+    const CACHE_KEY = "home_categories_cache";
+    const CACHE_TIME_KEY = "home_categories_cache_time";
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+
     const fetchCategories = async () => {
       try {
         const res = await fetch("/api/homeCategory");
         const data = await res.json();
 
-        setCategories(
-          data.map((cat) => ({
-            name: cat.name,
-            slug: cat.slug,
-            offer: cat.offer_lable,
-            image: `https://marketplace.yuukke.com/assets/uploads/thumbs/${cat.image}`,
-          })),
-        );
+        const formatted = data.map((cat) => ({
+          name: cat.name,
+          slug: cat.slug,
+          offer: cat.offer_lable,
+          image: `https://marketplace.yuukke.com/assets/uploads/thumbs/${cat.image}`,
+        }));
+
+        setCategories(formatted);
+
+        /* Save cache */
+        localStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
+        localStorage.setItem(CACHE_TIME_KEY, Date.now());
       } catch (err) {
         console.error(err);
       } finally {
@@ -37,7 +51,32 @@ const CategoriesSection = () => {
       }
     };
 
-    fetchCategories();
+    const loadCached = () => {
+      try {
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+
+        if (cachedData && cachedTime) {
+          const isExpired = Date.now() - cachedTime > ONE_DAY;
+
+          if (!isExpired) {
+            setCategories(JSON.parse(cachedData));
+            setLoading(false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error("Cache read error:", err);
+      }
+
+      return false;
+    };
+
+    const hasCache = loadCached();
+
+    if (!hasCache) {
+      fetchCategories();
+    }
   }, []);
 
   /* ================= AUTO SLIDE ================= */

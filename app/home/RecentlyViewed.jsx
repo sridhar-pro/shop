@@ -27,7 +27,7 @@ import { trackProductHistory } from "../utils/productHistory";
 
 const RecentlyViewed = () => {
   const { t } = useTranslation();
-  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "betalearnings";
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const { getValidToken, isAuthReady } = useAuth();
   const { isLoggedIn, companyId } = useSession();

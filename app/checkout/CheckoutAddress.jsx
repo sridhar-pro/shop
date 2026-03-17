@@ -40,6 +40,9 @@ const CheckoutAddress = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = useRef(false);
+
   const [bogoOffers, setBogoOffers] = useState([]);
   const [applyingOffer, setApplyingOffer] = useState(false); // track button state
   const [appliedOffers, setAppliedOffers] = useState([]); // track applied BOGO offer IDs
@@ -991,6 +994,11 @@ const CheckoutAddress = ({
   };
 
   const handleOrderAndPayLogged = async () => {
+    // 🚫 Prevent double click instantly
+    if (processingRef.current) return;
+
+    processingRef.current = true;
+    setIsProcessing(true);
     try {
       // console.log("🔄 Starting logged-in order creation process...");
 
@@ -1120,6 +1128,9 @@ const CheckoutAddress = ({
       toast.error(
         err.message || "Something went wrong while creating the order.",
       );
+    } finally {
+      setIsProcessing(false);
+      processingRef.current = false;
     }
   };
 
@@ -1756,7 +1767,7 @@ const CheckoutAddress = ({
         <div className="mt-6">
           <button
             onClick={handleOrderAndPayLogged}
-            disabled={!selectedAddressId} // <-- Disable when no address is selected
+            disabled={!selectedAddressId || isProcessing} // <-- Disable when no address is selected
             className={`py-3 px-6 rounded-md w-full font-semibold transition-all duration-300 
       ${
         selectedAddressId
@@ -1765,7 +1776,7 @@ const CheckoutAddress = ({
       }`}
             title={!selectedAddressId ? "Select an address" : ""} // <-- Tooltip on hover
           >
-            Pay Now
+            {isProcessing ? "Processing..." : "Pay Now"}
           </button>
 
           {/* Hidden RazorpayButton for manual trigger */}

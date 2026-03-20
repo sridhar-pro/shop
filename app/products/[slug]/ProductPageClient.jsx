@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/app/utils/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1351,7 +1351,6 @@ export default function ProductPageClient() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-        <ToastContainer position="bottom-right" />
       </div>
     );
   }
@@ -1368,7 +1367,6 @@ export default function ProductPageClient() {
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to Home
         </Link>
-        <ToastContainer position="bottom-right" />
       </div>
     );
   }
@@ -1434,8 +1432,6 @@ export default function ProductPageClient() {
   // Main product display
   return (
     <div className="min-h-screen relative font-odop">
-      <ToastContainer position="bottom-right" />
-
       {/* Breadcrumb Navigation */}
       <nav className="bg-white py-4 px-6 shadow-sm">
         <div className="container mx-auto">

@@ -1,34 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
-import { useAuth } from "@/app/utils/AuthContext";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function ProductReviewPage() {
   const { order_id } = useParams();
-  const { getValidToken, isAuthReady } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [orderData, setOrderData] = useState(null);
+  const [error, setError] = useState(null);
+
   const [activeReview, setActiveReview] = useState({});
   const [submittedProducts, setSubmittedProducts] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // ✅ FIX: persist promise across renders
+  const loginPromiseRef = useRef(null);
+
+  // 🔐 Token getter (stable)
+  const getTokenDirect = async () => {
+    let token = localStorage.getItem("authToken");
+    if (token) return token;
+
+    if (!loginPromiseRef.current) {
+      loginPromiseRef.current = fetch("/api/login", {
+        method: "POST",
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status === "success" && data?.token) {
+            localStorage.setItem("authToken", data.token);
+            return data.token;
+          }
+          throw new Error("Login failed");
+        })
+        .finally(() => {
+          loginPromiseRef.current = null;
+        });
+    }
+
+    return loginPromiseRef.current;
+  };
+
+  // 📦 Fetch Order (with retry)
   useEffect(() => {
-    if (!isAuthReady) return;
+    if (!order_id) return;
 
     let cancelled = false;
 
-    async function fetchOrder() {
+    const fetchOrder = async (retry = true) => {
       setLoading(true);
+      setError(null);
 
       try {
-        const token = await getValidToken();
-        if (!token || cancelled) return;
+        const token = await getTokenDirect();
 
         const res = await fetch("/api/viewdetails", {
           method: "POST",
@@ -41,22 +70,45 @@ export default function ProductReviewPage() {
 
         const data = await res.json();
 
-        if (!cancelled && data.status === "success") {
+        if (cancelled) return;
+
+        if (data.status === "success") {
           setOrderData(data);
+          return;
         }
+
+        // 🔁 Retry once (fixes first-load issue)
+        if (retry) {
+          console.log("Retrying order fetch...");
+          await new Promise((r) => setTimeout(r, 700));
+          return fetchOrder(false);
+        }
+
+        setError("Order not found or inaccessible.");
+        setOrderData(null);
       } catch (err) {
-        console.error("Failed to fetch order", err);
+        console.error("Fetch failed:", err);
+
+        if (retry) {
+          await new Promise((r) => setTimeout(r, 700));
+          return fetchOrder(false);
+        }
+
+        if (!cancelled) {
+          setError("Failed to load order. Please try again.");
+          setOrderData(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
+    };
 
     fetchOrder();
 
     return () => {
       cancelled = true;
     };
-  }, [order_id, isAuthReady, getValidToken]);
+  }, [order_id]);
 
   // ⭐ Set rating
   const setRating = (productId, value) => {
@@ -71,7 +123,7 @@ export default function ProductReviewPage() {
     }));
   };
 
-  // ✍️ Update text fields
+  // ✍️ Update fields
   const updateField = (productId, field, value) => {
     if (submittedProducts[productId]) return;
 
@@ -84,7 +136,7 @@ export default function ProductReviewPage() {
     }));
   };
 
-  // 🚀 Submit review
+  // 🚀 Submit Review
   const submitReview = async (item) => {
     const review = activeReview[item.product_id];
 
@@ -105,7 +157,8 @@ export default function ProductReviewPage() {
     setSubmitting(true);
 
     try {
-      const token = await getValidToken();
+      const token = await getTokenDirect();
+
       const res = await fetch("/api/addreview", {
         method: "POST",
         headers: {
@@ -142,7 +195,7 @@ export default function ProductReviewPage() {
   };
 
   // 🔄 Loader
-  if (loading || !isAuthReady) {
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-red-50">
         <div className="relative">
@@ -162,9 +215,19 @@ export default function ProductReviewPage() {
     );
   }
 
+  // ❌ Error
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
+        {error}
+      </div>
+    );
+  }
+
+  // ❌ Fallback
   if (!orderData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
         Order not found
       </div>
     );
@@ -180,21 +243,16 @@ export default function ProductReviewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-red-50 px-4 py-12 font-odop">
-      <ToastContainer position="top-right" autoClose={3000} />
-
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-semibold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl md:text-4xl font-semibold text-gray-900">
             Rate Us ⭐
           </h1>
-
           <p className="mt-1 text-sm md:text-base text-gray-500">
             Share your experience
           </p>
         </div>
 
-        {/* Products */}
         {orderData.seller_group.map((group) =>
           group.items.map((item) => {
             const isSubmitted = submittedProducts[item.product_id];
@@ -212,7 +270,6 @@ export default function ProductReviewPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-2xl shadow-lg p-6 mb-8"
               >
-                {/* Product */}
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                   <img
                     src={getImageSrc(item.image)}
@@ -225,26 +282,23 @@ export default function ProductReviewPage() {
                     <h2 className="text-lg sm:text-xl font-semibold">
                       {item.product_name}
                     </h2>
-                    <p className="mt-3 text-sm sm:text-md text-gray-600">
-                      We’d love to hear how this hamper worked out for you. Your
-                      review helps other customers make confident choices.
+                    <p className="mt-3 text-sm text-gray-600">
+                      We’d love to hear how this hamper worked out for you.
                     </p>
                   </div>
                 </div>
 
                 {canReview && (
                   <div className="mt-8 border-t pt-6">
-                    {/* Stars */}
                     <div className="flex justify-center sm:justify-start gap-3 mb-6">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <motion.button
+                        <button
                           key={star}
                           disabled={isSubmitted}
-                          className="p-1"
                           onClick={() => setRating(item.product_id, star)}
                         >
                           <Star
-                            className={`h-9 w-9 sm:h-8 sm:w-8 ${
+                            className={`h-8 w-8 ${
                               star <=
                               (activeReview[item.product_id]?.product_ratings ||
                                 0)
@@ -252,41 +306,38 @@ export default function ProductReviewPage() {
                                 : "text-gray-300"
                             }`}
                           />
-                        </motion.button>
+                        </button>
                       ))}
                     </div>
 
-                    {/* Headline */}
                     <input
                       disabled={isSubmitted}
                       placeholder="Headline *"
-                      className="w-full mb-4 rounded-xl border px-4 py-3 text-base sm:text-sm"
+                      className="w-full mb-4 rounded-xl border px-4 py-3"
                       onChange={(e) =>
                         updateField(item.product_id, "headline", e.target.value)
                       }
                     />
 
-                    {/* Review */}
                     <textarea
                       disabled={isSubmitted}
                       rows={4}
                       placeholder="Write your review *"
-                      className="w-full mb-6 rounded-xl border px-4 py-3 text-base sm:text-sm resize-none"
+                      className="w-full mb-6 rounded-xl border px-4 py-3 resize-none"
                       onChange={(e) =>
                         updateField(
                           item.product_id,
                           "written_review",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
 
-                    {/* Submit */}
                     <div className="flex justify-center sm:justify-end">
                       <button
                         disabled={!isFormValid || submitting || isSubmitted}
                         onClick={() => submitReview(item)}
-                        className="w-full sm:w-auto px-8 py-3 rounded-xl bg-black text-white font-semibold disabled:opacity-50"
+                        className="px-8 py-3 rounded-xl bg-black text-white disabled:opacity-50"
                       >
                         {isSubmitted ? "Review Submitted ✓" : "Submit Review"}
                       </button>
@@ -295,7 +346,7 @@ export default function ProductReviewPage() {
                 )}
               </motion.div>
             );
-          })
+          }),
         )}
       </div>
     </div>

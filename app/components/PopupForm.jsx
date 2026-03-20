@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { X, CreditCard, CheckCircle } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const PopupForm = ({ isOpen, onClose, mode, defaultCatalogue }) => {
@@ -106,9 +106,9 @@ const PopupForm = ({ isOpen, onClose, mode, defaultCatalogue }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-    
+
       const authData = await authResponse.json();
-    
+
       if (authData?.status === "success" && authData?.token) {
         authToken = authData.token;
         localStorage.setItem("authToken", authToken);
@@ -146,22 +146,22 @@ const PopupForm = ({ isOpen, onClose, mode, defaultCatalogue }) => {
       let authToken = localStorage.getItem("authToken");
 
       // Get auth token if missing
-          // 🔐 Get new auth token if missing
-if (!authToken) {
-  const authResponse = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
+      // 🔐 Get new auth token if missing
+      if (!authToken) {
+        const authResponse = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
 
-  const authData = await authResponse.json();
+        const authData = await authResponse.json();
 
-  if (authData?.status === "success" && authData?.token) {
-    authToken = authData.token;
-    localStorage.setItem("authToken", authToken);
-  } else {
-    throw new Error("Authentication failed");
-  }
-}
+        if (authData?.status === "success" && authData?.token) {
+          authToken = authData.token;
+          localStorage.setItem("authToken", authToken);
+        } else {
+          throw new Error("Authentication failed");
+        }
+      }
       // Save form data
       const requestBody = {
         full_name: formData.name,
@@ -207,7 +207,7 @@ if (!authToken) {
           if (paymentResponse.razorpay_payment_id) {
             await updatePaymentStatus(
               result.id,
-              paymentResponse.razorpay_payment_id
+              paymentResponse.razorpay_payment_id,
             );
             setPaymentSuccess(true);
             toast.success("Payment successful! Prebooking confirmed.");
@@ -216,7 +216,7 @@ if (!authToken) {
           }
         } else {
           toast.success(
-            "Request submitted successfully! Our team will contact you soon."
+            "Request submitted successfully! Our team will contact you soon.",
           );
           setTimeout(() => {
             onClose();
@@ -230,7 +230,7 @@ if (!authToken) {
       toast.error(
         mode === "prebooking"
           ? "Payment failed. Please try again."
-          : "Failed to submit request. Please try again."
+          : "Failed to submit request. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -241,7 +241,6 @@ if (!authToken) {
 
   return (
     <>
-      <ToastContainer position="top-center" />
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div className="bg-white rounded-xl shadow-lg w-full max-w-lg relative my-8 mx-auto max-h-[90vh] overflow-y-auto">
           {/* Close Button */}
@@ -446,8 +445,8 @@ if (!authToken) {
                       {loading
                         ? "Processing..."
                         : mode === "prebooking"
-                        ? "Proceed to Payment"
-                        : "Request Quotation"}
+                          ? "Proceed to Payment"
+                          : "Request Quotation"}
                     </button>
                   </form>
                 </div>

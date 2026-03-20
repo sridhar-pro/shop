@@ -28,7 +28,7 @@ export function WobbleCardDemo() {
 
     const fetchNewArrivals = async () => {
       try {
-        const res = await fetch("/api/getReturnGifts");
+        const res = await fetch("/api/getTitle10");
         const data = await res.json();
         if (!data) return;
 
@@ -177,13 +177,13 @@ export function WobbleCardDemo() {
                                 New Arrival
                               </span>
 
-                              <h2 className="mt-2 text-lg md:text-2xl font-semibold text-gray-900 leading-snug">
+                              <h2 className="mt-2 text-lg md:text-2xl font-semibold text-gray-900 leading-snug text-left">
                                 {active.title}
                               </h2>
-
+                              {/* 
                               <p className="hidden md:block mt-3 text-sm md:text-base text-gray-600">
                                 {active.description}
-                              </p>
+                              </p> */}
 
                               <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#A00300]">
                                 Explore Product →

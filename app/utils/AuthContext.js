@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         {},
         {
           timeout: API_TIMEOUT,
-        }
+        },
       );
 
       activePromiseRef.current = promise;
@@ -126,16 +126,35 @@ export const AuthProvider = ({ children }) => {
   }, [login]);
 
   const getValidToken = useCallback(async () => {
-    const storedToken = localStorage.getItem("authToken");
+    // ✅ 1. If token already in state → return immediately
+    if (token) return token;
 
-    // Return the stored token if it exists
+    // ✅ 2. Check localStorage
+    const storedToken =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+
     if (storedToken) {
+      setToken(storedToken); // sync state
       return storedToken;
     }
 
-    // Get new token if no token exists
-    return await login();
-  }, [login]);
+    // ✅ 3. If login already in progress → WAIT for it
+    if (activePromiseRef.current) {
+      try {
+        const res = await activePromiseRef.current;
+        if (res?.data?.token) {
+          setToken(res.data.token);
+          return res.data.token;
+        }
+      } catch (err) {
+        console.error("Waiting for active login failed:", err);
+      }
+    }
+
+    // ✅ 4. Otherwise trigger login
+    const newToken = await login();
+    return newToken;
+  }, [login, token]);
 
   return (
     <AuthContext.Provider

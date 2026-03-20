@@ -337,11 +337,11 @@ export default function Navbar() {
               </Link>
 
               {/* Sherise */}
-              <Link
+              {/* <Link
                 href="/sherise"
                 className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-[#A00300] hover:text-[#180d0d] transition-all duration-200 group shrink-0 whitespace-nowrap"
               >
-                {/* HOT badge */}
+                
                 <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
                   <Flame className="w-3 h-3" />
                   SALE
@@ -349,15 +349,15 @@ export default function Navbar() {
                 <span className="whitespace-nowrap font-medium">
                   {t("Sherise-Week")}
                 </span>
-              </Link>
+              </Link> */}
 
               {/* Track Order */}
-              {/* <Link
+              <Link
                 href="/track-order"
                 className="transition-all py-2 px-1 text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
               >
                 {t("Track Order")}
-              </Link> */}
+              </Link>
             </div>
           </div>
 
@@ -621,14 +621,14 @@ export default function Navbar() {
             </Link>
 
             {/* Sherise – Premium */}
-            <Link
+            {/* <Link
               href={{
                 pathname: "/sherise", // dedicated offers route
               }}
               onClick={() => setMobileMenuOpen(false)}
               className="relative inline-flex items-center gap-2 px-2 py-2 mt-2 rounded-full  text-gray-600 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
             >
-              {/* HOT badge */}
+            
               <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
                 <Flame className="w-3 h-3" />
                 SALE
@@ -636,16 +636,16 @@ export default function Navbar() {
               <span className="whitespace-nowrap font-medium">
                 {t("Sherise-Week")}
               </span>
-            </Link>
+            </Link> */}
 
             {/* Tracking Link */}
-            {/* <Link
+            <Link
               href="/track-order"
               className="transition-all py-2 px-1  text-gray-700 hover:text-gray-900"
               onClick={() => setMobileMenuOpen(false)}
             >
               {t("Track Order")}
-            </Link> */}
+            </Link>
           </div>
         )}
       </nav>

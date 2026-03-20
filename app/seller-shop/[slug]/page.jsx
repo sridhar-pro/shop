@@ -6,7 +6,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import { useAuth } from "@/app/utils/AuthContext";
 import CartSidebar from "@/app/components/CartSideBar";
 import Link from "next/link";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";

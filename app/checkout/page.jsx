@@ -548,8 +548,8 @@ export default function CheckoutPage({ formData }) {
 
   return (
     <div className="min-h-screen bg-gray-100 font-odop">
-      <div className="max-w-5xl mx-auto flex flex-col lg:flex-row min-h-screen lg:h-screen">
-        <div className="w-full min-h-[70vh] flex justify-center bg-transparent">
+      <div className="max-w-5xl mx-auto flex flex-col lg:flex-row min-h-screen lg:min-h-screen">
+        <div className="w-full min-h-screen flex justify-center bg-transparent">
           {isProcessingPayment && !paymentSuccess ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -616,7 +616,7 @@ export default function CheckoutPage({ formData }) {
             </motion.div>
           ) : paymentSuccess ? (
             <>
-              <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
+              <div className="w-full min-h-screen flex  justify-center bg-transparent">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -751,7 +751,7 @@ export default function CheckoutPage({ formData }) {
               </div>
             </>
           ) : paymentFailure ? (
-            <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
+            <div className="w-full min-h-screen flex  justify-center bg-transparent">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

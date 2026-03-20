@@ -149,6 +149,7 @@ export default function AllProductsPage({
   const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
   const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
   const isWomensday = pathname === "/products/womensday-saleweek";
+  const isEOY = pathname === "/products/EOY";
 
   const searchQuery = search.get("query");
   const today = new Date().toISOString().split("T")[0];
@@ -318,6 +319,7 @@ export default function AllProductsPage({
           ...(isGetTitle11Page && { title11: "1" }),
           ...(isGetTitle12Page && { title12: "1" }),
           ...(isWomensday && { title13: "1" }),
+          ...(isEOY && { title10: "1" }),
         },
       };
 
@@ -411,6 +413,7 @@ export default function AllProductsPage({
       isGetTitle11Page,
       isGetTitle12Page,
       isWomensday,
+      isEOY,
     ],
   );
 
@@ -604,6 +607,7 @@ export default function AllProductsPage({
     isGetTitle12Page,
     isBogo,
     title,
+    isEOY,
   };
 
   const gridClass =
@@ -762,7 +766,7 @@ export default function AllProductsPage({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
+          className="fixed bottom-28 md:bottom-6 right-6 z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
           aria-label="Go to top"
         >
           <ArrowUp className="w-5 h-5 text-white" />

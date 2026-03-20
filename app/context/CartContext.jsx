@@ -45,8 +45,17 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     refreshCart();
-    window.addEventListener("cart-updated", refreshCart);
-    return () => window.removeEventListener("cart-updated", refreshCart);
+
+    const handleCartUpdate = () => refreshCart();
+    const handleCartCleared = () => setItems([]); // ⚡ instant UI update
+
+    window.addEventListener("cart-updated", handleCartUpdate);
+    window.addEventListener("cart-cleared", handleCartCleared);
+
+    return () => {
+      window.removeEventListener("cart-updated", handleCartUpdate);
+      window.removeEventListener("cart-cleared", handleCartCleared);
+    };
   }, []);
 
   return (

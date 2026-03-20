@@ -41,6 +41,7 @@ export default function PageSectionHeader({
   isGetTitle12Page,
   isBogo,
   title,
+  isEOY,
 }) {
   const featuredDescription =
     "Discover our most popular products, loved by thousands of happy customers!";
@@ -86,6 +87,16 @@ export default function PageSectionHeader({
     return (
       <SectionHeader
         label="Women's Day"
+        title="Yuukke's Best Picks"
+        description={featuredDescription}
+      />
+    );
+  }
+
+  if (isEOY) {
+    return (
+      <SectionHeader
+        label="End Of Year Sale"
         title="Yuukke's Best Picks"
         description={featuredDescription}
       />

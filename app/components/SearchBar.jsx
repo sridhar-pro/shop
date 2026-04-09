@@ -119,6 +119,8 @@ const SearchBar = () => {
     }
   };
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -193,7 +195,7 @@ const SearchBar = () => {
                     className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer transition-all duration-150 border-b border-b-gray-300 last:border-none"
                   >
                     <img
-                      src={`https://marketplace.yuukke.com/assets/uploads/${product.image}`}
+                      src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${product.image}`}
                       alt={product.name}
                       className="w-20 md:w-24 h-20 md:h-24 object-cover rounded-xl shadow-sm"
                     />

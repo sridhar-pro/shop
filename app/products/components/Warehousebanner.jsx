@@ -13,6 +13,8 @@ export default function WarehouseBanner({ warehouse }) {
 
   const hasVideo = warehouse?.about_video;
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   return (
     <>
       <style>{`
@@ -60,7 +62,7 @@ export default function WarehouseBanner({ warehouse }) {
           >
             {warehouse.store_logo ? (
               <img
-                src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.store_logo}`}
+                src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${warehouse.store_logo}`}
                 alt={warehouse.company_name || "Warehouse Logo"}
                 style={{ width: "62px", height: "62px", objectFit: "contain" }}
               />
@@ -268,7 +270,7 @@ export default function WarehouseBanner({ warehouse }) {
                   }}
                 >
                   <source
-                    src={`https://marketplace.yuukke.com/assets/uploads/${warehouse.about_video}`}
+                    src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${warehouse.about_video}`}
                     type="video/mp4"
                   />
                 </video>

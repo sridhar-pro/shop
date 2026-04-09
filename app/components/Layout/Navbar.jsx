@@ -27,6 +27,8 @@ import { useCart } from "@/app/context/CartContext";
 export default function Navbar() {
   const { t } = useTranslation();
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const pathname = usePathname();
 
   const { itemCount } = useCart();
@@ -49,6 +51,23 @@ export default function Navbar() {
   useEffect(() => {
     if (!isAuthReady) return;
 
+    let retryTimeout;
+
+    const CACHE_KEY = "navbar_news";
+
+    // ✅ 1. Load from sessionStorage instantly
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.length > 0) {
+          setMessages(parsed); // ⚡ instant UI
+        }
+      } catch (e) {
+        console.warn("Cache parse failed");
+      }
+    }
+
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
     const getTokenWithRetry = async () => {
@@ -60,12 +79,16 @@ export default function Navbar() {
       return null;
     };
 
-    const fetchNews = async () => {
+    const fetchNews = async (retryCount = 0) => {
       try {
         const token = await getTokenWithRetry();
 
         if (!token) {
-          console.warn("⚠️ Token unavailable");
+          if (retryCount < 3) {
+            retryTimeout = setTimeout(() => {
+              fetchNews(retryCount + 1);
+            }, 1000);
+          }
           return;
         }
 
@@ -75,6 +98,15 @@ export default function Navbar() {
             "Content-Type": "application/json",
           },
         });
+
+        // 🔥 FIX START
+        if (res.status === 401 && retryCount < 2) {
+          localStorage.removeItem("authToken");
+
+          await wait(300); // small delay
+          return fetchNews(retryCount + 1);
+        }
+        // 🔥 FIX END
 
         if (!res.ok) throw new Error("Failed to fetch news");
 
@@ -88,13 +120,20 @@ export default function Navbar() {
           })
           .filter(Boolean);
 
-        if (cleaned.length > 0) setMessages(cleaned);
+        if (cleaned.length > 0) {
+          setMessages(cleaned);
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(cleaned));
+        }
       } catch (err) {
         console.error("❌ News fetch error:", err);
       }
     };
 
     fetchNews();
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [isAuthReady]);
 
   // Close dropdown when clicking outside
@@ -168,7 +207,7 @@ export default function Navbar() {
 
         const mapped = data.map((cat) => ({
           name: cat.name,
-          image: `https://marketplace.yuukke.com/assets/uploads/thumbs/${cat.image}`,
+          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${cat.image}`,
           slug: cat.slug,
           subcategories: cat.subcategories || [],
         }));
@@ -415,7 +454,7 @@ export default function Navbar() {
                         onClick={() => {
                           const token = localStorage.getItem("access_token");
                           if (token) {
-                            window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${token}`;
+                            window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${token}`;
                           } else {
                             alert("Access token missing. Please login again.");
                           }

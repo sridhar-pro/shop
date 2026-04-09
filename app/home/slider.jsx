@@ -16,7 +16,9 @@ export function ImagesSliderDemo() {
   );
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
-  const baseUrl = "https://marketplace.yuukke.com/assets/uploads/";
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
+  const baseUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/`;
 
   // 🖼️ Fetch slider images from API
   useEffect(() => {

@@ -95,7 +95,7 @@ const FeaturedProducts = () => {
   const getImageSrcThumbs = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.yuukke.com/assets/uploads/thumbs/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${image}`;
   };
 
   const getImageSrc = (image) => {
@@ -103,7 +103,7 @@ const FeaturedProducts = () => {
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 

@@ -7,6 +7,8 @@ async function getProduct(slug) {
       ? "https://shop.yuukke.com/"
       : "http://localhost:3001";
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const tokenRes = await fetch(`${baseUrl}/api/serverAuth`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -18,7 +20,7 @@ async function getProduct(slug) {
   if (!token) throw new Error("Failed to get auth token");
 
   const res = await fetch(
-    "https://marketplace.yuukke.com/api/v1/Marketv2/getProductDetails",
+    `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/getProductDetails`,
     {
       method: "POST",
       headers: {
@@ -64,7 +66,7 @@ export async function generateMetadata({ params: paramsPromise }) {
   const resolvedImages = imgs.map((img) =>
     img.startsWith("http")
       ? img
-      : `https://marketplace.yuukke.com/assets/uploads/${img}`,
+      : `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${img}`,
   );
 
   // JSON-LD Schema

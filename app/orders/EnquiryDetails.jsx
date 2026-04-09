@@ -94,10 +94,12 @@ const MyEnquiries = () => {
 
   const totalPages = Math.ceil(total / limit);
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
   };
 
   if (loading) {
@@ -201,7 +203,7 @@ const MyEnquiries = () => {
                                       body: JSON.stringify({
                                         id: enquiry.id,
                                       }),
-                                    }
+                                    },
                                   );
 
                                   const data = await res.json();
@@ -215,16 +217,16 @@ const MyEnquiries = () => {
                                     setViewedEnquiry(data.data); // store the detailed enquiry
                                   } else {
                                     toast.error(
-                                      "Failed to fetch enquiry details. Try again."
+                                      "Failed to fetch enquiry details. Try again.",
                                     );
                                   }
                                 } catch (err) {
                                   console.error(
                                     "❌ Error fetching enquiry details:",
-                                    err
+                                    err,
                                   );
                                   toast.error(
-                                    "Something went wrong while fetching details!"
+                                    "Something went wrong while fetching details!",
                                   );
                                 }
                               }}
@@ -331,16 +333,16 @@ const MyEnquiries = () => {
                               setViewedEnquiry(data.data); // show the enquiry detail view
                             } else {
                               toast.error(
-                                "Failed to fetch enquiry details. Try again."
+                                "Failed to fetch enquiry details. Try again.",
                               );
                             }
                           } catch (err) {
                             console.error(
                               "❌ Error fetching enquiry details:",
-                              err
+                              err,
                             );
                             toast.error(
-                              "Something went wrong while fetching details!"
+                              "Something went wrong while fetching details!",
                             );
                           }
                         }}

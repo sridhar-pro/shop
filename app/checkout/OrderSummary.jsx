@@ -12,6 +12,10 @@ const OrderSummary = () => {
   const { getValidToken } = useAuth();
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
+  const hasRemovedDealRef = useRef(false);
+  const isApplyingRef = useRef(false);
+  const skipNextApplyRef = useRef(false);
+
   const [cartItems, setCartItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState(0);
@@ -19,7 +23,7 @@ const OrderSummary = () => {
   const [total, setTotal] = useState(0);
 
   // 🔁 Split loading states so we don't unmount the input while typing
-  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [processingItems, setProcessingItems] = useState({});
@@ -32,6 +36,21 @@ const OrderSummary = () => {
   const [bogoOffers, setBogoOffers] = useState([]);
 
   const [customizedTexts, setCustomizedTexts] = useState({});
+
+  useEffect(() => {
+    const handleCouponCleared = () => {
+      setCode("");
+      setIsApplied(false);
+      setCouponValue(0);
+      setCouponMessage("");
+    };
+
+    window.addEventListener("coupon-cleared", handleCouponCleared);
+
+    return () => {
+      window.removeEventListener("coupon-cleared", handleCouponCleared);
+    };
+  }, []);
 
   // Limited-deal config
   const LIMITED_DEAL_CODE = "FLATY100"; //TEST50 //FLATY100
@@ -49,46 +68,6 @@ const OrderSummary = () => {
   // 🧮 Currency parser
   const parseCurrency = (val) =>
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-
-  const processCartData = (cartData, response = {}) => {
-    // BOGO offers
-    if (response?.bogo_offers) {
-      setBogoOffers(response.bogo_offers);
-    }
-
-    // Customized texts
-    const textsMap = {};
-    Object.values(cartData.contents || {}).forEach((item) => {
-      if (item?.customize_text) {
-        textsMap[item.rowid] = item.customize_text;
-      }
-    });
-
-    setCustomizedTexts(textsMap);
-
-    // Items
-    const itemsArray = Object.values(cartData.contents || {}).map((item) => ({
-      rowid: item.rowid,
-      product_id: item.product_id,
-      id: item.id,
-      name: item.name,
-      price: parseCurrency(item.price),
-      qty: item.qty,
-      subtotal:
-        item.subtotal ||
-        `₹${(parseCurrency(item.price) * item.qty).toFixed(2)}`,
-      image: item.image || "/fallback.png",
-      deliveryDays: item.deliveryDays || null,
-    }));
-
-    setCartItems(itemsArray);
-
-    // Totals
-    setSubtotal(parseCurrency(cartData.subtotal));
-    setShipping(parseCurrency(cartData.shipping));
-    setTax(parseCurrency(cartData.total_item_tax));
-    setTotal(parseCurrency(cartData.grand_total));
-  };
 
   const fetchWithAuth = async (url, options = {}, retry = false) => {
     const token = await getValidToken();
@@ -136,9 +115,6 @@ const OrderSummary = () => {
         body: { cart_id: cartId },
       });
 
-      // ✅ Update cache
-      localStorage.setItem("cart_summary_cache", JSON.stringify(response));
-
       // ✅ Save bogo_offers
       if (response?.bogo_offers) {
         setBogoOffers(response.bogo_offers);
@@ -147,7 +123,6 @@ const OrderSummary = () => {
       const cartData = response?.cart_data;
       if (!cartData) return;
 
-      processCartData(cartData, response);
       // ✍️ Customized print texts (per item)
       const textsMap = {};
 
@@ -256,15 +231,19 @@ const OrderSummary = () => {
             }
           }
         } else {
-          // No coupon on cart
+          // ❌ No coupon → FULL reset
           setCouponValue(0);
           setIsApplied(false);
-
+          if (!code) {
+            setCode("");
+          }
           // Keep local last_applied_coupon in sync with backend
           try {
             localStorage.setItem("last_applied_coupon", "0");
+            localStorage.removeItem("applied_coupon");
+            localStorage.removeItem("cart_coupon_value");
           } catch (e) {
-            console.warn("Could not clear last_applied_coupon", e);
+            console.warn("Could not clear coupon storage", e);
           }
           // don't touch limitedDealApplied here; timed removal handles it
         }
@@ -304,12 +283,20 @@ const OrderSummary = () => {
   };
 
   const handleApply = async () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current); // 🧠 kill duplicate trigger
+    }
+
+    if (isApplyingRef.current) return;
+    isApplyingRef.current = true; // ✅ LOCK START
+
     const cartId = localStorage.getItem("cart_id");
     const trimmed = code.trim();
 
     if (!cartId || !trimmed) {
       setCouponMessage("");
       setIsApplied(false);
+      isApplyingRef.current = false;
       return;
     }
 
@@ -325,18 +312,19 @@ const OrderSummary = () => {
         response?.success === false;
 
       if (failed) {
-        setCouponMessage(response?.message || "Failed to apply coupon");
+        setCouponMessage(response?.message || "Invalid coupon");
         setIsApplied(false);
         localStorage.removeItem("applied_coupon");
       } else {
         setCouponMessage("");
         setIsApplied(true);
 
+        skipNextApplyRef.current = true;
+
         // Manual coupon: track both manual and "last applied"
         localStorage.setItem("applied_coupon", trimmed);
         localStorage.setItem("last_applied_coupon", trimmed);
 
-        localStorage.removeItem("cart_summary_cache");
         window.dispatchEvent(new Event("cart-updated"));
         console.log("🎉 Coupon applied — cart-updated event dispatched!");
       }
@@ -351,6 +339,8 @@ const OrderSummary = () => {
     } catch (err) {
       console.error("❌ Error applying coupon:", err);
       setCouponMessage("Failed to apply coupon. Try again.");
+    } finally {
+      isApplyingRef.current = false; // ✅ release lock
     }
   };
 
@@ -365,6 +355,15 @@ const OrderSummary = () => {
       setCouponValue(0);
       return;
     }
+
+    // ✅ CRITICAL FIX
+    if (skipNextApplyRef.current) {
+      skipNextApplyRef.current = false;
+      return;
+    }
+
+    // ✅ STOP debounce if already applied
+    // if (isApplied) return;
 
     debounceRef.current = setTimeout(() => {
       handleApply();
@@ -491,9 +490,11 @@ const OrderSummary = () => {
       setDealTimer(0);
 
       try {
-        // No coupon active anymore from hot deal's side
         localStorage.setItem("last_applied_coupon", "0");
         localStorage.removeItem("limited_deal_expiry");
+
+        // ✅ CRITICAL FIX
+        localStorage.setItem("limited_deal_applied_once", "1");
       } catch (e) {
         console.error("Failed to update last_applied_coupon on removal:", e);
       }
@@ -514,10 +515,15 @@ const OrderSummary = () => {
       setDealTimer((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          // call async remover (do not await here)
-          removeLimitedDeal().catch((e) =>
-            console.error("removeLimitedDeal failed", e),
-          );
+
+          if (!hasRemovedDealRef.current) {
+            hasRemovedDealRef.current = true;
+
+            removeLimitedDeal().catch((e) =>
+              console.error("removeLimitedDeal failed", e),
+            );
+          }
+
           return 0;
         }
         return t - 1;
@@ -529,27 +535,9 @@ const OrderSummary = () => {
   }, [limitedDealApplied]);
 
   useEffect(() => {
-    // ⚡ Load cached cart instantly
-    const cached = localStorage.getItem("cart_summary_cache");
-
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-
-        if (parsed?.cart_data) {
-          processCartData(parsed.cart_data, parsed);
-          setInitialLoading(false);
-        }
-      } catch (err) {
-        console.warn("Failed to parse cached cart");
-      }
-    }
-
-    // 🔄 Then fetch fresh data in background
     fetchSummary({ showSpinner: true });
 
     const handleCartUpdate = () => fetchSummary({ showSpinner: true });
-
     window.addEventListener("cart-updated", handleCartUpdate);
 
     return () => window.removeEventListener("cart-updated", handleCartUpdate);
@@ -558,7 +546,7 @@ const OrderSummary = () => {
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -596,7 +584,6 @@ const OrderSummary = () => {
           autoClose: 2000,
         });
         setAppliedOffers((prev) => [...prev, bogoId]);
-        localStorage.removeItem("cart_summary_cache");
         window.dispatchEvent(new Event("cart-updated"));
       } else if (res?.status === "error") {
         toast.update(toastId, {
@@ -668,7 +655,6 @@ const OrderSummary = () => {
           return updatedCart;
         });
 
-        localStorage.removeItem("cart_summary_cache");
         window.dispatchEvent(new Event("cart-updated"));
         toast.success("Item removed from cart", {
           position: "top-right",
@@ -771,11 +757,11 @@ const OrderSummary = () => {
 
                     <button
                       onClick={() => removeItem(item.product_id)}
-                      className="flex items-center justify-center w-8 h-8 text-gray-500 hover:text-black transition"
+                      className="text-gray-500 hover:text-black transition p-1 flex items-center justify-center w-6 h-6"
                       disabled={processingItems[item.product_id]}
                     >
                       {processingItems[item.product_id] ? (
-                        <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></span>
+                        <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin block" />
                       ) : (
                         <Trash2 className="w-4 h-4" />
                       )}
@@ -806,8 +792,16 @@ const OrderSummary = () => {
                 value={code}
                 autoComplete="off"
                 onChange={(e) => {
-                  setCode(e.target.value);
-                  setCouponMessage("");
+                  const newCode = e.target.value;
+
+                  // Only clear message if user actually changed the value meaningfully
+                  if (newCode !== code) {
+                    setIsApplied(false); // ✅ THIS IS THE KEY FIX
+                    setCouponValue(0);
+                    // optional: don't clear message immediately
+                  }
+
+                  setCode(newCode);
                   setCouponValue(0);
                 }}
                 onKeyDown={(e) => {
@@ -822,7 +816,7 @@ const OrderSummary = () => {
               <div className="flex flex-col items-center relative">
                 <button
                   onClick={handleApply}
-                  disabled={isApplied}
+                  disabled={isApplied || isApplyingRef.current}
                   className={`bg-gray-200 text-sm font-bold px-4 py-2 rounded-md relative z-10 transition-all duration-200 ${
                     isApplied ? "text-green-600" : "text-gray-600"
                   }`}
@@ -838,6 +832,11 @@ const OrderSummary = () => {
               </div>
             </div>
 
+            {/* Inline light refresh indicator (doesn't unmount input) */}
+            {isRefreshing && (
+              <div className="text-xs text-gray-500 mt-1">Updating…</div>
+            )}
+
             {/* Always show below Apply button */}
             {couponMessage ? (
               <span className="mt-1 text-xs text-red-600 font-medium px-4 text-center flex justify-center">
@@ -846,22 +845,17 @@ const OrderSummary = () => {
             ) : null}
             {/* 📦 Summary */}
             <div className="border-t pt-4 space-y-2 text-sm">
-              {/* Inline light refresh indicator (doesn't unmount input) */}
-              {isRefreshing && (
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                  <span className="w-3 h-3 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin"></span>
-                </div>
-              )}
-              <div className="flex justify-between">
+              <div className="flex justify-between items-start">
                 <span>Subtotal</span>
 
-                <div className="text-right">
-                  <span className="block">₹{subtotal.toFixed(2)}</span>
+                <div className="flex flex-col items-end">
+                  <span>₹{subtotal.toFixed(2)}</span>
                   <span className="text-xs text-gray-500">
                     (Incl. GST ₹{tax.toFixed(2)})
                   </span>
                 </div>
               </div>
+
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span>₹{shipping.toFixed(2)}</span>

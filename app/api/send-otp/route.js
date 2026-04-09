@@ -11,9 +11,11 @@ export async function GET(req) {
     });
   }
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   try {
     const apiResponse = await fetch(
-      `https://marketplace.yuukke.com/api/v1/Marketv2/triggerotp/91${phone}`,
+      `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/triggerotp/91${phone}`,
       {
         method: "GET",
         headers: {

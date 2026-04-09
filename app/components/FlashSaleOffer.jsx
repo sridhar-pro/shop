@@ -26,12 +26,14 @@ const FlashSaleOffer = () => {
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     const cleanImage = image.trim().replace(/^\/+/, "");
     if (cleanImage.startsWith("http") || cleanImage.startsWith("/"))
       return cleanImage;
-    return `https://marketplace.yuukke.com/assets/uploads/${cleanImage}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${cleanImage}`;
   };
 
   // Fetch flash sale
@@ -43,7 +45,7 @@ const FlashSaleOffer = () => {
         const data = await fetchWithAuthGlobal(
           "/api/flashsale",
           { method: "POST" },
-          getValidToken
+          getValidToken,
         );
 
         if (!data?.flash_sales) return;

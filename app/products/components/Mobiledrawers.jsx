@@ -142,19 +142,19 @@ export function MobileFilterDrawer({
                         setSelectedSubSubcategory(null);
                         setInStock(false);
                         setPriceRange(100000);
-                        setSortBy("");
+                        setSortBy("1nto");
                         setCurrentPage(1);
                         updateUrl("/products");
-                        fetchProductsByCategory(
-                          null,
-                          null,
-                          null,
-                          1,
-                          "",
-                          false,
-                          [1, 100000],
-                          "",
-                        );
+                        onApplyFilters({
+                          categoryId: null,
+                          subcategoryId: null,
+                          subSubcategoryId: null,
+                          sortValue: "1nto",
+                          inStockValue: false,
+                          priceRangeVal: [1, 100000],
+                          query: "",
+                          warehousesId: "",
+                        });
                       }}
                       className="flex items-center gap-1 mt-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                     >
@@ -246,17 +246,7 @@ export function MobileFilterDrawer({
                     <motion.button
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() =>
-                        fetchProductsByCategory(
-                          selectedCategory,
-                          selectedSubcategory,
-                          selectedSubSubcategory,
-                          currentPage,
-                          sortBy,
-                          inStock,
-                          [0, priceRange],
-                        )
-                      }
+                      onClick={() => onApplyFilters()}
                       className=""
                     ></motion.button>
                   </div>
@@ -308,11 +298,19 @@ export function MobileFilterDrawer({
                                     );
                                     setSelectedSubcategory(null);
                                     setSelectedSubSubcategory(null);
-                                    fetchProductsByCategory(
-                                      isCatSelected ? null : cat.id,
-                                      null,
-                                      null,
-                                    );
+                                    onApplyFilters({
+                                      categoryId: isCatSelected ? null : cat.id,
+                                      subcategoryId: null,
+                                      subSubcategoryId: null,
+                                      sortValue: sortBy,
+                                      inStockValue: inStock,
+                                      priceRangeVal:
+                                        priceRange > 0
+                                          ? [0, priceRange]
+                                          : [1, 100000],
+                                      query: "",
+                                      warehousesId: "",
+                                    });
                                   }}
                                   className={`flex items-center justify-between w-full px-1 py-1 text-sm font-medium transition-colors duration-300 group ${
                                     isSelected
@@ -376,11 +374,21 @@ export function MobileFilterDrawer({
                                                     setSelectedSubSubcategory(
                                                       null,
                                                     );
-                                                    fetchProductsByCategory(
-                                                      selectedCategory,
-                                                      isSubSel ? null : sub.id,
-                                                      null,
-                                                    );
+                                                    onApplyFilters({
+                                                      categoryId: cat.id,
+                                                      subcategoryId: isSubSel
+                                                        ? null
+                                                        : sub.id,
+                                                      subSubcategoryId: null,
+                                                      sortValue: sortBy,
+                                                      inStockValue: inStock,
+                                                      priceRangeVal:
+                                                        priceRange > 0
+                                                          ? [0, priceRange]
+                                                          : [1, 100000],
+                                                      query: "",
+                                                      warehousesId: "",
+                                                    });
                                                   }}
                                                   className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
                                                     isSubSelected
@@ -446,10 +454,35 @@ export function MobileFilterDrawer({
                                                                   setSelectedSubSubcategory(
                                                                     subsub.id,
                                                                   );
-                                                                  fetchProductsByCategory(
-                                                                    selectedCategory,
-                                                                    selectedSubcategory,
-                                                                    subsub.id,
+                                                                  onApplyFilters(
+                                                                    {
+                                                                      categoryId:
+                                                                        selectedCategory ??
+                                                                        null,
+                                                                      subcategoryId:
+                                                                        selectedSubcategory ??
+                                                                        null,
+                                                                      subSubcategoryId:
+                                                                        subsub.id,
+                                                                      sortValue:
+                                                                        sortBy,
+                                                                      inStockValue:
+                                                                        inStock,
+                                                                      priceRangeVal:
+                                                                        priceRange >
+                                                                        0
+                                                                          ? [
+                                                                              0,
+                                                                              priceRange,
+                                                                            ]
+                                                                          : [
+                                                                              1,
+                                                                              100000,
+                                                                            ],
+                                                                      query: "",
+                                                                      warehousesId:
+                                                                        "",
+                                                                    },
                                                                   );
                                                                 }}
                                                                 className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
@@ -489,7 +522,7 @@ export function MobileFilterDrawer({
 
             <div className="sticky bottom-0 pt-4">
               <button
-                onClick={onApplyFilters}
+                onClick={onClose}
                 className="w-full bg-black text-white py-3 rounded-lg font-medium"
               >
                 Apply Filters

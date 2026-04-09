@@ -13,6 +13,8 @@ export function WobbleCardDemo() {
   const { t } = useTranslation();
   const hasFetched = useRef(false);
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const [slides, setSlides] = useState([]);
   const [index, setIndex] = useState(0);
 
@@ -46,7 +48,7 @@ export function WobbleCardDemo() {
           latest.map((item) => ({
             title: item.name,
             description: strip(item.product_details),
-            image: `https://marketplace.yuukke.com/assets/uploads/${item.image}`,
+            image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`,
             link: item.slug,
           })),
         );

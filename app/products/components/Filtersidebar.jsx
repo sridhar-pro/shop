@@ -10,6 +10,7 @@ import {
   ArrowRightCircle,
   IndianRupee,
 } from "lucide-react";
+import { useRef } from "react";
 
 export default function FilterSidebar({
   categories,
@@ -36,6 +37,7 @@ export default function FilterSidebar({
   router,
   onApplyFilters,
 }) {
+  const isClearingRef = useRef(false);
   const hasClearableFilter =
     selectedCategory ||
     selectedSubcategory ||
@@ -85,26 +87,31 @@ export default function FilterSidebar({
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => {
+                  isClearingRef.current = true; // 🔥 ADD THIS
+
                   setSelectedCategory(null);
                   setSelectedSubcategory(null);
                   setSelectedSubSubcategory(null);
                   setInStock(false);
                   setPriceRange(100000);
-                  setSortBy("");
-                  setCurrentPage(1);
-                  updateUrl("/products");
-                  fetchProductsByCategory(
-                    null,
-                    null,
-                    null,
-                    1,
-                    "",
-                    false,
-                    [1, 100000],
-                    "",
-                  );
+                  // setSortBy("1nto");
+
+                  // router.replace("/products");
+
+                  router.replace("/products", { scroll: false });
+
+                  onApplyFilters({
+                    categoryId: null,
+                    subcategoryId: null,
+                    subSubcategoryId: null,
+                    sortValue: "1nto",
+                    inStockValue: false,
+                    priceRangeVal: [1, 100000],
+                    query: "",
+                    warehousesId: "",
+                  });
                 }}
-                className="flex items-center gap-1 mt-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1 mt-2 text-sm text-[#A00300] hover:text-gray-700 transition-colors"
               >
                 <X className="w-4 h-4" />
                 <span>Clear filters</span>
@@ -184,7 +191,18 @@ export default function FilterSidebar({
           <motion.button
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            onClick={onApplyFilters}
+            onClick={() =>
+              onApplyFilters({
+                categoryId: selectedCategory,
+                subcategoryId: selectedSubcategory,
+                subSubcategoryId: selectedSubSubcategory,
+                sortValue: sortBy,
+                inStockValue: inStock,
+                priceRangeVal: priceRange > 0 ? [0, priceRange] : [1, 100000],
+                query: "",
+                warehousesId: "",
+              })
+            }
             className="w-full bg-gray-100 text-gray-800 py-2 px-3 rounded-md font-medium border border-gray-200 
               hover:bg-gray-50 transition-all text-sm flex items-center justify-center gap-2"
           >
@@ -273,11 +291,6 @@ function CategoryTree({
                       handleCategorySelect(cat.slug, cat.id);
                       setSelectedSubcategory(null);
                       setSelectedSubSubcategory(null);
-                      fetchProductsByCategory(
-                        isCatSelected ? null : cat.id,
-                        null,
-                        null,
-                      );
                     }}
                     className={`flex items-center justify-between w-full px-1 py-1 text-sm font-medium transition-colors duration-300 group ${
                       isSelected
@@ -337,11 +350,6 @@ function CategoryTree({
                                       sub.id,
                                     );
                                   }
-                                  fetchProductsByCategory(
-                                    selectedCategory,
-                                    isSubSel ? null : sub.id,
-                                    null,
-                                  );
                                 }}
                                 className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
                                   isSubSelected
@@ -397,11 +405,6 @@ function CategoryTree({
                                                 sub.slug,
                                                 subsub.slug,
                                                 subsub.id,
-                                              );
-                                              fetchProductsByCategory(
-                                                selectedCategory,
-                                                selectedSubcategory,
-                                                isSubSubSel ? null : subsub.id,
                                               );
                                             }}
                                             className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${

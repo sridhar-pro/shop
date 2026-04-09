@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import EnquiryForm from "./Form";
+
 import {
   motion,
   AnimatePresence,
@@ -96,7 +98,7 @@ const slides = [
     id: 2,
     kicker: "End Of Year Sale",
     headline: ["Curated", "Hampers"],
-    img: "/eoy1.png",
+    img: "/eoy3.jpeg",
     plain: false,
   },
 ];
@@ -174,7 +176,7 @@ function HeroSlider() {
   };
 
   return (
-    <section className="relative w-full aspect-[2560/800] max-h-[614px] overflow-hidden bg-black">
+    <section className="relative w-full aspect-[2560/800] max-h-[500px] overflow-hidden bg-black">
       {/* IMAGE */}
       <AnimatePresence custom={dir} mode="sync">
         <motion.div
@@ -186,7 +188,7 @@ function HeroSlider() {
           exit="exit"
           className="absolute inset-0"
         >
-          <img src={s.img} alt="" className="w-full h-full object-cover" />
+          <img src={s.img} alt="" className="w-full h-full" />
           {!s.plain && <div className="absolute inset-0 bg-black/10" />}
         </motion.div>
       </AnimatePresence>
@@ -940,9 +942,7 @@ function OfferSection() {
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
         >
-          <span className="text-7xl font-black text-white font-odop font-medium">
-            30%
-          </span>
+          <span className="text-7xl font-black text-white font-odop">30%</span>
           <span
             className="text-xs uppercase tracking-[0.4em] text-white/60"
             style={{ fontFamily: "'Cinzel', serif" }}
@@ -1159,7 +1159,7 @@ function PathsSection() {
           italic="Products"
           description="Explore our meticulously handpicked collection of premium office supplies, onboarding kits, pantry essentials, and workplace products — all from verified women-led businesses."
           badge="EOY Sale"
-          img="/eoysec.png"
+          img="/eoy-shop.jpeg"
           tags={[
             "Office Supplies",
             "Onboarding Kits",
@@ -1319,7 +1319,7 @@ function FinalCTA() {
         </div>
 
         {/* Why list */}
-        <motion.div
+        {/* <motion.div
           className="grid grid-cols-1 gap-3"
           initial={{ opacity: 0, x: 40 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -1358,7 +1358,8 @@ function FinalCTA() {
               </span>
             </motion.div>
           ))}
-        </motion.div>
+        </motion.div> */}
+        <EnquiryForm />
       </div>
     </section>
   );
@@ -1441,6 +1442,7 @@ export default function EOYLandingPage() {
         <PathsSection />
         <FinalCTA />
         <OrnamentDivider />
+
         {/* <Footer /> */}
       </main>
     </>

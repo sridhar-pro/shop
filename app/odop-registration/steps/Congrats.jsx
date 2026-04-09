@@ -33,6 +33,7 @@ const Congratulations = () => {
   const { t } = useTranslation();
   const name =
     typeof window !== "undefined" ? localStorage.getItem("userName") : "User";
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   return (
     <motion.div
@@ -115,7 +116,7 @@ const Congratulations = () => {
             return;
           }
 
-          const dashboardUrl = `https://marketplace.yuukke.com/Oauth/ne_r_login/${token}`;
+          const dashboardUrl = `https://marketplace.${DOMAIN_KEY}.com/Oauth/ne_r_login/${token}`;
           window.location.href = dashboardUrl;
         }}
       >
@@ -133,7 +134,7 @@ const Congratulations = () => {
         </h2>
         <p className="text-sm sm:text-base text-gray-600 text-center mb-8 sm:mb-10 max-w-md mx-auto">
           {t(
-            "Boost your store's success with these sustainable selling strategies"
+            "Boost your store's success with these sustainable selling strategies",
           )}
         </p>
 

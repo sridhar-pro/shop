@@ -33,6 +33,11 @@ const CheckoutAddress = ({
   // Debounce timer ref
   const debounceRef = useRef(null);
   const router = useRouter();
+
+  const isApplyingRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
+  const skipNextApplyRef = useRef(false);
+
   const [addresses, setAddresses] = useState([]);
   const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -277,6 +282,13 @@ const CheckoutAddress = ({
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION);
 
   const handleApply = async () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (isApplyingRef.current) return;
+    isApplyingRef.current = true;
+
     const cartId = localStorage.getItem("cart_id");
     const trimmed = code.trim();
 
@@ -291,7 +303,7 @@ const CheckoutAddress = ({
       } catch (e) {
         console.warn("Error resetting last_applied_coupon", e);
       }
-
+      isApplyingRef.current = false;
       return;
     }
 
@@ -310,7 +322,7 @@ const CheckoutAddress = ({
 
       if (failed) {
         // ❌ Failed to apply
-        setCouponMessage(applyResponse?.message || "Failed to apply coupon");
+        setCouponMessage(applyResponse?.message || "Invalid coupon");
         setIsApplied(false);
         setCouponValue(0);
 
@@ -329,6 +341,8 @@ const CheckoutAddress = ({
       // ✅ Success
       setCouponMessage("Discount applied successfully!");
       setIsApplied(true);
+
+      skipNextApplyRef.current = true;
 
       // A normal coupon overrides any active hot deal
       setLimitedDealApplied(false);
@@ -380,7 +394,7 @@ const CheckoutAddress = ({
       try {
         localStorage.setItem(
           "cart_tax_details",
-          JSON.stringify(summaryResponse),
+          JSON.stringify({ cart_data: cartData }),
         );
       } catch (e) {
         console.warn("Error saving cart_tax_details", e);
@@ -396,6 +410,8 @@ const CheckoutAddress = ({
       console.error("❌ Error applying coupon or fetching cart summary:", err);
       setCouponMessage("Failed to apply coupon. Try again.");
       setIsApplied(false);
+    } finally {
+      isApplyingRef.current = false; // ✅ THIS is the correct place
     }
   };
 
@@ -456,7 +472,7 @@ const CheckoutAddress = ({
         try {
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse),
+            JSON.stringify({ cart_data: cartData }),
           );
         } catch (e) {
           console.warn("Error saving cart_tax_details", e);
@@ -548,7 +564,7 @@ const CheckoutAddress = ({
 
           localStorage.setItem(
             "cart_tax_details",
-            JSON.stringify(summaryResponse),
+            JSON.stringify({ cart_data: cartData }),
           );
 
           window.dispatchEvent(
@@ -615,17 +631,29 @@ const CheckoutAddress = ({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    // If user clears the field, just reset & don't call API
-    if (!code.trim()) {
-      setCouponMessage("");
-      setIsApplied(false);
-      setCouponValue(0);
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
       return;
     }
 
+    if (!code.trim()) {
+      setIsApplied(false);
+      setCouponValue(0);
+      setCouponMessage("");
+      return;
+    }
+
+    // ✅ prevent double call after success
+    if (skipNextApplyRef.current) {
+      skipNextApplyRef.current = false;
+      return;
+    }
+
+    if (isApplyingRef.current) return;
+
     debounceRef.current = setTimeout(() => {
       handleApply();
-    }, 800); // same delay
+    }, 800);
 
     return () => clearTimeout(debounceRef.current);
   }, [code]);
@@ -1033,12 +1061,34 @@ const CheckoutAddress = ({
       }
 
       const addressId = selectedAddressId || activeAddresses[0]?.id || null;
+      let couponToSend = "";
 
-      const lastCoupon =
-        localStorage.getItem("last_applied_coupon") ||
-        localStorage.getItem("applied_coupon"); // fallback
+      try {
+        const raw = localStorage.getItem("cart_summary_cache");
+        const cached = raw ? JSON.parse(raw) : {};
 
-      const couponToSend = lastCoupon === "0" ? "" : lastCoupon || "";
+        const cartData = cached?.cart_data;
+
+        const couponId = cartData?.coupon_id;
+        const couponValue = parseCurrency(cartData?.coupon_value || 0);
+
+        if (couponId && couponId !== "0" && couponValue > 0) {
+          couponToSend = couponId;
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to read cart_summary_cache", e);
+      }
+
+      // 🛟 fallback (keep your current logic)
+      if (!couponToSend) {
+        const rawLast =
+          localStorage.getItem("last_applied_coupon") ||
+          localStorage.getItem("applied_coupon");
+
+        if (rawLast && rawLast !== "0") {
+          couponToSend = rawLast;
+        }
+      }
 
       // console.log("🏠 Using Address ID:", addressId);
 
@@ -1134,12 +1184,14 @@ const CheckoutAddress = ({
     }
   };
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -1653,10 +1705,16 @@ const CheckoutAddress = ({
                   placeholder="Discount code"
                   value={code}
                   onChange={(e) => {
-                    setCode(e.target.value);
-                    // setIsApplied(false); // Reset button
-                    setCouponMessage(""); // Clear previous message
-                    setCouponValue(0); // Reset previous discount
+                    const newCode = e.target.value;
+
+                    // ✅ ONLY reset when actual change happens
+                    if (newCode !== code) {
+                      setIsApplied(false);
+                      setCouponValue(0);
+                      // ❌ DO NOT clear message here
+                    }
+
+                    setCode(newCode);
                   }}
                   className="input flex-1 bg-white"
                 />
@@ -1688,14 +1746,15 @@ const CheckoutAddress = ({
 
             {/* 📦 Summary */}
             <div className="border-t pt-4 space-y-2 text-sm">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-start">
                 <span>Subtotal</span>
-                <span>₹{subtotal.toFixed(2)}</span>
-              </div>
 
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span>₹{tax.toFixed(2)}</span>
+                <div className="flex flex-col items-end">
+                  <span>₹{subtotal.toFixed(2)}</span>
+                  <span className="text-xs text-gray-500">
+                    (Incl. GST ₹{tax.toFixed(2)})
+                  </span>
+                </div>
               </div>
 
               <div className="flex justify-between">

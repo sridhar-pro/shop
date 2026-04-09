@@ -21,6 +21,8 @@ export default function LoginPage() {
   const from = searchParams.get("from");
   const { handleLogin } = useSession();
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const [currentFlow, setCurrentFlow] = useState("initial");
   const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState("");
@@ -121,7 +123,7 @@ export default function LoginPage() {
       toast.success(data.message || "You are successfully logged in! 🎉");
       if (group_id == 4) {
         localStorage.setItem("access_token", access_token);
-        window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
+        window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${access_token}`;
       } else {
         router.push(from || "/");
       }
@@ -207,7 +209,7 @@ export default function LoginPage() {
       toast.success(data.message || "Login successful 🎉");
       if (group_id == 4) {
         sessionStorage.setItem("access_token", access_token);
-        window.location.href = `https://marketplace.yuukke.com/Oauth/tLogin/${access_token}`;
+        window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${access_token}`;
       } else {
         router.push(from || "/");
       }
@@ -215,7 +217,7 @@ export default function LoginPage() {
       console.error("Email Login API Error ❌", error);
       toast.error("Something went wrong ❌");
     } finally {
-      setResendLoading(false);
+      setLoading(false);
     }
   };
 

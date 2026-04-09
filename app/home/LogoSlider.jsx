@@ -7,6 +7,8 @@ const LogoSlider = () => {
   const [isMobile, setIsMobile] = useState(false);
   const hasFetched = useRef(false);
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
@@ -17,32 +19,31 @@ const LogoSlider = () => {
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-  
+
     const fetchLogos = async () => {
       try {
         // NOTE: endpoint matches the catch-all route dynamic param
-        const res = await fetch("/api/vendorLogo"); 
+        const res = await fetch("/api/vendorLogo");
         const data = await res.json();
-  
+
         if (!data || !Array.isArray(data)) {
           throw new Error("No logo data received.");
         }
-  
+
         const logoUrls = data.map((vendor) => ({
           id: vendor.id,
           slug: vendor.slug,
-          logo: `https://marketplace.yuukke.com/assets/uploads/thumbs/${vendor.store_logo}`,
+          logo: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${vendor.store_logo}`,
         }));
-  
+
         setLogos(logoUrls);
       } catch (error) {
         console.error("⚠️ Error fetching logos:", error);
       }
     };
-  
+
     fetchLogos();
   }, []);
-  
 
   return (
     <div className="relative w-full overflow-hidden py-8 bg-white mb-16 mt-16">

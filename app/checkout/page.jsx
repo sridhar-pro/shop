@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../utils/AuthContext";
 import { useSession } from "../context/SessionContext";
+import ScratchCardPopup from "./ScratchCard";
 import { toast } from "react-toastify";
 
 export default function CheckoutPage({ formData }) {
@@ -24,7 +25,11 @@ export default function CheckoutPage({ formData }) {
   const [loading, setLoading] = useState(false);
   const [customizedTexts, setCustomizedTexts] = useState({});
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const [couponValue, setCouponValue] = useState(0);
+
+  const [showScratch, setShowScratch] = useState(true);
 
   const [code, setCode] = useState("");
   const [isApplied, setIsApplied] = useState(false);
@@ -34,6 +39,14 @@ export default function CheckoutPage({ formData }) {
   const [bogoOffers, setBogoOffers] = useState([]);
 
   const [applyingOffer, setApplyingOffer] = useState(false); // track button state
+
+  useEffect(() => {
+    // 🎉 Auto-trigger scratch card after page load
+    const timer = setTimeout(() => {
+      setShowScratch(true);
+    }, 1500); // Delay for cinematic effect 😎
+    return () => clearTimeout(timer);
+  }, [setShowScratch]);
 
   // 🧮 Currency parser
   const parseCurrency = (val) =>
@@ -212,7 +225,7 @@ export default function CheckoutPage({ formData }) {
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -336,8 +349,6 @@ export default function CheckoutPage({ formData }) {
     };
   }, []);
 
-  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
-
   const today = new Date();
   const orderDate = today.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -394,6 +405,9 @@ export default function CheckoutPage({ formData }) {
           return;
         }
 
+        // ✅ Capture cart_id ONCE (important)
+        const cartId = localStorage.getItem("cart_id");
+
         // Save order confirmation data before clearing
         const shippingDetails = localStorage.getItem("cart_shipping_details");
         const taxDetails = localStorage.getItem("cart_tax_details");
@@ -414,15 +428,42 @@ export default function CheckoutPage({ formData }) {
 
         // Prefer last_applied_coupon (covers hot deal + manual)
         // Fallback to applied_coupon for safety
-        const rawLast = localStorage.getItem("last_applied_coupon");
-        const rawApplied = localStorage.getItem("applied_coupon");
+        let effectiveCoupon = "";
 
-        const effectiveCoupon =
-          (rawLast && rawLast !== "0" ? rawLast : null) ||
-          (rawApplied && rawApplied !== "0" ? rawApplied : null) ||
-          "";
+        try {
+          if (cartId) {
+            const summary = await fetchWithAuth("/api/getTax", {
+              method: "POST",
+              body: { cart_id: cartId },
+            });
 
-        // Conditionally build payload
+            const cartData = summary?.cart_data;
+
+            const couponId = cartData?.coupon_id;
+            const couponValue = parseCurrency(cartData?.coupon_value || 0);
+
+            if (couponId && couponId !== "0" && couponValue > 0) {
+              effectiveCoupon = couponId;
+            }
+          }
+        } catch (e) {
+          console.warn("⚠️ Failed to fetch latest coupon for paymentNotify", e);
+        }
+
+        // ✅ FINAL coupon (backend truth)
+        const finalCoupon = effectiveCoupon;
+
+        // 🧼 Immediately clear local coupon memory (prevents reuse bugs)
+        localStorage.removeItem("applied_coupon");
+        localStorage.removeItem("last_applied_coupon");
+        localStorage.removeItem("cart_coupon_value");
+        localStorage.removeItem("limited_deal_applied_once");
+        localStorage.removeItem("limited_deal_expiry");
+
+        // 🔥 Force UI reset
+        window.dispatchEvent(new Event("coupon-cleared"));
+
+        // ✅ Build payload AFTER cleanup (using safe variable)
         const payload = !isLoggedIn
           ? {
               saleid,
@@ -431,15 +472,16 @@ export default function CheckoutPage({ formData }) {
               email: localStorage.getItem("checkout_email") || "",
               phone: localStorage.getItem("checkout_contact") || "",
               guest: true,
-              coupon_code: effectiveCoupon,
+              coupon_code: finalCoupon,
+              cart_id: cartId,
             }
           : {
               saleid,
               msg: "success",
               guest: false,
-              coupon_code: effectiveCoupon,
+              coupon_code: finalCoupon,
+              cart_id: cartId,
             };
-
         try {
           const res = await fetch("/api/paymentNotify", {
             method: "POST",
@@ -549,7 +591,7 @@ export default function CheckoutPage({ formData }) {
   return (
     <div className="min-h-screen bg-gray-100 font-odop">
       <div className="max-w-5xl mx-auto flex flex-col lg:flex-row min-h-screen lg:min-h-screen">
-        <div className="w-full min-h-screen flex justify-center bg-transparent">
+        <div className="w-full min-h-[70vh] flex justify-center bg-transparent">
           {isProcessingPayment && !paymentSuccess ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -616,7 +658,17 @@ export default function CheckoutPage({ formData }) {
             </motion.div>
           ) : paymentSuccess ? (
             <>
-              <div className="w-full min-h-screen flex  justify-center bg-transparent">
+              {/* 🎁 Scratch Card Popup */}
+              {/* {showScratch && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  <ScratchCardPopup onClose={() => setShowScratch(false)} />
+                </motion.div>
+              )} */}
+              <div className="w-full  min-h-screen flex  justify-center bg-transparent">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -654,6 +706,8 @@ export default function CheckoutPage({ formData }) {
                       localStorage.removeItem("checkout_email");
                       localStorage.removeItem("checkout_contact");
                       localStorage.removeItem("applied_coupon");
+                      localStorage.removeItem("last_applied_coupon");
+                      localStorage.removeItem("cart_coupon_value");
 
                       setCartItems([]);
 
@@ -751,7 +805,7 @@ export default function CheckoutPage({ formData }) {
               </div>
             </>
           ) : paymentFailure ? (
-            <div className="w-full min-h-screen flex  justify-center bg-transparent">
+            <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

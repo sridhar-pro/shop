@@ -13,12 +13,14 @@ export default function CommonBlogPage({ slug }) {
   const leftRef = useRef(null); // main article scroll container
   const sidebarRef = useRef(null); // right sidebar
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -55,7 +57,7 @@ export default function CommonBlogPage({ slug }) {
 
         if (relatedData.status) {
           setRelatedBlogs(
-            relatedData.data.filter((b) => b.slug !== slug) // exclude current blog
+            relatedData.data.filter((b) => b.slug !== slug), // exclude current blog
           );
         }
       } catch (err) {

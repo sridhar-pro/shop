@@ -36,6 +36,12 @@ const CheckoutForm = ({
   const debounceRef = useRef(null);
   const hotDealHistorySentRef = useRef(false);
 
+  const isApplyingRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
+  const skipNextApplyRef = useRef(false);
+
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const { getValidToken, isAuthReady } = useAuth();
 
   const fetchWithAuth = async (url, options = {}, retry = false) => {
@@ -379,18 +385,6 @@ const CheckoutForm = ({
   const parseCurrency = (val) =>
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
 
-  const getCachedCart = () => {
-    try {
-      const cached = localStorage.getItem("cart_summary_cache");
-      if (!cached) return null;
-
-      const parsed = JSON.parse(cached);
-      return parsed?.cart_data || null;
-    } catch {
-      return null;
-    }
-  };
-
   const states = [
     "Andhra Pradesh",
     "Arunachal Pradesh",
@@ -481,16 +475,37 @@ const CheckoutForm = ({
         return;
       }
 
-      const rawLast = localStorage.getItem("last_applied_coupon");
+      let effectiveCoupon = "";
 
-      // read discount value
-      const couponValue = Number(
-        localStorage.getItem("cart_coupon_value") || 0,
-      );
+      // ✅ Try backend first
+      try {
+        const summary = await fetchWithAuth("/api/getTax", {
+          method: "POST",
+          body: { cart_id: cartId },
+        });
 
-      // send coupon only if discount exists
-      const effectiveCoupon =
-        rawLast && rawLast !== "0" && couponValue > 0 ? rawLast : "";
+        const cartData = summary?.cart_data;
+        const couponId = cartData?.coupon_id;
+        const couponValue = parseCurrency(cartData?.coupon_value || 0);
+
+        if (couponId && couponId !== "0" && couponValue > 0) {
+          effectiveCoupon = couponId;
+        }
+      } catch (e) {
+        console.warn("Coupon fetch failed, fallback to localStorage");
+      }
+
+      // ✅ fallback (safe)
+      if (!effectiveCoupon) {
+        const rawLast = localStorage.getItem("last_applied_coupon");
+        const couponValue = Number(
+          localStorage.getItem("cart_coupon_value") || 0,
+        );
+
+        if (rawLast && rawLast !== "0" && couponValue > 0) {
+          effectiveCoupon = rawLast;
+        }
+      }
 
       const customerPayload = {
         customer: {
@@ -508,7 +523,7 @@ const CheckoutForm = ({
         },
         company_id: 0,
         cart_id: cartId,
-        ...(effectiveCoupon && { coupon_code: effectiveCoupon }), // 👈 now sends hot deal too
+        ...(effectiveCoupon && { coupon_code: effectiveCoupon }),
       };
 
       console.log("📦 createOrder coupon_code =>", effectiveCoupon);
@@ -573,8 +588,6 @@ const CheckoutForm = ({
     }
   };
 
-  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
-
   const [isApplied, setIsApplied] = useState(false);
 
   // Limited-deal config
@@ -585,6 +598,14 @@ const CheckoutForm = ({
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION); // ⭐ UPDATED
 
   const handleApply = async () => {
+    // ✅ kill pending debounce
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (isApplyingRef.current) return;
+    isApplyingRef.current = true;
+
     const cartId = localStorage.getItem("cart_id");
     const trimmed = code.trim();
 
@@ -609,11 +630,9 @@ const CheckoutForm = ({
         applyResponse?.success === false;
 
       if (failed) {
-        // ❌ Failed to apply
-        setCouponMessage(applyResponse?.message || "Failed to apply coupon");
+        setCouponMessage(applyResponse?.message || "Invalid coupon");
         setIsApplied(false);
         setCouponValue(0);
-
         try {
           localStorage.removeItem("applied_coupon");
           localStorage.setItem("last_applied_coupon", "0");
@@ -621,7 +640,6 @@ const CheckoutForm = ({
           console.warn("Error clearing coupon storage", e);
         }
 
-        localStorage.removeItem("cart_summary_cache");
         // Let OrderSummary & others refresh
         window.dispatchEvent(new Event("cart-updated"));
         return;
@@ -630,6 +648,8 @@ const CheckoutForm = ({
       // ✅ Success
       setCouponMessage("Discount applied successfully!");
       setIsApplied(true);
+
+      skipNextApplyRef.current = true;
 
       // A normal coupon overrides any active hot deal
       setLimitedDealApplied(false);
@@ -652,21 +672,16 @@ const CheckoutForm = ({
         console.warn("Error persisting coupon storage", e);
       }
 
-      localStorage.removeItem("cart_summary_cache");
       // Trigger global cart refresh (OrderSummary will pull latest totals)
       window.dispatchEvent(new Event("cart-updated"));
 
-      let cartData = getCachedCart();
+      // 2️⃣ Fetch updated cart summary (tax, totals, items)
+      const summaryResponse = await fetchWithAuth("/api/getTax", {
+        method: "POST",
+        body: { cart_id: cartId },
+      });
 
-      if (!cartData) {
-        const summaryResponse = await fetchWithAuth("/api/getTax", {
-          method: "POST",
-          body: { cart_id: cartId },
-        });
-
-        cartData = summaryResponse?.cart_data;
-      }
-
+      const cartData = summaryResponse?.cart_data;
       if (!cartData) return;
 
       const appliedCoupon = cartData.coupon_id && cartData.coupon_id !== "0";
@@ -685,7 +700,7 @@ const CheckoutForm = ({
       try {
         localStorage.setItem(
           "cart_tax_details",
-          JSON.stringify({ cart_data: cartData }),
+          JSON.stringify(summaryResponse),
         );
       } catch (e) {
         console.warn("Error saving cart_tax_details", e);
@@ -701,6 +716,8 @@ const CheckoutForm = ({
       console.error("❌ Error applying coupon or fetching cart summary:", err);
       setCouponMessage("Failed to apply coupon. Try again.");
       setIsApplied(false);
+    } finally {
+      isApplyingRef.current = false;
     }
   };
 
@@ -744,7 +761,7 @@ const CheckoutForm = ({
 
       // Mark local hot-deal state and start 2-minute countdown
       setLimitedDealApplied(true);
-      setDealTimer(600);
+      setDealTimer(120);
 
       // ⭐ Persist absolute expiry time for the countdown (in seconds)
       try {
@@ -754,31 +771,13 @@ const CheckoutForm = ({
         console.warn("Could not persist limited_deal_expiry", e);
       }
 
-      let cartData = getCachedCart();
+      // Refresh cart summary so couponValue & totals are correct
+      const summaryResponse = await fetchWithAuth("/api/getTax", {
+        method: "POST",
+        body: { cart_id: cartId },
+      });
 
-      if (!cartData) {
-        const summaryResponse = await fetchWithAuth("/api/getTax", {
-          method: "POST",
-          body: { cart_id: cartId },
-        });
-
-        cartData = summaryResponse?.cart_data;
-      }
-
-      if (cartData) {
-        setCouponValue(parseCurrency(cartData.coupon_value || 0));
-
-        localStorage.setItem(
-          "cart_tax_details",
-          JSON.stringify({ cart_data: cartData }),
-        );
-
-        window.dispatchEvent(
-          new CustomEvent("local-storage-update", {
-            detail: { key: "cart_tax_details" },
-          }),
-        );
-      }
+      const cartData = summaryResponse?.cart_data;
       if (cartData) {
         setCouponValue(parseCurrency(cartData.coupon_value || 0));
 
@@ -798,7 +797,6 @@ const CheckoutForm = ({
         );
       }
 
-      localStorage.removeItem("cart_summary_cache");
       // Let other components (OrderSummary / header) refresh totals
       window.dispatchEvent(new Event("cart-updated"));
     } catch (err) {
@@ -896,31 +894,12 @@ const CheckoutForm = ({
       }
 
       try {
-        let cartData = getCachedCart();
+        const summaryResponse = await fetchWithAuth("/api/getTax", {
+          method: "POST",
+          body: { cart_id: cartId },
+        });
 
-        if (!cartData) {
-          const summaryResponse = await fetchWithAuth("/api/getTax", {
-            method: "POST",
-            body: { cart_id: cartId },
-          });
-
-          cartData = summaryResponse?.cart_data;
-        }
-
-        if (cartData) {
-          setCouponValue(parseCurrency(cartData.coupon_value || 0));
-
-          localStorage.setItem(
-            "cart_tax_details",
-            JSON.stringify({ cart_data: cartData }),
-          );
-
-          window.dispatchEvent(
-            new CustomEvent("local-storage-update", {
-              detail: { key: "cart_tax_details" },
-            }),
-          );
-        }
+        const cartData = summaryResponse?.cart_data;
         if (cartData) {
           setCouponValue(parseCurrency(cartData.coupon_value || 0));
 
@@ -939,7 +918,6 @@ const CheckoutForm = ({
         console.error("Failed silent refresh after removing limited deal:", e);
       }
 
-      localStorage.removeItem("cart_summary_cache");
       window.dispatchEvent(new Event("cart-updated"));
     }
   };
@@ -952,6 +930,9 @@ const CheckoutForm = ({
         const manualCoupon = localStorage.getItem("applied_coupon");
         const limitedOnce =
           localStorage.getItem("limited_deal_applied_once") === "1";
+        const lastCoupon = localStorage.getItem("last_applied_coupon");
+
+        if (lastCoupon && lastCoupon !== "0") return;
 
         // 🚫 HARD STOP: user already applied coupon manually
         if (manualCoupon) return;
@@ -994,17 +975,32 @@ const CheckoutForm = ({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    // If user clears the field, just reset & don't call API
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+
     if (!code.trim()) {
       setCouponMessage("");
       setIsApplied(false);
       setCouponValue(0);
+
+      // ✅ NO API CALL
       return;
     }
 
+    // ✅ HANDLE DOUBLE CALL AFTER SUCCESS
+    if (skipNextApplyRef.current) {
+      skipNextApplyRef.current = false;
+      return;
+    }
+
+    // ❌ REMOVE isApplied check (important)
+    if (isApplyingRef.current) return;
+
     debounceRef.current = setTimeout(() => {
       handleApply();
-    }, 800); // same delay
+    }, 800);
 
     return () => clearTimeout(debounceRef.current);
   }, [code]);
@@ -1021,16 +1017,6 @@ const CheckoutForm = ({
     }
 
     try {
-      let cached = localStorage.getItem("cart_summary_cache");
-
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.bogo_offers) {
-          setBogoOffers(parsed.bogo_offers);
-          return;
-        }
-      }
-
       const response = await fetchWithAuth("/api/getTax", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1081,7 +1067,6 @@ const CheckoutForm = ({
       // ✅ mark offer as applied
       setOfferApplied(true);
 
-      localStorage.removeItem("cart_summary_cache");
       // ✅ refresh cart globally
       window.dispatchEvent(new Event("cart-updated"));
     } catch (error) {
@@ -1096,7 +1081,7 @@ const CheckoutForm = ({
 
     if (image.startsWith("http") || image.startsWith("/")) return image;
 
-    const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
@@ -1168,16 +1153,16 @@ const CheckoutForm = ({
 
           {/* 📦 Summary */}
           <div className="border-t pt-4 space-y-2 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-start">
               <span>Subtotal</span>
-              <span>₹{subtotal.toFixed(2)}</span>
-            </div>
 
-            <div className="flex justify-between">
-              <span>Tax</span>
-              <span>₹{tax.toFixed(2)}</span>
+              <div className="flex flex-col items-end">
+                <span>₹{subtotal.toFixed(2)}</span>
+                <span className="text-xs text-gray-500">
+                  (Incl. GST ₹{tax.toFixed(2)})
+                </span>
+              </div>
             </div>
-
             <div className="flex justify-between">
               <span>Shipping</span>
               <span>₹{shipping.toFixed(2)}</span>
@@ -1341,7 +1326,6 @@ const CheckoutForm = ({
                     className="input bg-white"
                     value={formData.lastName || ""}
                     onChange={handleChange}
-                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -1487,7 +1471,6 @@ const CheckoutForm = ({
                             return;
                           }
 
-                          localStorage.removeItem("cart_summary_cache");
                           // ✅ valid pincode, refresh cart
                           window.dispatchEvent(new Event("cart-updated"));
                         } catch (err) {
@@ -1654,10 +1637,16 @@ const CheckoutForm = ({
                       placeholder="Discount code"
                       value={code}
                       onChange={(e) => {
-                        setCode(e.target.value);
-                        // setIsApplied(false); // Reset button
-                        setCouponMessage(""); // Clear previous message
-                        setCouponValue(0); // Reset previous discount
+                        const newCode = e.target.value;
+
+                        // ✅ ONLY clear when actual change happens
+                        if (newCode !== code) {
+                          setIsApplied(false);
+                          setCouponValue(0);
+                          setCouponMessage("");
+                        }
+
+                        setCode(newCode);
                       }}
                       className="input flex-1 bg-white"
                     />
@@ -1689,14 +1678,15 @@ const CheckoutForm = ({
 
                 {/* 📦 Summary */}
                 <div className="border-t pt-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-start">
                     <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
 
-                  <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>₹{tax.toFixed(2)}</span>
+                    <div className="flex flex-col items-end">
+                      <span>₹{subtotal.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500">
+                        (Incl. GST ₹{tax.toFixed(2)})
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex justify-between">

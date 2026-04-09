@@ -46,6 +46,8 @@ export default function ProductPageClient() {
   const [sms, setSms] = useState("");
   const [loadingenq, setLoadingenq] = useState(false);
 
+  const [invalidVideos, setInvalidVideos] = useState([]);
+
   const [personalisedText, setPersonalisedText] = useState(() => {
     if (typeof window === "undefined") return "";
 
@@ -57,6 +59,8 @@ export default function ProductPageClient() {
       return "";
     }
   });
+
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const { getValidToken } = useAuth();
   const [product, setProduct] = useState(null);
@@ -299,32 +303,33 @@ export default function ProductPageClient() {
 
   useEffect(() => {
     const handleScrollRedirect = (e) => {
-      const col1 = col1Ref.current;
       const col2 = col2Ref.current;
-      if (!col1 || !col2) return;
+      if (!col2) return;
 
       const scrollingDown = e.deltaY > 0;
 
       const col2ScrollTop = col2.scrollTop;
       const col2MaxScroll = col2.scrollHeight - col2.clientHeight;
+
       const windowScrollTop = window.scrollY;
 
+      const atTop = col2ScrollTop <= 1;
+      const atBottom = col2ScrollTop >= col2MaxScroll - 1;
+
       if (scrollingDown) {
-        // Scroll col2 first (same as before)
-        if (col2ScrollTop < col2MaxScroll) {
+        // ⬇️ DOWN → center first
+        if (!atBottom) {
           e.preventDefault();
-          col2.scrollBy({ top: e.deltaY, behavior: "auto" });
+          col2.scrollTop += e.deltaY;
         }
-        // else let window scroll
       } else {
-        // When scrolling UP, outer window (col1+3) first
+        // ⬆️ UP → page first
         if (windowScrollTop > 0) {
           e.preventDefault();
           window.scrollBy({ top: e.deltaY, behavior: "auto" });
-        } else if (col2ScrollTop > 0) {
-          // Only scroll col2 after outer page is already at top
+        } else if (!atTop) {
           e.preventDefault();
-          col2.scrollBy({ top: e.deltaY, behavior: "auto" });
+          col2.scrollTop += e.deltaY;
         }
       }
     };
@@ -332,6 +337,7 @@ export default function ProductPageClient() {
     document.addEventListener("wheel", handleScrollRedirect, {
       passive: false,
     });
+
     return () => {
       document.removeEventListener("wheel", handleScrollRedirect);
     };
@@ -490,6 +496,7 @@ export default function ProductPageClient() {
             : null,
           end_date: p.end_date,
           promo_tag: p.promo_tag,
+          promotion: Number(p.promotion || 0),
           quantity: p.quantity,
           review: p.review,
           review_count: Array.isArray(p.all_reviews) ? p.all_reviews.length : 0,
@@ -500,6 +507,7 @@ export default function ProductPageClient() {
           dimensions: p.dimensions,
           specifications: p.specifications,
           image: p.p_image || "/placeholder-product.jpg",
+          product_video: p.product_video,
           image_g: Array.isArray(p.product_image)
             ? [...p.product_image].reverse()
             : [],
@@ -568,11 +576,9 @@ export default function ProductPageClient() {
     // Find active variant safely
     const activeVariant =
       selectedVariants?.[product.id] ||
-      (product.product_variants?.length > 0
-        ? product.product_variants[0]
-        : null);
+      (product.variants?.length > 0 ? product.variants[0] : null);
 
-    const BASE_URL = "https://marketplace.yuukke.com/assets/uploads/";
+    const BASE_URL = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/`;
 
     // Collect images
     const variantImages = activeVariant
@@ -1346,6 +1352,44 @@ export default function ProductPageClient() {
       : []),
   ].filter(Boolean);
 
+  const BASE_URL = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/`;
+
+  const activeVariant = product?.id
+    ? selectedVariants?.[product.id] ||
+      (product.variants?.length > 0 ? product.variants[0] : null)
+    : null;
+  // ✅ Variant images
+  const variantImages = activeVariant
+    ? [
+        activeVariant.front_view,
+        activeVariant.back_view,
+        activeVariant.side_view,
+        activeVariant.top_view,
+        activeVariant.zoom_view,
+      ]
+        .filter(Boolean)
+        .map((img) => (img.startsWith("http") ? img : `${BASE_URL}${img}`))
+    : [];
+
+  // ✅ Product images fallback
+  const productImages = (product?.image_g || []).map((img) =>
+    img.startsWith("http") ? img : `${BASE_URL}${img}`,
+  );
+
+  // ✅ FINAL MEDIA CONTROL
+  const mediaList =
+    variantImages.length > 0
+      ? variantImages
+      : [
+          ...productImages,
+          ...(product?.product_video
+            ? [`${BASE_URL}${product.product_video}`]
+            : []),
+        ];
+  const filteredMedia = mediaList.filter(
+    (item) => !invalidVideos.includes(item),
+  );
+
   // Loading state
   if (loading) {
     return (
@@ -1383,7 +1427,7 @@ export default function ProductPageClient() {
   const getImageSrcThumbs = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.yuukke.com/assets/uploads/thumbs/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${image}`;
   };
 
   // Always keep reviews safe
@@ -1565,14 +1609,12 @@ export default function ProductPageClient() {
 
             {/* 🧭 Vertical Thumbnails (Desktop Only) */}
             {(() => {
-              const BASE_URL = "https://marketplace.yuukke.com/assets/uploads/";
+              const BASE_URL = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/`;
 
               // 1. Find active variant
               const activeVariant =
                 selectedVariants?.[product.id] ||
-                (product.product_variants?.length > 0
-                  ? product.product_variants[0]
-                  : null);
+                (product.variants?.length > 0 ? product.variants[0] : null);
 
               // 2. Collect variant images
               const variantImages = activeVariant
@@ -1608,7 +1650,7 @@ export default function ProductPageClient() {
                       Thumbnails
                     </h3>
                     <div className="flex flex-col gap-3 h-[calc(100vh-160px)] overflow-y-auto py-2 scrollbar-hide">
-                      {imagesToShow.map((img, index) => (
+                      {filteredMedia.map((img, index) => (
                         <motion.button
                           key={index}
                           onClick={() => setSelectedImage(img)}
@@ -1620,13 +1662,32 @@ export default function ProductPageClient() {
                               : "border-transparent hover:border-gray-300"
                           }`}
                         >
-                          <Image
-                            src={img}
-                            alt={`Thumbnail ${index + 1}`}
-                            width={80}
-                            height={80}
-                            className="object-cover w-full h-full"
-                          />
+                          {img.endsWith(".mp4") ? (
+                            <div className="relative w-full h-full">
+                              <video
+                                src={img}
+                                className="w-full h-full object-cover"
+                                onError={() => {
+                                  setInvalidVideos((prev) => [...prev, img]);
+                                }}
+                              />
+
+                              {/* ▶ Play Icon Overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                                  ▶
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <Image
+                              src={img}
+                              alt={`Thumbnail ${index + 1}`}
+                              width={80}
+                              height={80}
+                              className="object-cover w-full h-full"
+                            />
+                          )}
                         </motion.button>
                       ))}
                     </div>
@@ -1643,21 +1704,30 @@ export default function ProductPageClient() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <Image
-                          src={
-                            selectedImage ||
-                            (variantImages.length > 0
-                              ? variantImages[0]
-                              : productImages.length > 0
-                                ? productImages[0]
-                                : product.image)
-                          }
-                          alt={product?.name || "Product image"}
-                          fill
-                          className="object-contain"
-                          priority
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                        />
+                        {(selectedImage || filteredMedia[0])?.endsWith(
+                          ".mp4",
+                        ) ? (
+                          <video
+                            src={selectedImage || mediaList[0]}
+                            controls
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <Image
+                            src={
+                              selectedImage ||
+                              mediaList[0] ||
+                              (variantImages.length > 0
+                                ? variantImages[0]
+                                : productImages.length > 0
+                                  ? productImages[0]
+                                  : product.image)
+                            }
+                            alt={product?.name}
+                            fill
+                            className="object-contain"
+                          />
+                        )}
                       </motion.div>
                     </AnimatePresence>
 
@@ -1665,7 +1735,7 @@ export default function ProductPageClient() {
                     {imagesToShow.length > 0 && (
                       <div className="mt-4 lg:hidden">
                         <div className="flex gap-3 overflow-x-auto py-2 scrollbar-hide">
-                          {imagesToShow.map((img, index) => (
+                          {filteredMedia.map((img, index) => (
                             <motion.button
                               key={index}
                               onClick={() => setSelectedImage(img)}
@@ -1676,13 +1746,34 @@ export default function ProductPageClient() {
                                   : "border-transparent hover:border-gray-300"
                               }`}
                             >
-                              <Image
-                                src={img}
-                                alt={`Thumbnail ${index + 1}`}
-                                width={80}
-                                height={80}
-                                className="object-cover w-full h-full"
-                              />
+                              {img.endsWith(".mp4") ? (
+                                <div className="relative w-full h-full">
+                                  <video
+                                    src={img}
+                                    className="w-full h-full object-cover"
+                                    onError={() => {
+                                      setInvalidVideos((prev) => [
+                                        ...prev,
+                                        img,
+                                      ]);
+                                    }}
+                                  />
+                                  {/* ▶ Play Icon Overlay */}
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                                      ▶
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Image
+                                  src={img}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  width={80}
+                                  height={80}
+                                  className="object-cover w-full h-full"
+                                />
+                              )}
                             </motion.button>
                           ))}
                         </div>
@@ -1698,9 +1789,9 @@ export default function ProductPageClient() {
             {(() => {
               const hasVariants = product.variants?.length > 0;
 
-              const selectedVariant = hasVariants
-                ? selectedVariants?.[product.id] || product.variants[0]
-                : null;
+              const selectedVariant =
+                selectedVariants?.[product.id] ??
+                (product.variants?.length > 0 ? product.variants[0] : null);
 
               const variantPrice = selectedVariant
                 ? Number(selectedVariant.price)
@@ -1725,14 +1816,18 @@ export default function ProductPageClient() {
                 productPromo < productPrice;
 
               const isVariantPromoValid =
+                selectedVariant &&
                 Number(product.promotion) === 1 &&
-                variantPromoPercent > 0 &&
-                variantDiscount > 0;
+                Number(selectedVariant.discount_price) > 0 &&
+                product.end_date &&
+                new Date(product.end_date + "T23:59:59") >= new Date() &&
+                Number(selectedVariant.discount_price) <
+                  Number(selectedVariant.price);
 
               const finalPrice = hasVariants
                 ? isVariantPromoValid
-                  ? variantDiscount
-                  : variantPrice
+                  ? Number(selectedVariant.discount_price)
+                  : Number(selectedVariant.price)
                 : isProductPromoValid
                   ? productPromo
                   : productPrice;
@@ -2243,9 +2338,9 @@ export default function ProductPageClient() {
                 {(() => {
                   const hasVariants = product.variants?.length > 0;
 
-                  const selectedVariant = hasVariants
-                    ? selectedVariants?.[product.id] || product.variants[0]
-                    : null;
+                  const selectedVariant =
+                    selectedVariants?.[product.id] ??
+                    (product.variants?.length > 0 ? product.variants[0] : null);
 
                   const variantPrice = selectedVariant
                     ? Number(selectedVariant.price)
@@ -2270,14 +2365,18 @@ export default function ProductPageClient() {
                     productPromo < productPrice;
 
                   const isVariantPromoValid =
+                    selectedVariant &&
                     Number(product.promotion) === 1 &&
-                    variantPromoPercent > 0 &&
-                    variantDiscount > 0;
+                    Number(selectedVariant.discount_price) > 0 &&
+                    product.end_date &&
+                    new Date(product.end_date + "T23:59:59") >= new Date() &&
+                    Number(selectedVariant.discount_price) <
+                      Number(selectedVariant.price);
 
                   const finalPrice = hasVariants
                     ? isVariantPromoValid
-                      ? variantDiscount
-                      : variantPrice
+                      ? Number(selectedVariant.discount_price)
+                      : Number(selectedVariant.price)
                     : isProductPromoValid
                       ? productPromo
                       : productPrice;
@@ -2988,7 +3087,7 @@ export default function ProductPageClient() {
                     {product.store_details?.[0]?.store_logo && (
                       <div className="w-full h-[320px] bg-gray-50 flex items-center justify-center px-6">
                         <Image
-                          src={`https://marketplace.yuukke.com/assets/uploads/${product.store_details[0].store_logo}`}
+                          src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${product.store_details[0].store_logo}`}
                           alt={
                             product.store_details[0].company_name ||
                             "Store logo"
@@ -3085,7 +3184,7 @@ export default function ProductPageClient() {
 
                           <div className="relative aspect-square bg-gray-50">
                             <Image
-                              src={`https://marketplace.yuukke.com/assets/uploads/${item.image}`}
+                              src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
                               alt={item.name}
                               fill
                               className="object-cover w-full h-full transition-opacity group-hover:opacity-85"
@@ -3421,7 +3520,7 @@ export default function ProductPageClient() {
                     >
                       <div className="relative w-full h-[220px] bg-[#fcfcfc]">
                         <Image
-                          src={`https://marketplace.yuukke.com/assets/uploads/${item.image}`}
+                          src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
                           alt={item.name}
                           fill
                           className="object-contain group-hover:scale-105 transition-transform duration-500"

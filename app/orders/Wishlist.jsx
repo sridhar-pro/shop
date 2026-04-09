@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "../utils/AuthContext";
 import { useRouter } from "next/navigation";
 import CartSidebar from "../components/CartSideBar";
+import Link from "next/link";
 
 const Wishlist = () => {
   const { getValidToken } = useAuth();
@@ -20,10 +21,12 @@ const Wishlist = () => {
   const [cartItems, setCartItems] = useState([]);
   const router = useRouter();
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
   };
 
   useEffect(() => {
@@ -66,6 +69,7 @@ const Wishlist = () => {
             price: `₹${parseFloat(item.price).toLocaleString()}`,
             image: `${item.image}`, // adjust if API provides full URL
             stock: parseFloat(item.quantity) > 0, // >0 => in stock
+            slug: item.slug, // ✅ add this
           }));
 
           const ids = data.items.map((item) => item.id);
@@ -173,29 +177,34 @@ const Wishlist = () => {
           {wishlist.map((item) => (
             <div key={item.id} className="bg-white rounded-2xl p-4 ">
               {/* Product Image */}
-              <div className="relative w-full h-68 md:h-56 rounded-xl overflow-hidden bg-white">
-                <Image
-                  src={getImageSrc(item.image)}
-                  alt={item.name || "product image"}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-contain hover:scale-105 transition-transform rounded-lg"
-                />
-              </div>
-              {/* Product Details */}
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold text-gray-800 line-clamp-2 capitalize min-h-[3.5rem]">
-                  {item.name}
-                </h3>
-                <p className="text-black font-bold mt-1">{item.price}</p>
-                <span
-                  className={`text-sm font-medium ${
-                    item.stock ? "text-green-600" : "text-red-500"
-                  }`}
-                >
-                  {item.stock ? "In Stock" : "Out of Stock"}
-                </span>
-              </div>
+              <Link
+                href={item.slug ? `/products/${item.slug}` : "#"}
+                className="block cursor-pointer"
+              >
+                <div className="relative w-full h-68 md:h-56 rounded-xl overflow-hidden bg-white">
+                  <Image
+                    src={getImageSrc(item.image)}
+                    alt={item.name || "product image"}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-contain hover:scale-105 transition-transform rounded-lg"
+                  />
+                </div>
+                {/* Product Details */}
+                <div className="mt-4">
+                  <h3 className="text-lg font-semibold text-gray-800 line-clamp-2 capitalize min-h-[3.5rem]">
+                    {item.name}
+                  </h3>
+                  <p className="text-black font-bold mt-1">{item.price}</p>
+                  <span
+                    className={`text-sm font-medium ${
+                      item.stock ? "text-green-600" : "text-red-500"
+                    }`}
+                  >
+                    {item.stock ? "In Stock" : "Out of Stock"}
+                  </span>
+                </div>
+              </Link>
 
               {/* Action Buttons */}
               <div className="flex items-center justify-between mt-4 gap-3">

@@ -21,6 +21,8 @@ const SpinnerWheel = () => {
   const [canSpin, setCanSpin] = useState(true); // ✅ New state
   const { getValidToken } = useAuth();
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const { zoom, isDesktop } = useZoomLevel();
 
   const [spinReady, setSpinReady] = useState(false);
@@ -276,7 +278,7 @@ const SpinnerWheel = () => {
                         {/* Coupon Image */}
                         {winningCoupon.coupon_image && (
                           <img
-                            src={`https://marketplace.yuukke.com/assets/uploads/${winningCoupon.coupon_image}`}
+                            src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${winningCoupon.coupon_image}`}
                             alt="Coupon"
                             className="w-60 h-60 object-contain mb-6"
                           />

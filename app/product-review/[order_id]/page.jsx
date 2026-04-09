@@ -235,10 +235,12 @@ export default function ProductReviewPage() {
 
   const isCompleted = orderData.invoice?.sale_status === "completed";
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.yuukke.com/assets/uploads/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
   };
 
   return (

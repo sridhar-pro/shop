@@ -11,6 +11,7 @@ import { CartProvider } from "@/app/context/CartContext";
 import { useEffect } from "react";
 import "../../i18n";
 import NewFooter from "./New-Footer";
+import FloatingWhatsAppButton from "../FloatingWhatsAppButton";
 
 // 💡 Lazy load heavy UI chunks
 const MobileBottomBar = dynamic(() => import("../MobileBottomBar"), {
@@ -125,6 +126,7 @@ export default function ClientAppWrapper({ children }) {
               {children}
               <FlashSaleOffer />
               <ConditionalFooter />
+              <FloatingWhatsAppButton />
               {/* <NewFooter /> */}
             </main>
 

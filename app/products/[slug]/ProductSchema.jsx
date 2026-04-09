@@ -3,16 +3,18 @@ import React from "react";
 export default function ProductSchema({ product }) {
   if (!product) return null;
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const images = product.product_image?.length
     ? product.product_image
     : product.p_image
-    ? [product.p_image]
-    : [];
+      ? [product.p_image]
+      : [];
 
   const resolvedImages = images.map((img) =>
     img.startsWith("http")
       ? img
-      : `https://marketplace.yuukke.com/assets/uploads/${img}`
+      : `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${img}`,
   );
 
   // 🧠 Promo price logic (Google Rich Results critical)

@@ -18,6 +18,8 @@ export async function generateMetadata({ params }) {
   let subcategoryId = null; // if needed
   let subSubcategoryId = null;
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const fetchWithAuth = async (url, retry = false) => {
     try {
       const token = await getServerToken();
@@ -48,7 +50,7 @@ export async function generateMetadata({ params }) {
 
   try {
     const data = await fetchWithAuth(
-      "https://marketplace.yuukke.com/api/v1/Marketv2/homeCategory",
+      `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/homeCategory`,
     );
 
     if (!data) {
@@ -105,7 +107,7 @@ export async function generateMetadata({ params }) {
     const token = await getServerToken(); // ✅ server-safe
     // console.log("🔑 Server got token:", token);
     const res = await fetch(
-      "https://marketplace.yuukke.com/api/v1/Marketv2/getProducts",
+      `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/getProducts`,
       {
         method: "POST",
         headers: {
@@ -153,7 +155,7 @@ export async function generateMetadata({ params }) {
         images: meta?.image
           ? [
               {
-                url: `https://marketplace.yuukke.com/assets/uploads/${meta.image}`,
+                url: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${meta.image}`,
                 alt: meta?.name || "Product Image",
               },
             ]

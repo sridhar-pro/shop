@@ -55,8 +55,12 @@ export default function AllProductsPage({
   const subCategorySlugFromQuery = search.get("sub");
   const subSubCategorySlugFromQuery = search.get("subsub");
 
+  const manualTriggerRef = useRef(false);
+
   const hasTriggeredInitialFetchRef = useRef(false);
-  const observerCooldownRef = useRef(false);
+  // ── FIX: removed observerCooldownRef entirely ──────────────────
+  // The isFetchingRef hard lock already prevents duplicate fetches.
+  // The cooldown was occasionally blocking legitimate triggers.
 
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -115,23 +119,36 @@ export default function AllProductsPage({
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const [sortBy, setSortByState] = useState("");
+  const DEFAULT_SORT = "1nto";
+
+  const [sortBy, setSortByState] = useState(DEFAULT_SORT);
   const setSortBy = (value) => {
-    setSortByState(value);
+    manualTriggerRef.current = true;
+
+    const safeValue = value || DEFAULT_SORT;
+
+    setSortByState(safeValue);
+
     if (typeof window !== "undefined") {
       localStorage.setItem(
         `allProductsSortBy:${window.location.pathname}`,
-        value || "",
+        safeValue,
       );
     }
-  };
 
+    resetAndFetch({
+      ...filtersRef.current,
+      sortValue: safeValue, // 🔥 FIX
+    });
+  };
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showMobileSort, setShowMobileSort] = useState(false);
   const [categoryMeta, setCategoryMeta] = useState(null);
 
   const pathname = usePathname();
   const router = useRouter();
+
+  const sentinelRef = useRef(null);
 
   // ── Page-type flags ──────────────────────────────────────────────
   const isOffersPage = pathname === "/products/offers";
@@ -148,28 +165,80 @@ export default function AllProductsPage({
   const isGetTitle10Page = pathname?.includes("/G02--8bd14e6f");
   const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
   const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
-  const isWomensday = pathname === "/products/womensday-saleweek";
-  const isEOY = pathname === "/products/EOY";
+  const isWomensday = pathname === "/products/tamilnewyear-sale";
+  const isEOY = pathname === "/products/iris-expo-2026";
 
   const searchQuery = search.get("query");
   const today = new Date().toISOString().split("T")[0];
 
   const updateUrl = (url) => window.history.replaceState(null, "", url);
 
+  const getCleanSnapshot = ({
+    categoryId = null,
+    subcategoryId = null,
+    subSubcategoryId = null,
+    sortValue = DEFAULT_SORT,
+    inStockValue = false,
+    priceRangeVal = [1, 100000],
+    query = "",
+    warehousesId = "",
+  } = {}) => ({
+    categoryId,
+    subcategoryId,
+    subSubcategoryId,
+    sortValue,
+    inStockValue,
+    priceRangeVal,
+    query,
+    warehousesId,
+  });
+
   const handleCategorySelect = (slug, id) => {
+    manualTriggerRef.current = true;
+
+    const snapshot = getCleanSnapshot({
+      categoryId: id,
+    });
+
     setSelectedCategory(id);
     setSelectedSubcategory(null);
     setSelectedSubSubcategory(null);
+
     updateUrl(`/products/category/${slug}`);
+
+    resetAndFetch(snapshot);
   };
+
   const handleSubcategorySelect = (catSlug, subSlug, subId) => {
+    manualTriggerRef.current = true;
+
+    const snapshot = getCleanSnapshot({
+      categoryId: selectedCategory,
+      subcategoryId: subId,
+    });
+
     setSelectedSubcategory(subId);
     setSelectedSubSubcategory(null);
+
     updateUrl(`/products/category/${catSlug}/${subSlug}`);
+
+    resetAndFetch(snapshot);
   };
+
   const handleSubSubcategorySelect = (catSlug, subSlug, subsubSlug, id) => {
+    manualTriggerRef.current = true;
+
+    const snapshot = getCleanSnapshot({
+      categoryId: selectedCategory,
+      subcategoryId: selectedSubcategory,
+      subSubcategoryId: id,
+    });
+
     setSelectedSubSubcategory(id);
+
     updateUrl(`/products/category/${catSlug}/${subSlug}/${subsubSlug}`);
+
+    resetAndFetch(snapshot);
   };
 
   const sortOptions = [
@@ -274,7 +343,8 @@ export default function AllProductsPage({
       if (mode === "reset") setIsInitialLoading(true);
       else setIsFetchingMore(true);
 
-      const token = localStorage.getItem("authToken");
+      const token = await getValidToken();
+      if (!token) throw new Error("No valid token");
       const isValidId = (v) => v !== null && v !== undefined;
       const isDefRange = priceRangeVal[0] === 1 && priceRangeVal[1] === 100000;
       const offset = (page - 1) * PAGE_SIZE; // derived from page
@@ -335,7 +405,10 @@ export default function AllProductsPage({
 
         if (res.status === 401 && !retry) {
           localStorage.removeItem("authToken");
-          isFetchingRef.current = false;
+
+          const newToken = await getValidToken(); // 🔥 re-login
+          if (!newToken) throw new Error("Re-auth failed");
+
           return fetchProducts({
             categoryId,
             subcategoryId,
@@ -353,7 +426,7 @@ export default function AllProductsPage({
 
         const data = await res.json();
         const incoming = data?.products || [];
-        const total = Number(data?.info?.total_count || 0);
+        const total = Number(data?.info?.total_record || 0);
 
         if (data.metaData) setCategoryMeta(data.metaData);
         if (mode === "reset") setWarehouse(data.warehouse || null);
@@ -362,9 +435,13 @@ export default function AllProductsPage({
           setProducts(incoming);
         } else {
           setProducts((prev) => {
-            const seen = new Set(prev.map((p) => p.id));
-            const fresh = incoming.filter((p) => !seen.has(p.id));
-            return [...prev, ...fresh];
+            const map = new Map();
+
+            [...prev, ...incoming].forEach((p) => {
+              map.set(p.id, p);
+            });
+
+            return Array.from(map.values());
           });
         }
 
@@ -374,11 +451,15 @@ export default function AllProductsPage({
         // hasMore:
         //   Primary  → did the API return a full PAGE_SIZE batch?
         //   Secondary → have we loaded >= total_count (when API provides it)?
-        const loadedSoFar = (page - 1) * PAGE_SIZE + incoming.length;
+
+        // ✅ NEW FIX USING total_page
+        const currentPage = Number(data?.info?.page || page);
+        const totalPages = Number(data?.info?.total_page || 1);
+
         const noMore =
-          incoming.length === 0 ||
-          incoming.length < PAGE_SIZE ||
-          (total > 0 && loadedSoFar >= total);
+          currentPage >= totalPages || // ✅ MAIN FIX
+          incoming.length === 0 || // safety
+          incoming.length < PAGE_SIZE; // fallback
 
         setHasMore(!noMore);
         hasMoreRef.current = !noMore;
@@ -392,10 +473,34 @@ export default function AllProductsPage({
         isFetchingRef.current = false;
         setIsInitialLoading(false);
         setIsFetchingMore(false);
+
+        if (hasMoreRef.current && sentinelRef.current) {
+          const rect = sentinelRef.current.getBoundingClientRect();
+          const inView = rect.top <= window.innerHeight + 300; // matches rootMargin
+          if (inView) {
+            // Microtask delay so state updates flush first
+            Promise.resolve().then(() => {
+              if (hasMoreRef.current && !isFetchingRef.current) {
+                fetchProducts({
+                  categoryId,
+                  subcategoryId,
+                  subSubcategoryId,
+                  sortValue,
+                  inStockValue,
+                  priceRangeVal,
+                  query,
+                  page: nextPageRef.current,
+                  mode: "more",
+                });
+              }
+            });
+          }
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      getValidToken,
       warehousesId,
       today,
       isOffersPage,
@@ -422,18 +527,32 @@ export default function AllProductsPage({
   // ── Shared reset helper ───────────────────────────────────────────
   const resetAndFetch = useCallback(
     (snapshot) => {
-      hasTriggeredInitialFetchRef.current = true; // mark as used
-      filtersRef.current = snapshot;
+      const safeSnapshot = getCleanSnapshot(snapshot);
+
+      // ✅ ALWAYS sync
+      filtersRef.current = safeSnapshot;
+
       nextPageRef.current = 1;
       hasMoreRef.current = true;
+
       setHasMore(true);
       setProducts([]);
-      fetchProducts({ ...snapshot, page: 1, mode: "reset" });
+
+      fetchProducts({
+        ...safeSnapshot,
+        page: 1,
+        mode: "reset",
+      });
     },
     [fetchProducts],
   );
   // ── Trigger reset on filter / sort / auth change ──────────────────
   useEffect(() => {
+    if (manualTriggerRef.current) {
+      manualTriggerRef.current = false;
+      return;
+    }
+
     if (!isAuthReady) return;
 
     if (categorySlug && loadingCategories) return;
@@ -443,16 +562,22 @@ export default function AllProductsPage({
       categoryId: selectedCategory,
       subcategoryId: selectedSubcategory,
       subSubcategoryId: selectedSubSubcategory,
-      sortValue: sortBy,
+      sortValue: sortBy || DEFAULT_SORT, // 🔥 FIX
       inStockValue: inStock,
       priceRangeVal: priceRange > 0 ? [0, priceRange] : [1, 100000],
       query: searchQuery || "",
+      warehousesId,
     };
 
     const sameFilters =
       JSON.stringify(filtersRef.current) === JSON.stringify(snapshot);
 
-    if (sameFilters && hasTriggeredInitialFetchRef.current) return;
+    if (
+      sameFilters &&
+      hasTriggeredInitialFetchRef.current &&
+      products.length > 0 // 👈 ADD THIS
+    )
+      return;
 
     hasTriggeredInitialFetchRef.current = true;
 
@@ -468,23 +593,42 @@ export default function AllProductsPage({
     searchQuery,
     loadingCategories,
     categorySlug,
+    warehousesId,
   ]);
 
-  // ── IntersectionObserver (callback-ref pattern) ───────────────────
-  //
-  // KEY DESIGN:
-  //   1. Callback ref fires the instant the DOM node mounts — no timing gap.
-  //   2. The sentinel is only rendered when {hasMore && !isFetchingMore}.
-  //      When hasMore → false, React unmounts the sentinel, the callback ref
-  //      receives null, and we disconnect the observer. Zero extra API calls.
-  //   3. All values read from refs (hasMoreRef, isFetchingRef, nextPageRef,
-  //      filtersRef) — no stale closures, no re-registration needed.
+  // 🛟 Backup initial fetch (ONLY runs if above didn't trigger)
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    // 🔥 CRITICAL FIX
+    // If we are on category page, WAIT until categoryId is resolved
+    if (categorySlug && !selectedCategory) return;
+
+    if (!hasTriggeredInitialFetchRef.current) {
+      resetAndFetch({
+        categoryId: selectedCategory,
+        subcategoryId: selectedSubcategory,
+        subSubcategoryId: selectedSubSubcategory,
+        sortValue: sortBy || DEFAULT_SORT, // 🔥 FIX
+        inStockValue: inStock,
+        priceRangeVal: priceRange > 0 ? [0, priceRange] : [1, 100000],
+        query: searchQuery || "",
+        warehousesId,
+      });
+    }
+  }, [
+    isAuthReady,
+    categorySlug, // 👈 ADD THIS
+    selectedCategory, // 👈 ADD THIS (VERY IMPORTANT)
+  ]);
+
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
   const setSentinelRef = useCallback(
     (node) => {
+      sentinelRef.current = node; // ← ADD THIS LINE
       if (observerRef.current) {
         observerRef.current.disconnect();
         observerRef.current = null;
@@ -496,20 +640,19 @@ export default function AllProductsPage({
           if (
             entry.isIntersecting &&
             hasMoreRef.current &&
-            !isFetchingRef.current &&
-            !observerCooldownRef.current
+            !isFetchingRef.current // isFetchingRef is the sole concurrency guard
           ) {
-            observerCooldownRef.current = true;
-
             fetchProducts({
-              ...filtersRef.current,
+              categoryId: filtersRef.current.categoryId,
+              subcategoryId: filtersRef.current.subcategoryId,
+              subSubcategoryId: filtersRef.current.subSubcategoryId,
+              sortValue: filtersRef.current.sortValue,
+              inStockValue: filtersRef.current.inStockValue,
+              priceRangeVal: filtersRef.current.priceRangeVal,
+              query: filtersRef.current.query,
               page: nextPageRef.current,
               mode: "more",
             });
-
-            setTimeout(() => {
-              observerCooldownRef.current = false;
-            }, 400); // small cooldown
           }
         },
         { threshold: 0, rootMargin: "300px" },
@@ -539,16 +682,51 @@ export default function AllProductsPage({
     });
   };
 
-  const handleApplyFilters = () => {
-    resetAndFetch({
-      categoryId: selectedCategory,
-      subcategoryId: selectedSubcategory,
-      subSubcategoryId: selectedSubSubcategory,
-      sortValue: sortBy,
-      inStockValue: inStock,
-      priceRangeVal: priceRange > 0 ? [0, priceRange] : [1, 100000],
-      query: searchQuery || "",
+  const handleApplyFilters = (overrideSnapshot) => {
+    manualTriggerRef.current = true;
+
+    const snapshot = overrideSnapshot
+      ? {
+          // 🔥 FULL RESET SNAPSHOT (NO MERGE)
+          categoryId: overrideSnapshot.categoryId ?? null,
+          subcategoryId: overrideSnapshot.subcategoryId ?? null,
+          subSubcategoryId: overrideSnapshot.subSubcategoryId ?? null,
+          sortValue: overrideSnapshot.sortValue || DEFAULT_SORT,
+          inStockValue: overrideSnapshot.inStockValue ?? false,
+          priceRangeVal: overrideSnapshot.priceRangeVal || [1, 100000],
+          query: overrideSnapshot.query || "",
+          warehousesId: overrideSnapshot.warehousesId || "",
+        }
+      : {
+          categoryId: selectedCategory,
+          subcategoryId: selectedSubcategory,
+          subSubcategoryId: selectedSubSubcategory,
+          sortValue: sortBy || DEFAULT_SORT,
+          inStockValue: inStock,
+          priceRangeVal: priceRange > 0 ? [0, priceRange] : [1, 100000],
+          query: searchQuery || "",
+          warehousesId,
+        };
+
+    // ✅ Sync sort state silently (no resetAndFetch side-effect)
+    if (overrideSnapshot?.sortValue) {
+      setSortByState(overrideSnapshot.sortValue); // use the raw state setter, not setSortBy
+    }
+
+    // 🔥 FORCE CLEAN STATE
+    filtersRef.current = snapshot;
+
+    nextPageRef.current = 1;
+    hasMoreRef.current = true;
+    setHasMore(true);
+    setProducts([]);
+
+    fetchProducts({
+      ...snapshot,
+      page: 1,
+      mode: "reset",
     });
+
     setShowMobileFilters(false);
   };
 
@@ -580,7 +758,6 @@ export default function AllProductsPage({
     handleCategorySelect,
     handleSubcategorySelect,
     handleSubSubcategorySelect,
-    fetchProductsByCategory: handleSidebarCategoryFetch,
     setSortBy,
     setCurrentPage: () => {},
     updateUrl,
@@ -696,15 +873,21 @@ export default function AllProductsPage({
 
             {/*
               ── Sentinel ─────────────────────────────────────────────
-              Only rendered when hasMore=true AND not currently fetching.
-              Placed BELOW both the products grid AND the skeleton so it
-              stays below the fold until the user actually scrolls down.
+              FIX: Sentinel is now rendered whenever hasMore=true,
+              regardless of isFetchingMore. This keeps the observer
+              connected throughout fetches so if the sentinel is already
+              in-viewport when a fetch completes, the next scroll
+              immediately re-triggers — no missed pages.
 
-              When hasMore becomes false → React unmounts this node →
+              The isFetchingRef hard lock inside fetchProducts is the
+              sole guard against concurrent fetches; we don't need to
+              unmount the sentinel for that.
+
+              When hasMore → false → React unmounts this node →
               callback ref fires with null → observer disconnects →
               getProducts is NEVER called again until filters change.
             */}
-            {!isInitialLoading && !isFetchingMore && hasMore && (
+            {!isInitialLoading && hasMore && (
               <div
                 ref={setSentinelRef}
                 className="h-px w-full"
@@ -728,30 +911,33 @@ export default function AllProductsPage({
               )}
 
             {/* ── Empty state ── */}
-            {!isInitialLoading && hasLoadedOnce && products.length === 0 && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex flex-col items-center justify-center p-4 text-center font-odop"
-                >
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <h2 className="text-3xl font-bold text-gray-700">
-                      We couldn't find any matches
-                    </h2>
-                    <PackageSearch className="w-8 h-8 text-gray-700 opacity-80" />
+            {!isInitialLoading &&
+              hasLoadedOnce &&
+              hasTriggeredInitialFetchRef.current &&
+              products.length === 0 && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-col items-center justify-center p-4 text-center font-odop"
+                  >
+                    <div className="flex items-center justify-center gap-3 mb-3">
+                      <h2 className="text-3xl font-bold text-gray-700">
+                        We couldn't find any matches
+                      </h2>
+                      <PackageSearch className="w-8 h-8 text-gray-700 opacity-80" />
+                    </div>
+                    <p className="text-gray-500 max-w-3xl">
+                      Try adjusting your filters, searching for something else,
+                      or explore our featured products below.
+                    </p>
+                  </motion.div>
+                  <div className="mt-8">
+                    <OtherProductsGrid />
                   </div>
-                  <p className="text-gray-500 max-w-3xl">
-                    Try adjusting your filters, searching for something else, or
-                    explore our featured products below.
-                  </p>
-                </motion.div>
-                <div className="mt-8">
-                  <OtherProductsGrid />
-                </div>
-              </>
-            )}
+                </>
+              )}
 
             <CartSidebar
               isOpen={isCartOpen}

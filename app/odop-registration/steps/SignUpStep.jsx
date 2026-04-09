@@ -17,6 +17,8 @@ const SignUpStep = ({ nextStep, prevStep }) => {
 
   const [isVerifying, setIsVerifying] = useState(false);
 
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
   const validateAndSend = async () => {
     const newErrors = {
       name: name.trim() === "" ? "Name is required" : "",
@@ -24,8 +26,8 @@ const SignUpStep = ({ nextStep, prevStep }) => {
         phoneNumber.trim() === ""
           ? "Phone number is required"
           : phoneNumber.trim().length !== 10
-          ? "Phone number must be exactly 10 digits"
-          : "",
+            ? "Phone number must be exactly 10 digits"
+            : "",
     };
 
     setErrors(newErrors);
@@ -84,13 +86,13 @@ const SignUpStep = ({ nextStep, prevStep }) => {
       const storedPhone = localStorage.getItem("userPhone");
 
       const response = await fetch(
-        `https://marketplace.yuukke.com/api/v1/Marketv2/verifyotp/${code}/${storedPhone}`,
+        `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/verifyotp/${code}/${storedPhone}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const data = await response.json();

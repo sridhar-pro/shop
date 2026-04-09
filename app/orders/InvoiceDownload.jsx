@@ -2,7 +2,8 @@ import { Eye, MoreVertical, Download } from "lucide-react";
 import { useState } from "react";
 
 const InvoiceDownload = ({ order }) => {
-  const BASE_URL = "https://marketplace.yuukke.com/shop/invoice";
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+  const BASE_URL = `https://marketplace.${DOMAIN_KEY}.com/shop/invoice`;
   const [open, setOpen] = useState(false);
 
   const warehouseList = order?.warehouse_details || [];
@@ -43,7 +44,7 @@ const InvoiceDownload = ({ order }) => {
                   onClick={() =>
                     window.open(
                       `${BASE_URL}/${order.id}/${pkg.product_warehouse_id}`,
-                      "_blank"
+                      "_blank",
                     )
                   }
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 "

@@ -9,6 +9,7 @@ import { FlipWords } from "../components/ui/flip-words";
 
 const CategoriesSection = () => {
   const { t } = useTranslation();
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
   const [categories, setCategories] = useState(() => {
     if (typeof window !== "undefined") {
       const cached = localStorage.getItem("home_categories_cache");
@@ -19,7 +20,14 @@ const CategoriesSection = () => {
   const [loading, setLoading] = useState(true);
   const sliderRef = useRef(null);
   const isHoveringRef = useRef(false);
-  const words = ["Skincare", "Stationery", "Gift Sets", "Food", "Home Decor's"];
+  const words = [
+    { label: "Bags", href: "/products/category/bags" },
+    { label: "Stationery", href: "/products/category/stationery" },
+    { label: "Beauty", href: "/products/category/beauty" },
+    { label: "Fashion", href: "/products/category/fashion" },
+    { label: "Home Decor's", href: "/products/category/home-decor" },
+    { label: "Groceries", href: "/products/category/groceries" },
+  ];
 
   /* ================= FETCH WITH CACHE ================= */
   useEffect(() => {
@@ -36,7 +44,7 @@ const CategoriesSection = () => {
           name: cat.name,
           slug: cat.slug,
           offer: cat.offer_lable,
-          image: `https://marketplace.yuukke.com/assets/uploads/thumbs/${cat.image}`,
+          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${cat.image}`,
         }));
 
         setCategories(formatted);

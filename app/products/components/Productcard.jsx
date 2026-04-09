@@ -9,10 +9,12 @@ import WishlistButton from "@/app/components/WishlistButton";
 import CartSidebar from "@/app/components/CartSideBar";
 import { itemVariants } from "@/app/utils/variants";
 
+const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
+
 function getImageSrc(image) {
   if (!image) return "/fallback.png";
   if (image.startsWith("http") || image.startsWith("/")) return image;
-  const originalUrl = `https://marketplace.yuukke.com/assets/uploads/${image}`;
+  const originalUrl = `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
   return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
@@ -62,7 +64,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
         historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         qty: 1,
         cart_id: cartId,
-        variant_id: [],
+        variant_id: firstVariant ? firstVariant.id : [],
       };
 
       const fetchToken = async () => {
@@ -275,10 +277,19 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
 
           {/* Promo Tag */}
           {product.promo_tag && (
-            <div>
-              <span className="text-green-700 text-[10px] sm:text-sm italic font-semibold">
-                {product.promo_tag}
-              </span>
+            <div className="mt-2">
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-md 
+                    bg-green-600/90 text-white text-[11px] sm:text-xs font-medium
+                    shadow-sm hover:shadow-md transition-all duration-300
+                    hover:-translate-y-[1px]"
+              >
+                {/* Dot Indicator */}
+                <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse"></span>
+
+                {/* Text */}
+                <span className="tracking-wide">{product.promo_tag}</span>
+              </div>
             </div>
           )}
         </div>

@@ -64,6 +64,7 @@ export function ImagesSliderDemo() {
             href: item.link || "#",
             title: item.title || "",
             type,
+            order: item.order ? Number(item.order) : null, // ✅ NEW
           };
         };
 
@@ -90,8 +91,15 @@ export function ImagesSliderDemo() {
           };
         };
 
-        const formattedDesktop =
-          Object.values(desktopData).map(normalizeDesktop);
+        const formattedDesktop = Object.values(desktopData)
+          .map(normalizeDesktop)
+          .sort((a, b) => {
+            // push empty order to last
+            if (a.order === null) return 1;
+            if (b.order === null) return -1;
+
+            return a.order - b.order;
+          });
 
         const formattedMobile = Object.values(mobileData).map(normalizeMobile);
 

@@ -19,6 +19,7 @@ function getImageSrc(image) {
 }
 
 export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
+  const [selectedVariant, setSelectedVariant] = useState(null);
   const [isAdding, setIsAdding] = useState(null);
 
   const isOutOfStock = !product.quantity || Number(product.quantity) <= 0;
@@ -46,6 +47,11 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
 
     if (isAdding === product.id) return;
 
+    if (product.product_variants?.length > 0 && !selectedVariant) {
+      toast.warning("⚠️ Please select a variant");
+      return;
+    }
+
     setIsAdding(product.id);
 
     try {
@@ -64,7 +70,11 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
         historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         qty: 1,
         cart_id: cartId,
-        variant_id: firstVariant ? firstVariant.id : [],
+        variant_id: selectedVariant
+          ? selectedVariant.id
+          : product.product_variants?.length > 0
+            ? null
+            : [],
       };
 
       const fetchToken = async () => {
@@ -116,6 +126,9 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       setIsAdding(null);
     }
   };
+
+  const isVariantRequired =
+    product.product_variants?.length > 0 && !selectedVariant;
 
   return (
     <motion.div
@@ -190,25 +203,83 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
             {product.name}
           </h3>
 
+          {/* 🔥 Variant Selector */}
+          {product.product_variants?.length > 0 && (
+            <>
+              {/* Label */}
+              <p className="text-[10px] text-gray-500 mt-2">
+                {product.product_variants.some((v) => v.type === "color")
+                  ? "Colours"
+                  : "Options"}
+                :
+              </p>
+
+              <div className="mt-1 flex gap-2 flex-wrap">
+                {product.product_variants.map((variant) => {
+                  const isSelected = selectedVariant?.id === variant.id;
+
+                  // 🎨 COLOR TYPE
+                  if (variant.type === "color") {
+                    return (
+                      <button
+                        key={variant.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedVariant(variant);
+                        }}
+                        className={`w-6 h-6 rounded-full border transition-all ${
+                          isSelected
+                            ? "border-[#A00300] ring-2 ring-[#A00300]/30 scale-110"
+                            : "border-gray-300"
+                        }`}
+                        style={{
+                          backgroundColor: variant.color || "#ccc",
+                        }}
+                      />
+                    );
+                  }
+
+                  // 🔤 TEXT TYPE
+                  return (
+                    <button
+                      key={variant.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedVariant(variant);
+                      }}
+                      className={`px-2 py-1 text-xs rounded-md border ${
+                        isSelected
+                          ? "bg-[#A00300] text-white border-[#A00300]"
+                          : "bg-white text-gray-700 border-gray-300"
+                      }`}
+                    >
+                      {variant.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           <div className="flex items-center justify-between mt-1">
             {(() => {
               const hasVariants =
                 product.product_variants && product.product_variants.length > 0;
-
-              const selectedVariant = hasVariants
-                ? product.product_variants[0]
+              const selectedVariantData = hasVariants
+                ? selectedVariant || product.product_variants[0]
                 : null;
-
-              const variantPrice = selectedVariant
-                ? Number(selectedVariant.price)
-                : null;
-
-              const variantDiscount = selectedVariant
-                ? Number(selectedVariant.discount_price || 0)
+              const variantPrice = selectedVariantData
+                ? Number(selectedVariantData.price || 0)
                 : 0;
 
-              const variantPromoPercent = selectedVariant
-                ? Math.max(0, Number(selectedVariant.promo_percentage) || 0)
+              const variantDiscount = selectedVariantData
+                ? Number(selectedVariantData.discount_price || 0)
+                : 0;
+
+              const variantPromoPercent = selectedVariantData
+                ? Math.max(0, Number(selectedVariantData.promo_percentage) || 0)
                 : 0;
 
               const productPrice = Number(product.price);
@@ -296,14 +367,20 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       </Link>
 
       {/* Add to Cart */}
-      <div className="relative w-full flex justify-center px-3 pb-4 mt-auto">
+      <div
+        className={`relative w-full flex justify-center px-3 pb-4 ${
+          product.product_variants?.length > 0 ? "mt-auto" : "mt-2"
+        }`}
+      >
         {isAdding === product.id && (
           <div className="absolute -top-14 z-50">
             <img src="/add.gif" alt="Loading..." className="w-12 h-12" />
           </div>
         )}
         <button
-          disabled={isAdding === product.id || isOutOfStock}
+          disabled={
+            isAdding === product.id || isOutOfStock || isVariantRequired
+          }
           onClick={handleAddToCart}
           className={`
     group relative w-full overflow-hidden rounded-xl py-2.5 px-4
@@ -311,7 +388,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
     flex items-center justify-center gap-2
     whitespace-nowrap
     ${
-      isAdding === product.id
+      isAdding === product.id || isVariantRequired
         ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
         : isOutOfStock
           ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
@@ -330,8 +407,12 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
             }`}
           />
 
-          <span className="tracking-wide truncate">
-            {isAdding === product.id ? "Adding..." : "Add to Cart"}
+          <span>
+            {isAdding === product.id
+              ? "Adding..."
+              : isVariantRequired
+                ? "Select Variant"
+                : "Add to Cart"}
           </span>
 
           {isAdding !== product.id && !isOutOfStock && (

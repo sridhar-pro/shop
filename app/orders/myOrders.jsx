@@ -265,6 +265,48 @@ const MyOrders = () => {
     }
   };
 
+  const handleCancelPackage = async (itemId, packageIndex) => {
+    if (!itemId) {
+      toast.error("Invalid order ID ❌");
+      return;
+    }
+
+    try {
+      const confirmCancel = window.confirm(
+        "Are you sure you want to cancel this package?",
+      );
+      if (!confirmCancel) return;
+
+      const res = await fetchWithAuth("/api/cancelorder", {
+        method: "POST",
+        body: JSON.stringify({
+          sale_items_id: itemId, // ✅ changed here
+        }),
+      });
+
+      if (res?.status === true || res?.success) {
+        toast.success("Package cancelled successfully ✅");
+
+        setViewedOrder((prev) => {
+          const updated = { ...prev };
+
+          if (updated.seller_group?.[packageIndex]) {
+            updated.seller_group[packageIndex].cancelable = {
+              status: 0,
+            };
+          }
+
+          return updated;
+        });
+      } else {
+        toast.error(res?.message || "Cancel failed ❌");
+      }
+    } catch (error) {
+      console.error("Cancel Order Error ❌", error);
+      toast.error("Something went wrong while cancelling ❌");
+    }
+  };
+
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const getImageSrc = (image) => {
@@ -773,19 +815,24 @@ const MyOrders = () => {
                 </div>
 
                 {/* Cancel (per package) */}
-                {group.cancelable?.status === 1 && (
+                {group.cancelable && (
                   <div className="mt-6">
-                    <button
-                      onClick={() =>
-                        handleCancelPackage(
-                          group.items[0]?.shiprocket_order_id,
-                          gIdx,
-                        )
-                      }
-                      className="px-5 py-2 rounded-lg bg-[#a00300] text-white hover:bg-red-700"
-                    >
-                      Cancel Order
-                    </button>
+                    {group.cancelable.status === 1 && (
+                      <button
+                        onClick={() =>
+                          handleCancelPackage(group.items[0]?.id, gIdx)
+                        }
+                        className="px-5 py-2 rounded-lg bg-[#a00300] text-white hover:bg-red-700"
+                      >
+                        Cancel Order
+                      </button>
+                    )}
+
+                    {group.cancelable.status === 2 && (
+                      <p className="text-sm font-medium text-red-600">
+                        {group.cancelable.message || "Order already cancelled"}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

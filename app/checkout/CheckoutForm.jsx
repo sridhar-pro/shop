@@ -12,7 +12,6 @@ import {
 } from "lucide-react"; // Adjust if you're using different icon lib
 import RazorpayButton from "./RazorpayButton";
 import { useAuth } from "@/app/utils/AuthContext";
-import { setLocalStorageWithEvent } from "../utils/storageEvents";
 import { toast } from "react-toastify";
 import { validateFormData } from "../utils/validateForm";
 import CheckoutAddress from "./CheckoutAddress";

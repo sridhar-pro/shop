@@ -952,7 +952,7 @@ export default function AllProductsPage({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           onClick={scrollToTop}
-          className="fixed bottom-28 md:bottom-6 right-6 z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
+          className="fixed bottom-36 md:bottom-6 right-3 md:right-6 z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
           aria-label="Go to top"
         >
           <ArrowUp className="w-5 h-5 text-white" />

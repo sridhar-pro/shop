@@ -273,6 +273,10 @@ const nextConfig = {
         source: "/api/sherise_x_submit",
         destination: `${BASE_API}/sherise_x_submit`,
       },
+      {
+        source: "/api/cancelorder",
+        destination: `${BASE_API}/cancelorder`,
+      },
 
       {
         source: "/api/save_prebook_gift",

@@ -369,6 +369,21 @@ export default function CheckoutPage({ formData }) {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentFailure, setPaymentFailure] = useState(false);
 
+  const handleProcessingStart = () => {
+    setIsProcessingPayment(true);
+    setPaymentFailure(false); // reset failure
+  };
+
+  const handlePaymentSuccess = () => {
+    setIsProcessingPayment(false);
+    setPaymentSuccess(true);
+  };
+
+  const handlePaymentFailure = () => {
+    setIsProcessingPayment(false); // 🔥 THIS FIXES YOUR BUG
+    setPaymentFailure(true);
+  };
+
   useEffect(() => {
     if (isProcessingPayment && !paymentSuccess) {
       window.scrollTo({
@@ -397,11 +412,17 @@ export default function CheckoutPage({ formData }) {
           return;
         }
 
-        const token = await getValidToken();
+        let token = await getValidToken();
+
+        // 🔥 Retry once if token missing
         if (!token && isLoggedIn) {
-          console.error(
-            "🔐 Auth token missing! Skipping payment notification.",
-          );
+          console.warn("🔁 Retrying token fetch...");
+          await new Promise((res) => setTimeout(res, 500));
+          token = await getValidToken();
+        }
+
+        if (!token && isLoggedIn) {
+          console.error("🔐 Token still missing, skipping notify");
           return;
         }
 
@@ -769,14 +790,14 @@ export default function CheckoutPage({ formData }) {
                       ))}
                     </div>
                     {/* Divider */}
-                    <hr className="my-3 border-gray-200" />
+                    {/* <hr className="my-3 border-gray-200" /> */}
                     {/* Address / Payment / Delivery */}
-                    <div className="px-5 pb-4 flex items-center justify-between">
+                    {/* <div className="px-5 pb-4 flex items-center justify-between">
                       <p className="text-sm font-semibold">Payment method</p>
                       <span className="text-sm text-gray-700 break-all">
                         Razorpay • {paymentId || "Not available"}
                       </span>
-                    </div>
+                    </div> */}
                     <hr className="my-3 border-gray-200" />
 
                     {/* Price Summary */}
@@ -920,15 +941,15 @@ export default function CheckoutPage({ formData }) {
                   </div>
 
                   {/* Divider */}
-                  <hr className="my-3 border-gray-200" />
+                  {/* <hr className="my-3 border-gray-200" /> */}
 
                   {/* Address / Payment / Delivery */}
-                  <div className="px-5 pb-4 flex items-center justify-between">
+                  {/* <div className="px-5 pb-4 flex items-center justify-between">
                     <p className="text-sm font-semibold">Payment method</p>
                     <span className="text-sm text-gray-700 break-all">
                       Razorpay • Payment Failed
                     </span>
-                  </div>
+                  </div> */}
 
                   <hr className="my-3 border-gray-200" />
 
@@ -963,9 +984,9 @@ export default function CheckoutPage({ formData }) {
               {/* Left: Scrollable Form Section */}
               <CheckoutForm
                 total={total}
-                onPaymentSuccess={() => setPaymentSuccess(true)}
-                onProcessingStart={() => setIsProcessingPayment(true)}
-                onPaymentFailure={() => setPaymentFailure(true)}
+                onPaymentSuccess={handlePaymentSuccess}
+                onProcessingStart={handleProcessingStart}
+                onPaymentFailure={handlePaymentFailure}
                 cartItems={cartItems}
                 subtotal={subtotal}
                 tax={tax}

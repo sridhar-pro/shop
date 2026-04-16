@@ -7,6 +7,8 @@ import {
   Truck,
   Star,
   PackageSearch,
+  XCircle,
+  CheckCircle2,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -28,6 +30,12 @@ const MyOrders = () => {
   const [activeReview, setActiveReview] = useState({});
   const [submittedProducts, setSubmittedProducts] = useState({});
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const [cancellingPackage, setCancellingPackage] = useState({});
+  const [cancelledPackages, setCancelledPackages] = useState({});
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedCancelItem, setSelectedCancelItem] = useState(null);
 
   const scrollToTop = () => {
     if (typeof window !== "undefined") {
@@ -265,48 +273,64 @@ const MyOrders = () => {
     }
   };
 
-  const handleCancelPackage = async (itemId, packageIndex) => {
-    if (!itemId) {
+  const handleCancelPackage = async () => {
+    if (!selectedCancelItem?.itemId) {
       toast.error("Invalid order ID ❌");
       return;
     }
 
+    const { itemId, packageIndex } = selectedCancelItem;
+
     try {
-      const confirmCancel = window.confirm(
-        "Are you sure you want to cancel this package?",
-      );
-      if (!confirmCancel) return;
+      setCancellingPackage((prev) => ({ ...prev, [packageIndex]: true }));
 
       const res = await fetchWithAuth("/api/cancelorder", {
         method: "POST",
         body: JSON.stringify({
-          sale_items_id: itemId, // ✅ changed here
+          sale_items_id: itemId,
         }),
       });
 
       if (res?.status === true || res?.success) {
         toast.success("Package cancelled successfully ✅");
 
-        setViewedOrder((prev) => {
-          const updated = { ...prev };
+        try {
+          const token = await getValidToken();
 
-          if (updated.seller_group?.[packageIndex]) {
-            updated.seller_group[packageIndex].cancelable = {
-              status: 0,
-            };
+          const response = await fetch("/api/viewdetails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              order_id: viewedOrder?.order_id || viewedOrder?.invoice?.id,
+            }),
+          });
+
+          const freshData = await response.json();
+
+          if (freshData.status === "success") {
+            setViewedOrder(freshData);
           }
-
-          return updated;
-        });
+        } catch (err) {
+          console.error("Error refreshing order ❌", err);
+        }
       } else {
         toast.error(res?.message || "Cancel failed ❌");
       }
     } catch (error) {
       console.error("Cancel Order Error ❌", error);
       toast.error("Something went wrong while cancelling ❌");
+    } finally {
+      setCancellingPackage((prev) => ({
+        ...prev,
+        [selectedCancelItem.packageIndex]: false,
+      }));
+      setShowCancelModal(false);
+      setSelectedCancelItem(null);
     }
   };
-
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const getImageSrc = (image) => {
@@ -331,6 +355,9 @@ const MyOrders = () => {
       </div>
     );
   }
+
+  const isCancellingCurrent =
+    selectedCancelItem && cancellingPackage[selectedCancelItem.packageIndex];
 
   return (
     <div className="flex flex-1 overflow-auto">
@@ -818,20 +845,79 @@ const MyOrders = () => {
                 {group.cancelable && (
                   <div className="mt-6">
                     {group.cancelable.status === 1 && (
-                      <button
-                        onClick={() =>
-                          handleCancelPackage(group.items[0]?.id, gIdx)
-                        }
-                        className="px-5 py-2 rounded-lg bg-[#a00300] text-white hover:bg-red-700"
-                      >
-                        Cancel Order
-                      </button>
+                      <>
+                        {cancelledPackages[gIdx] ? (
+                          /* ✅ Successfully cancelled state */
+                          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed select-none">
+                            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                            <span className="text-sm font-medium">
+                              {cancelledPackages[gIdx]}
+                            </span>
+                          </div>
+                        ) : (
+                          /* 🔴 Cancel button */
+                          <button
+                            disabled={cancellingPackage[gIdx]}
+                            onClick={() => {
+                              setSelectedCancelItem({
+                                itemId: group.items[0]?.id,
+                                packageIndex: gIdx,
+                              });
+                              setShowCancelModal(true);
+                            }}
+                            className={`
+                              inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+                              border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                              ${
+                                cancellingPackage[gIdx]
+                                  ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                                  : "bg-white border-red-300 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 hover:shadow-md active:scale-[0.98] focus:ring-red-400"
+                              }
+                            `}
+                          >
+                            {cancellingPackage[gIdx] ? (
+                              <>
+                                <svg
+                                  className="w-4 h-4 animate-spin text-gray-400"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8v8H4z"
+                                  />
+                                </svg>
+                                Cancelling...
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-4 h-4" />
+                                Cancel Order
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
                     )}
 
                     {group.cancelable.status === 2 && (
-                      <p className="text-sm font-medium text-red-600">
-                        {group.cancelable.message || "Order already cancelled"}
-                      </p>
+                      <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-500 cursor-not-allowed select-none">
+                        <XCircle className="w-4 h-4 shrink-0" />
+                        <span className="text-sm font-medium">
+                          {group.cancelable.message ||
+                            "Order already cancelled"}
+                        </span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -840,6 +926,67 @@ const MyOrders = () => {
           </div>
         )}
       </div>
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-md p-6 animate-fadeIn">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
+              Cancel Package
+            </h2>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to cancel this package? This action cannot
+              be undone.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                disabled={isCancellingCurrent}
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedCancelItem(null);
+                }}
+                className="px-4 py-2 rounded-lg border text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              >
+                No, Keep it
+              </button>
+
+              <button
+                disabled={isCancellingCurrent}
+                onClick={handleCancelPackage}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-2 disabled:opacity-70"
+              >
+                {isCancellingCurrent ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
+                    </svg>
+                    Cancelling...
+                  </>
+                ) : (
+                  "Yes, Cancel"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

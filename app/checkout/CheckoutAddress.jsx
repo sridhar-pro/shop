@@ -16,8 +16,8 @@ import { useSession } from "../context/SessionContext";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import RazorpayButtonLogged from "./RazorpayButtonLogged";
-import { setLocalStorageWithEvent } from "../utils/storageEvents";
 import Link from "next/link";
+import CashfreeButton from "./CashfreeButton";
 
 const CheckoutAddress = ({
   cartItems,
@@ -30,6 +30,8 @@ const CheckoutAddress = ({
   customizedTexts, // ✅ ADD THIS
 }) => {
   const razorRef = useRef(null);
+  const cashfreeRef = useRef(null);
+
   // Debounce timer ref
   const debounceRef = useRef(null);
   const router = useRouter();
@@ -1140,6 +1142,36 @@ const CheckoutAddress = ({
 
       console.log("✅ Logged-in order created successfully:", result);
 
+      const paymentType = result?.type || "razorpay";
+
+      // 🔥 CASHFREE FLOW
+      if (paymentType === "cashfree") {
+        if (!result?.r_response?.payment_session_id) {
+          throw new Error("Cashfree session missing");
+        }
+
+        // ✅ 🔥 ADD THIS (MISSING PIECE)
+        localStorage.setItem("order_id_data", JSON.stringify(result));
+
+        window.dispatchEvent(
+          new CustomEvent("orderIdDataUpdated", {
+            detail: result?.order_id,
+          }),
+        );
+
+        setOrderDetails({
+          payment_session_id: result.r_response.payment_session_id,
+          order_id: result.r_response.order_id,
+          sale_id: result.sale_id,
+        });
+
+        setTimeout(() => {
+          cashfreeRef.current?.click();
+        }, 100);
+
+        return; // 🚨 IMPORTANT: stop here
+      }
+
       // 🧾 Extract amount and order id
       const razorpayOrder = result?.r_response?.data;
       if (!razorpayOrder?.id || !razorpayOrder?.amount) {
@@ -1846,6 +1878,14 @@ const CheckoutAddress = ({
               onSuccess={onSuccess}
               onFailure={onFailure}
               orderDetails={orderDetails} // ✅ pass order details here
+            />
+          </div>
+          <div style={{ display: "none" }}>
+            <CashfreeButton
+              ref={cashfreeRef}
+              orderDetails={orderDetails}
+              onSuccess={onSuccess}
+              onFailure={onFailure}
             />
           </div>
         </div>

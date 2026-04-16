@@ -167,11 +167,13 @@ export default function ProductReviewPage() {
         },
         body: JSON.stringify({
           order_id: orderData.order_id,
+          order_type: "product",
           product_id: item.product_id,
           written_review: review.written_review,
           headline: review.headline,
           product_ratings: review.product_ratings,
           created_by: orderData.invoice.customer_id,
+          customer: orderData.invoice.customer,
         }),
       });
 

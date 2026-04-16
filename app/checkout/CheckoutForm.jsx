@@ -17,6 +17,7 @@ import { validateFormData } from "../utils/validateForm";
 import CheckoutAddress from "./CheckoutAddress";
 import { useSession } from "../context/SessionContext";
 import Link from "next/link";
+import CashfreeButton from "./CashfreeButton";
 
 const CheckoutForm = ({
   onPaymentSuccess,
@@ -30,6 +31,7 @@ const CheckoutForm = ({
   customizedTexts, // ✅ NEW
 }) => {
   const razorRef = useRef(null);
+  const cashfreeRef = useRef(null);
 
   // Debounce timer ref
   const debounceRef = useRef(null);
@@ -546,6 +548,36 @@ const CheckoutForm = ({
       }
 
       console.log("✅ Order created successfully:", result);
+
+      const paymentType = result?.type || "razorpay";
+
+      // 🔥 CASHFREE FLOW
+      if (paymentType === "cashfree") {
+        if (!result?.r_response?.payment_session_id) {
+          throw new Error("Cashfree session missing");
+        }
+
+        // ✅ 🔥 ADD THIS (VERY IMPORTANT)
+        localStorage.setItem("order_id_data", JSON.stringify(result));
+
+        window.dispatchEvent(
+          new CustomEvent("orderIdDataUpdated", {
+            detail: result?.order_id,
+          }),
+        );
+
+        setOrderDetails({
+          payment_session_id: result.r_response.payment_session_id,
+          order_id: result.r_response.order_id,
+          sale_id: result.sale_id,
+        });
+
+        setTimeout(() => {
+          cashfreeRef.current?.click();
+        }, 100);
+
+        return; // 🚨 IMPORTANT: stop here
+      }
 
       // 🧾 Extract amount and order id
       const razorpayOrder = result?.r_response?.data;
@@ -1895,6 +1927,16 @@ const CheckoutForm = ({
                   formError={formError}
                   setFormError={setFormError}
                   orderDetails={orderDetails} // ✅ pass order details here
+                />
+              </div>
+              <div style={{ display: "none" }}>
+                <CashfreeButton
+                  ref={cashfreeRef}
+                  orderDetails={orderDetails}
+                  formData={formData}
+                  onSuccess={onPaymentSuccess}
+                  onFailure={onPaymentFailure}
+                  onProcessingStart={onProcessingStart}
                 />
               </div>
             </div>

@@ -19,7 +19,9 @@ function getImageSrc(image) {
 }
 
 export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(
+    product.product_variants?.[0] || null,
+  );
   const [isAdding, setIsAdding] = useState(null);
 
   const isOutOfStock = !product.quantity || Number(product.quantity) <= 0;
@@ -130,6 +132,15 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
   const isVariantRequired =
     product.product_variants?.length > 0 && !selectedVariant;
 
+  const displayImage =
+    selectedVariant?.front_view ||
+    product.product_variants?.[0]?.front_view ||
+    product.image;
+
+  const isTextVariantOnly = product.product_variants.every(
+    (v) => v.type === "text",
+  );
+
   return (
     <motion.div
       variants={itemVariants}
@@ -166,7 +177,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
             }`}
           >
             <Image
-              src={getImageSrc(product.image)}
+              src={getImageSrc(displayImage)}
               alt={product.name || "Image not found!"}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
@@ -206,60 +217,62 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
           {/* 🔥 Variant Selector */}
           {product.product_variants?.length > 0 && (
             <>
-              {/* Label */}
               <p className="text-[10px] text-gray-500 mt-2">
-                {product.product_variants.some((v) => v.type === "color")
-                  ? "Colours"
-                  : "Options"}
-                :
+                {isTextVariantOnly ? "Options" : "Colours"}:
               </p>
 
-              <div className="mt-1 flex gap-2 flex-wrap">
-                {product.product_variants.map((variant) => {
-                  const isSelected = selectedVariant?.id === variant.id;
-
-                  // 🎨 COLOR TYPE
-                  if (variant.type === "color") {
-                    return (
-                      <button
-                        key={variant.id}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSelectedVariant(variant);
-                        }}
-                        className={`w-6 h-6 rounded-full border transition-all ${
-                          isSelected
-                            ? "border-[#A00300] ring-2 ring-[#A00300]/30 scale-110"
-                            : "border-gray-300"
-                        }`}
-                        style={{
-                          backgroundColor: variant.color || "#ccc",
-                        }}
-                      />
+              {/* 🔽 TEXT VARIANT → DROPDOWN */}
+              {isTextVariantOnly ? (
+                <select
+                  value={selectedVariant?.id || ""}
+                  onChange={(e) => {
+                    const selected = product.product_variants.find(
+                      (v) => v.id === e.target.value,
                     );
-                  }
-
-                  // 🔤 TEXT TYPE
-                  return (
-                    <button
-                      key={variant.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedVariant(variant);
-                      }}
-                      className={`px-2 py-1 text-xs rounded-md border ${
-                        isSelected
-                          ? "bg-[#A00300] text-white border-[#A00300]"
-                          : "bg-white text-gray-700 border-gray-300"
-                      }`}
-                    >
+                    setSelectedVariant(selected);
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#A00300]"
+                >
+                  <option value="">Select Option</option>
+                  {product.product_variants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
                       {variant.name}
-                    </button>
-                  );
-                })}
-              </div>
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                /* 🎨 COLOR VARIANT → EXISTING UI */
+                <div className="mt-1 flex gap-2 flex-wrap">
+                  {product.product_variants.map((variant) => {
+                    const isSelected = selectedVariant?.id === variant.id;
+
+                    if (variant.type === "color") {
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedVariant(variant);
+                          }}
+                          className={`w-6 h-6 rounded-full border ${
+                            isSelected
+                              ? "border-[#A00300] ring-2 ring-[#A00300]/30 scale-110"
+                              : "border-gray-300"
+                          }`}
+                          style={{ backgroundColor: variant.color || "#ccc" }}
+                        />
+                      );
+                    }
+
+                    return null;
+                  })}
+                </div>
+              )}
             </>
           )}
 

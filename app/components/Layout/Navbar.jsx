@@ -286,11 +286,12 @@ export default function Navbar() {
       <nav className="bg-[#f9f9f959] shadow-sm px-0 lg:px-6 py-3 top-0 z-[100] font-odop">
         <div className="px-3 flex justify-around md:justify-between items-center mt-0 md:mt-5 mb-0 md:mb-5">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" title="Yuukke Home" className="flex items-center">
             <div className="relative w-[135px] h-[50px] lg:w-[170px] lg:h-[45px]">
               <Image
                 src="/new-logo.png"
-                alt="MyGiftBox Logo"
+                alt="Yuukke Eco-Friendly Marketplace Logo"
+                title="Yuukke - Eco-Friendly Fashion, Home & Beauty Marketplace"
                 fill
                 priority
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
@@ -307,6 +308,7 @@ export default function Navbar() {
               <div className="relative group">
                 <Link
                   href="/products"
+                  title="Yuukke Products"
                   className="group transition-all flex items-center gap-1 py-2 px-1  text-gray-700 hover:text-[#A00300] cursor-pointer"
                 >
                   {t("Products")}
@@ -320,6 +322,7 @@ export default function Navbar() {
                         <Link
                           key={category.id || category.slug}
                           href={`/products/category/${category.slug}`}
+                          title={`${category.name} Products`}
                           className="group flex flex-col items-center hover:bg-gray-50 rounded-lg p-4 transition-all duration-200"
                         >
                           {/* 🔹 Category Image/Icon */}
@@ -327,6 +330,7 @@ export default function Navbar() {
                             <img
                               src={category.image || "/placeholder.png"}
                               alt={category.name}
+                              title={`${category.name} Products on Yuukke`}
                               className="w-12 h-12 object-contain"
                             />
                           </div>
@@ -351,6 +355,7 @@ export default function Navbar() {
               {/* Offers */}
               <Link
                 href={{ pathname: "/products/offers" }}
+                title="Yuukke Offers"
                 className="transition-all py-2 px-1  text-gray-700 hover:text-[#A00300] shrink-0 whitespace-nowrap"
               >
                 {t("Offers")}
@@ -359,6 +364,7 @@ export default function Navbar() {
               {/* Personalized Gifting */}
               <Link
                 href={{ pathname: "/products/festival-gifting" }}
+                title="Yuukke Gifting"
                 className="transition-all py-2 px-1  text-gray-700  hover:text-[#A00300] shrink-0 whitespace-nowrap"
               >
                 {t("Personalized Gifting")}
@@ -367,6 +373,7 @@ export default function Navbar() {
               {/* Corporate Gifting (badge kept subtle on tight widths) */}
               <Link
                 href="https://gift.yuukke.com/#featured-products"
+                title="Yuukke Gifting"
                 aria-label="Corporate Gifting – Premium, Classic"
                 className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-gray-700 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
               >
@@ -393,6 +400,7 @@ export default function Navbar() {
               {/* Track Order */}
               <Link
                 href="/track-order"
+                title="Track your Yuukke Orders"
                 className="transition-all py-2 px-1 text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
               >
                 {t("Track Order")}
@@ -415,13 +423,14 @@ export default function Navbar() {
                         ? `/login?from=${encodeURIComponent(pathname)}`
                         : "/login"
                     }
+                    title="Login to your Yuukke account"
                     aria-label="Profile"
                     className="rounded-full hover:bg-gray-100 p-2 transition flex items-center justify-center w-full h-full"
                   >
                     <User className="w-5 h-5 text-black cursor-pointer" />
                   </Link>
                 ) : (
-                  <div className="relative flex items-center gap-2">
+                  <div className="relative flex items-center gap-2 z-50">
                     {/* Regular Profile Icon */}
                     <div className="relative">
                       <button
@@ -435,6 +444,7 @@ export default function Navbar() {
                         <div className="absolute right-0 mt-2 w-36 bg-white border rounded-lg shadow-lg z-50">
                           <Link
                             href="/orders"
+                            title="Your Yuukke Orders"
                             className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition text-sm"
                             onClick={() => setOpen(false)}
                           >
@@ -475,6 +485,9 @@ export default function Navbar() {
               {/* Wishlist */}
               <a
                 href={!isLoggedIn ? "/login" : "/orders?tab=Wishlist"}
+                title={
+                  !isLoggedIn ? "Login to View Wishlist" : "View Your Wishlist"
+                }
                 aria-label="Favorites"
                 className="p-2 hover:bg-gray-100 rounded-full transition"
               >
@@ -581,6 +594,7 @@ export default function Navbar() {
                     <Link
                       key={category.id || category.slug}
                       href={`/products/category/${category.slug}`}
+                      title={`${category.name} Products`}
                       className="block px-4 py-2 hover:bg-gray-100 text-gray-800 text-md rounded"
                       onClick={() => {
                         setIsProductsOpen(false);
@@ -599,6 +613,7 @@ export default function Navbar() {
               href={{
                 pathname: "/products/offers", // dedicated offers route
               }}
+              title="Yuukke Offers"
               className="block py-1 hover:text-black transition"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -610,6 +625,7 @@ export default function Navbar() {
               href={{
                 pathname: "/products/festival-gifting", // dedicated offers route
               }}
+              title="Yuukke Gifting"
               className="block py-1 hover:text-black transition"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -619,6 +635,7 @@ export default function Navbar() {
             {/* Offers Link */}
             <Link
               href="https://gift.yuukke.com/#featured-products"
+              title="Yuukke Gifting"
               aria-label="Corporate Gifting – Premium, Classic"
               className="
     relative items-center
@@ -680,6 +697,7 @@ export default function Navbar() {
             {/* Tracking Link */}
             <Link
               href="/track-order"
+              title="Track your Yuukke Orders"
               className="transition-all py-2 px-1  text-gray-700 hover:text-gray-900"
               onClick={() => setMobileMenuOpen(false)}
             >

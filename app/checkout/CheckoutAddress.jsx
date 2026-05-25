@@ -66,6 +66,14 @@ const CheckoutAddress = ({
 
   const [orderDetails, setOrderDetails] = useState(null);
 
+  const [offers, setOffers] = useState([]);
+  // ✅ Filter only ACTIVE offers
+  const filteredOffers = (offers || []).filter(
+    (offer) =>
+      offer.status === null || offer.status === "0" || offer.status === 0,
+  );
+  const [appliedCoupon, setAppliedCoupon] = useState("");
+
   const [selectedAddressId, setSelectedAddressId] = useState(() => {
     const stored = localStorage.getItem("selectedAddressId");
     // console.log("📦 Loaded selectedAddressId from localStorage:", stored);
@@ -283,7 +291,7 @@ const CheckoutAddress = ({
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION);
 
-  const handleApply = async () => {
+  const handleApply = async (overrideCode = null) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -292,7 +300,8 @@ const CheckoutAddress = ({
     isApplyingRef.current = true;
 
     const cartId = localStorage.getItem("cart_id");
-    const trimmed = code.trim();
+    const finalCode = overrideCode || code;
+    const trimmed = finalCode.trim();
 
     // 🔹 Basic guard: no cart / no code
     if (!cartId || !trimmed) {
@@ -321,9 +330,7 @@ const CheckoutAddress = ({
         applyResponse?.status === false ||
         applyResponse?.status === "error" ||
         applyResponse?.success === false;
-
       if (failed) {
-        // ❌ Failed to apply
         setCouponMessage(applyResponse?.message || "Invalid coupon");
         setIsApplied(false);
         setCouponValue(0);
@@ -335,14 +342,48 @@ const CheckoutAddress = ({
           console.warn("Error clearing coupon storage", e);
         }
 
-        // Let OrderSummary & others refresh
+        // ✅ FORCE BACKEND SYNC (THIS WAS MISSING)
+        try {
+          const summaryResponse = await fetchWithAuth("/api/getTax", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cart_id: cartId }),
+          });
+
+          const cartData = summaryResponse?.cart_data;
+
+          const newCouponValue =
+            cartData?.coupon_id && cartData?.coupon_id !== "0"
+              ? parseCurrency(cartData.coupon_value || 0)
+              : 0;
+
+          setCouponValue(newCouponValue);
+
+          // ✅ persist
+          localStorage.setItem(
+            "cart_tax_details",
+            JSON.stringify({ cart_data: cartData }),
+          );
+
+          window.dispatchEvent(
+            new CustomEvent("local-storage-update", {
+              detail: { key: "cart_tax_details" },
+            }),
+          );
+        } catch (err) {
+          console.error("❌ Failed to sync after invalid coupon", err);
+        }
+
+        // ✅ always refresh UI
         window.dispatchEvent(new Event("cart-updated"));
+
         return;
       }
 
       // ✅ Success
       setCouponMessage("Discount applied successfully!");
       setIsApplied(true);
+      setAppliedCoupon(trimmed);
 
       skipNextApplyRef.current = true;
 
@@ -389,7 +430,9 @@ const CheckoutAddress = ({
 
       if (appliedCoupon) {
         // Sync input with backend coupon id
-        setCode(cartData.coupon_id);
+        if (!overrideCode) {
+          setCode(cartData.coupon_id);
+        }
       }
 
       // Persist full tax/summary snapshot
@@ -415,6 +458,15 @@ const CheckoutAddress = ({
     } finally {
       isApplyingRef.current = false; // ✅ THIS is the correct place
     }
+  };
+
+  const handleApplyOfferCode = (offerCode) => {
+    if (!offerCode) return;
+
+    // ❌ don't touch input
+    // ❌ don't use setCode
+
+    handleApply(offerCode); // (if you already updated handleApply earlier)
   };
 
   // 🚀 Auto-apply limited-time hot deal (silent, invisible coupon)
@@ -660,13 +712,9 @@ const CheckoutAddress = ({
     return () => clearTimeout(debounceRef.current);
   }, [code]);
 
-  // Fetch BOGO offers
   const fetchBogoOffers = async () => {
     const cartId = localStorage.getItem("cart_id");
-    if (!cartId) {
-      console.warn("⚠️ No cart_id found in localStorage");
-      return;
-    }
+    if (!cartId) return;
 
     try {
       const response = await fetchWithAuthBogo("/api/getTax", {
@@ -675,22 +723,21 @@ const CheckoutAddress = ({
         body: { cart_id: cartId },
       });
 
-      if (response?.bogo_offers && response.bogo_offers.length > 0) {
-        setBogoOffers(response.bogo_offers);
+      // ✅ existing
+      setBogoOffers(response?.bogo_offers || []);
 
-        // ✅ Automatically get the first BOGO offer id
-        const firstBogoId = response.bogo_offers[0].id;
-        // console.log("First BOGO ID:", firstBogoId);
+      // ✅ NEW
+      setOffers(response?.offers || []);
 
-        // Optionally, you can auto-apply it immediately
-        // applyBogoOffer(firstBogoId);
+      // ✅ sync applied coupon
+      const applied = response?.cart_data?.coupon_id;
+      if (applied && applied !== "0") {
+        setAppliedCoupon(applied);
       } else {
-        setBogoOffers([]);
+        setAppliedCoupon("");
       }
-
-      // console.log("Response", response);
     } catch (err) {
-      console.error("❌ Failed to fetch BOGO offers:", err);
+      console.error("❌ Failed to fetch offers:", err);
     }
   };
 
@@ -1517,6 +1564,253 @@ const CheckoutAddress = ({
 
         {/* Payment Section */}
         <div className="">
+          <h1 className="text-xl font-[800] tracking-tight">Payment</h1>
+          <p className="text-gray-400 text-xs">
+            All transactions are secure and encrypted.
+          </p>
+
+          <div className="mt-4 border border-gray-300 rounded-lg p-4 bg-white">
+            <label
+              className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between "
+              onClick={handleToggle}
+            >
+              <div className="flex items-start gap-2 sm:items-center">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="razorpay"
+                  checked={selectedMethod === "razorpay"}
+                  onChange={handleRadioChange}
+                  className="accent-black w-4 h-4 mt-1 sm:mt-0 cursor-pointer"
+                />
+                <span className="text-sm font-medium">
+                  Razorpay Secure
+                  <br className="block sm:hidden" />
+                  <br className="hidden lg:block" />
+                  <span className="text-xs text-gray-600">
+                    (UPI, Cards, Wallets, NetBanking)
+                  </span>
+                </span>
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2 justify-end sm:justify-normal">
+                <img
+                  src="/upi.svg"
+                  alt="UPI"
+                  title="UPI"
+                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                />
+                <img
+                  src="/visa.svg"
+                  alt="Visa"
+                  title="Visa"
+                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                />
+                <img
+                  src="/master.svg"
+                  alt="Master"
+                  title="Master"
+                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                />
+                <img
+                  src="/rupay.svg"
+                  alt="Rupay"
+                  title="Rupay"
+                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                />
+                <div className="relative group">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-md text-xs font-bold flex items-center justify-center cursor-pointer group-hover:bg-gray-200">
+                    +16
+                  </div>
+                  <div className="absolute bottom-12 right-0 hidden group-hover:grid grid-cols-4 gap-2 bg-black shadow-xl rounded-lg border p-2 z-20 w-[176px]">
+                    {Array.from({ length: 16 }).map((_, i) => (
+                      <img
+                        key={i}
+                        src={`/${i + 1}.svg`}
+                        alt={`Payment ${i + 1}`}
+                        title={`Supported Payment Method ${i + 1}`}
+                        className="w-7 h-7 object-contain"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </label>
+
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={showInfo ? "visible" : "hidden"}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  height: "auto",
+                  marginBottom: showInfo ? 16 : 0, // Prevents button jump
+                }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                {showInfo && (
+                  <div className="border-t pt-4 mt-6 text-center bg-gray-50">
+                    <div className="flex justify-center mb-3">
+                      <Wallet2 className="w-10 h-10 sm:w-12 sm:h-12" />
+                    </div>
+                    <p className="text-sm text-gray-700 font-medium max-w-md mx-auto">
+                      After clicking “Pay now”, you'll be redirected to Razorpay
+                      Payment Gateway to securely complete your purchase using
+                      UPI, Cards, Wallets or NetBanking.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {filteredOffers.length > 0 && (
+            <div className="mt-6 mb-6 block md:hidden">
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-3">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="flex-shrink-0"
+                >
+                  <path
+                    d="M17 9L11 3H3v8l6 6 8-8z"
+                    stroke="#A00300"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="7.5" cy="7.5" r="1.5" fill="#A00300" />
+                </svg>
+                <h2 className="text-[15px] font-medium text-gray-900 tracking-[0.01em]">
+                  Available offers
+                </h2>
+                <span className="ml-auto text-[11px] font-medium text-[#A00300] bg-[#FEF2F2] rounded-full px-2.5 py-0.5">
+                  {filteredOffers.length}{" "}
+                  {filteredOffers.length === 1 ? "offer" : "offers"}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div className="flex flex-col gap-2.5">
+                {filteredOffers.map((offer, index) => {
+                  const isAppliedOffer = appliedCoupon === offer.code;
+
+                  return (
+                    <motion.div
+                      key={offer.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: index * 0.09,
+                        duration: 0.32,
+                        ease: "easeOut",
+                      }}
+                      className={`relative overflow-hidden rounded-[18px] border flex items-center gap-3 px-4 py-3.5 transition-all duration-200 ${
+                        isAppliedOffer
+                          ? "border-green-300 bg-green-50"
+                          : "border-gray-200 bg-white active:scale-[0.985]"
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div
+                        className={`w-[38px] h-[38px] rounded-[12px] flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${
+                          isAppliedOffer ? "bg-green-100" : "bg-[#FEF2F2]"
+                        }`}
+                      >
+                        {isAppliedOffer ? (
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                          >
+                            <path
+                              d="M4 10l4 4 8-8"
+                              stroke="#15803D"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            width="17"
+                            height="17"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                          >
+                            <path
+                              d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z"
+                              stroke="#A00300"
+                              strokeWidth="1.4"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                              isAppliedOffer
+                                ? "bg-green-500"
+                                : "bg-[#A00300] animate-pulse"
+                            }`}
+                          />
+                          <span
+                            className={`text-[10px] font-medium uppercase tracking-[0.09em] ${
+                              isAppliedOffer
+                                ? "text-green-600"
+                                : "text-[#A00300]"
+                            }`}
+                          >
+                            {isAppliedOffer ? "Applied" : "Special offer"}
+                          </span>
+                        </div>
+                        <p className="text-[13px] font-bold text-gray-800 mt-0.5 leading-snug uppercase">
+                          {offer.reference || "Save more on your order"}
+                        </p>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
+
+                      {/* Button */}
+                      <motion.button
+                        whileTap={{ scale: 0.94 }}
+                        onClick={() => handleApplyOfferCode(offer.code)}
+                        disabled={isAppliedOffer || isApplyingRef.current}
+                        className={`flex-shrink-0 text-[12px] font-medium px-4 py-2 rounded-full border-[1.5px] transition-all duration-200 whitespace-nowrap ${
+                          isAppliedOffer
+                            ? "bg-green-50 text-green-700 border-green-300 cursor-default"
+                            : "bg-transparent text-[#A00300] border-[#A00300] active:bg-[#A00300] active:text-white"
+                        }`}
+                      >
+                        {isAppliedOffer ? "Applied ✓" : "Apply"}
+                      </motion.button>
+                    </motion.div>
+                  );
+                })}
+                {/* Coupon message (error or success) */}
+                {couponMessage && (
+                  <p
+                    className={`text-xs font-medium mt-1 mb-3 px-2 ${
+                      isApplied ? "text-green-600" : "text-red-500"
+                    }`}
+                  >
+                    {couponMessage}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 💸 More Offers */}
           {bogoOffers.length > 0 && (
             <div className="mt-6 mb-6 block md:hidden">
@@ -1570,6 +1864,7 @@ const CheckoutAddress = ({
                         <summary className="cursor-pointer text-xs font-semibold text-gray-600 hover:text-[#A00300] flex items-center gap-1">
                           <Link
                             href="/products/special-offers"
+                            title="Special Offers"
                             className="hover:text-[#A00300] flex items-center gap-1"
                           >
                             <TrendingUp className="w-4 h-4 text-[#A00300]" />
@@ -1584,102 +1879,6 @@ const CheckoutAddress = ({
             </div>
           )}
 
-          <h1 className="text-xl font-[800] tracking-tight">Payment</h1>
-          <p className="text-gray-400 text-xs">
-            All transactions are secure and encrypted.
-          </p>
-
-          <div className="mt-4 border border-gray-300 rounded-lg p-4 bg-white">
-            <label
-              className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between "
-              onClick={handleToggle}
-            >
-              <div className="flex items-start gap-2 sm:items-center">
-                <input
-                  type="radio"
-                  name="payment"
-                  value="razorpay"
-                  checked={selectedMethod === "razorpay"}
-                  onChange={handleRadioChange}
-                  className="accent-black w-4 h-4 mt-1 sm:mt-0 cursor-pointer"
-                />
-                <span className="text-sm font-medium">
-                  Razorpay Secure
-                  <br className="block sm:hidden" />
-                  <br className="hidden lg:block" />
-                  <span className="text-xs text-gray-600">
-                    (UPI, Cards, Wallets, NetBanking)
-                  </span>
-                </span>
-              </div>
-
-              <div className="flex items-center flex-wrap gap-2 justify-end sm:justify-normal">
-                <img
-                  src="/upi.svg"
-                  alt="UPI"
-                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                />
-                <img
-                  src="/visa.svg"
-                  alt="Visa"
-                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                />
-                <img
-                  src="/master.svg"
-                  alt="Master"
-                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                />
-                <img
-                  src="/rupay.svg"
-                  alt="Rupay"
-                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                />
-                <div className="relative group">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-md text-xs font-bold flex items-center justify-center cursor-pointer group-hover:bg-gray-200">
-                    +16
-                  </div>
-                  <div className="absolute bottom-12 right-0 hidden group-hover:grid grid-cols-4 gap-2 bg-black shadow-xl rounded-lg border p-2 z-20 w-[176px]">
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <img
-                        key={i}
-                        src={`/${i + 1}.svg`}
-                        alt={`Payment ${i + 1}`}
-                        className="w-7 h-7 object-contain"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </label>
-
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={showInfo ? "visible" : "hidden"}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{
-                  opacity: 1,
-                  height: "auto",
-                  marginBottom: showInfo ? 16 : 0, // Prevents button jump
-                }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
-              >
-                {showInfo && (
-                  <div className="border-t pt-4 mt-6 text-center bg-gray-50">
-                    <div className="flex justify-center mb-3">
-                      <Wallet2 className="w-10 h-10 sm:w-12 sm:h-12" />
-                    </div>
-                    <p className="text-sm text-gray-700 font-medium max-w-md mx-auto">
-                      After clicking “Pay now”, you'll be redirected to Razorpay
-                      Payment Gateway to securely complete your purchase using
-                      UPI, Cards, Wallets or NetBanking.
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
           <div className=" block lg:hidden">
             <h1 className="text-xl font-[800] tracking-tight mt-8">
               Order Summary
@@ -1694,6 +1893,7 @@ const CheckoutAddress = ({
                 <img
                   src={getImageSrc(item.image)}
                   alt={item.name}
+                  title={item.name}
                   className="w-16 h-16 rounded-md object-cover"
                 />
                 <div className="flex-1">
@@ -1743,7 +1943,8 @@ const CheckoutAddress = ({
                     if (newCode !== code) {
                       setIsApplied(false);
                       setCouponValue(0);
-                      // ❌ DO NOT clear message here
+                      setCouponMessage(""); // ✅ important
+                      setAppliedCoupon(""); // ✅ THIS FIXES OFFER BUTTON UI
                     }
 
                     setCode(newCode);

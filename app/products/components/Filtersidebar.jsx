@@ -174,18 +174,27 @@ export default function FilterSidebar({
               type="range"
               min="0"
               max="100000"
-              step="100"
+              step="50"
               value={priceRange}
-              onChange={(e) => setPriceRange(Number(e.target.value))}
+              onChange={(e) => {
+                const rawValue = Number(e.target.value);
+
+                const snappedValue = Math.min(
+                  100000,
+                  Math.max(0, Math.round(rawValue / 50) * 50),
+                );
+
+                setPriceRange(snappedValue);
+              }}
               className="w-full h-1.5 bg-gray-300 rounded-full appearance-none cursor-pointer 
-                [&::-webkit-slider-thumb]:appearance-none
-                [&::-webkit-slider-thumb]:h-4
-                [&::-webkit-slider-thumb]:w-4
-                [&::-webkit-slider-thumb]:rounded-full
-                [&::-webkit-slider-thumb]:bg-gray-700
-                [&::-webkit-slider-thumb]:border-2
-                [&::-webkit-slider-thumb]:border-white
-                [&::-webkit-slider-thumb]:shadow-sm"
+                  [&::-webkit-slider-thumb]:appearance-none
+                  [&::-webkit-slider-thumb]:h-4
+                  [&::-webkit-slider-thumb]:w-4
+                  [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-gray-700
+                  [&::-webkit-slider-thumb]:border-2
+                  [&::-webkit-slider-thumb]:border-white
+                  [&::-webkit-slider-thumb]:shadow-sm"
             />
           </div>
           <motion.button
@@ -204,7 +213,7 @@ export default function FilterSidebar({
               })
             }
             className="w-full bg-gray-100 text-gray-800 py-2 px-3 rounded-md font-medium border border-gray-200 
-              hover:bg-gray-50 transition-all text-sm flex items-center justify-center gap-2"
+                hover:bg-gray-50 transition-all text-sm flex items-center justify-center gap-2"
           >
             Apply Filters
             <ArrowRightCircle className="w-4 h-4 text-gray-600" />
@@ -257,9 +266,9 @@ function CategoryTree({
       className="p-4 sm:p-2"
     >
       <div className="flex items-center gap-3 mb-6">
-        <h3 className="text-lg font-bold text-black uppercase tracking-wide">
+        <h1 className="text-lg font-bold text-black uppercase tracking-wide">
           Categories
-        </h3>
+        </h1>
       </div>
 
       <div className="space-y-3">

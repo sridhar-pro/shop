@@ -210,12 +210,14 @@ const Footer = () => {
         <div className="flex gap-4 mt-2 md:mt-0">
           <a
             href="https://www.instagram.com/yuukkeglobal/"
+            title="Yuukke on Instagram"
             className="hover:text-white"
           >
             <Instagram size={18} />
           </a>
           <a
             href="https://www.linkedin.com/company/yuukkeglobal/posts/?feedView=all"
+            title="Yuukke on LinkedIn"
             className="hover:text-white"
           >
             <Linkedin size={18} />

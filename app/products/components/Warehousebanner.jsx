@@ -51,8 +51,8 @@ export default function WarehouseBanner({ warehouse }) {
           <div
             className="wh-logo-wrap flex items-center justify-center flex-shrink-0"
             style={{
-              width: "90px",
-              height: "90px",
+              width: "160px",
+              height: "160px",
               background: "#ffffff",
               borderRadius: "10px",
               boxShadow:
@@ -64,7 +64,12 @@ export default function WarehouseBanner({ warehouse }) {
               <img
                 src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${warehouse.store_logo}`}
                 alt={warehouse.company_name || "Warehouse Logo"}
-                style={{ width: "62px", height: "62px", objectFit: "contain" }}
+                title={warehouse.company_name || "Warehouse Logo"}
+                style={{
+                  width: "140px",
+                  height: "140px",
+                  objectFit: "contain",
+                }}
               />
             ) : (
               <Store

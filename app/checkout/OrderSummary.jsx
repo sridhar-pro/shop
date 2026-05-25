@@ -7,9 +7,11 @@ import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
 import { TrendingUp, Trash2, Timer, Truck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 const OrderSummary = () => {
   const { getValidToken } = useAuth();
+  const router = useRouter();
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const hasRemovedDealRef = useRef(false);
@@ -37,10 +39,21 @@ const OrderSummary = () => {
 
   const [customizedTexts, setCustomizedTexts] = useState({});
 
+  const [offers, setOffers] = useState([]);
+  const [couponSource, setCouponSource] = useState(null);
+
+  const [appliedOfferCode, setAppliedOfferCode] = useState(null);
+
+  // ✅ NEW: Separate flag — true only when a manual coupon (not offer) is applied
+  const [isManualCouponApplied, setIsManualCouponApplied] = useState(false);
+
+  const [showAllOffers, setShowAllOffers] = useState(false);
+
   useEffect(() => {
     const handleCouponCleared = () => {
       setCode("");
       setIsApplied(false);
+      setIsManualCouponApplied(false); // ✅
       setCouponValue(0);
       setCouponMessage("");
     };
@@ -120,6 +133,11 @@ const OrderSummary = () => {
         setBogoOffers(response.bogo_offers);
       }
 
+      // ✅ NEW: Save offers
+      if (response?.offers) {
+        setOffers(response.offers);
+      }
+
       const cartData = response?.cart_data;
       if (!cartData) return;
 
@@ -149,6 +167,8 @@ const OrderSummary = () => {
           `₹${(parseCurrency(item.price) * item.qty).toFixed(2)}`,
         image: item.image || "/fallback.png",
         deliveryDays: item.deliveryDays || null, // ✅ NEW
+        code: item.code,
+        is_free_item: item.is_free_item,
       }));
       setCartItems(itemsArray);
 
@@ -205,14 +225,24 @@ const OrderSummary = () => {
             // IMPORTANT:
             // Do NOT show it as applied in the normal coupon UI
             setIsApplied(false); // keep button active (user coupons separate)
+            setIsManualCouponApplied(false); // ✅ also reset manual flag
             // leave `code` as-is so user input isn't hijacked
           } else {
-            // Normal coupon flow (user-entered coupon)
+            // Normal coupon flow (manual OR offer)
             setIsApplied(true);
-            setCode(cartData.coupon_id);
             setCouponMessage("");
             setCouponValue(parseCurrency(cartData.coupon_value || 0));
 
+            const source =
+              couponSource || localStorage.getItem("coupon_source");
+
+            if (source === "manual") {
+              setCode(cartData.coupon_id); // ✅ show
+              setIsManualCouponApplied(true); // ✅ mark manual as applied
+            } else {
+              setCode(""); // ❌ hide
+              setIsManualCouponApplied(false); // ✅ not a manual coupon
+            }
             // If a normal coupon is now applied, this overrides hot-deal flag
             setLimitedDealApplied(false);
 
@@ -234,6 +264,11 @@ const OrderSummary = () => {
           // ❌ No coupon → FULL reset
           setCouponValue(0);
           setIsApplied(false);
+          setIsManualCouponApplied(false); // ✅
+          setCouponSource(null); // ✅ ADD
+          localStorage.removeItem("coupon_source"); // ✅ ADD THIS
+          setAppliedOfferCode(null);
+          localStorage.removeItem("applied_offer_code");
           if (!code) {
             setCode("");
           }
@@ -296,6 +331,7 @@ const OrderSummary = () => {
     if (!cartId || !trimmed) {
       setCouponMessage("");
       setIsApplied(false);
+      setIsManualCouponApplied(false); // ✅
       isApplyingRef.current = false;
       return;
     }
@@ -314,10 +350,18 @@ const OrderSummary = () => {
       if (failed) {
         setCouponMessage(response?.message || "Invalid coupon");
         setIsApplied(false);
+        setIsManualCouponApplied(false); // ✅
         localStorage.removeItem("applied_coupon");
       } else {
         setCouponMessage("");
         setIsApplied(true);
+        setIsManualCouponApplied(true); // ✅ mark as manual
+        setCouponSource("manual"); // ✅ ADD THIS
+        localStorage.setItem("coupon_source", "manual"); // ✅ ADD
+
+        // ✅ Clear any previously applied offer code since manual coupon takes over
+        setAppliedOfferCode(null);
+        localStorage.removeItem("applied_offer_code");
 
         skipNextApplyRef.current = true;
 
@@ -352,16 +396,16 @@ const OrderSummary = () => {
     if (!code.trim()) {
       setCouponMessage("");
       setIsApplied(false);
+      setIsManualCouponApplied(false); // ✅
       setCouponValue(0);
       return;
     }
 
-    // ✅ CRITICAL FIX
-    if (skipNextApplyRef.current) {
+    // 🚫 prevent duplicate API calls when offer applied
+    if (skipNextApplyRef.current || isApplyingRef.current) {
       skipNextApplyRef.current = false;
       return;
     }
-
     // ✅ STOP debounce if already applied
     // if (isApplied) return;
 
@@ -543,6 +587,74 @@ const OrderSummary = () => {
     return () => window.removeEventListener("cart-updated", handleCartUpdate);
   }, []);
 
+  useEffect(() => {
+    const storedSource = localStorage.getItem("coupon_source");
+    const storedOfferCode = localStorage.getItem("applied_offer_code");
+
+    if (storedSource === "offer" && storedOfferCode) {
+      setCouponSource("offer");
+      setAppliedOfferCode(storedOfferCode);
+    }
+  }, []);
+
+  const handleApplyOfferCode = async (offerCode) => {
+    if (isApplyingRef.current) return;
+
+    const cartId = localStorage.getItem("cart_id");
+    if (!cartId) return;
+
+    try {
+      isApplyingRef.current = true;
+
+      const response = await fetchWithAuth("/api/applyCoupon", {
+        method: "POST",
+        body: { cart_id: cartId, coupon_code: offerCode },
+      });
+
+      const failed =
+        response?.status === false ||
+        response?.status === "error" ||
+        response?.success === false;
+
+      if (failed) {
+        toast.error(response?.message || "Failed to apply offer ❌");
+      } else {
+        toast.success("🎉 Offer applied successfully!");
+        setCouponMessage("This offer applied successfully");
+        setIsApplied(true);
+        setIsManualCouponApplied(false); // ✅ offer applied — NOT manual
+        setCouponSource("offer");
+        localStorage.setItem("coupon_source", "offer");
+
+        setAppliedOfferCode(offerCode); // ✅ ADD THIS
+        localStorage.setItem("applied_offer_code", offerCode);
+
+        skipNextApplyRef.current = true;
+        setCode(""); // keep empty
+
+        localStorage.setItem("last_applied_coupon", offerCode);
+
+        window.dispatchEvent(new Event("cart-updated"));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong ❌");
+    } finally {
+      isApplyingRef.current = false;
+    }
+  };
+
+  // ✅ Filter only ACTIVE offers (status null / 0)
+  const filteredOffers = (offers || []).filter(
+    (offer) =>
+      offer.status === null || offer.status === "0" || offer.status === 0,
+  );
+
+  // ✅ Then apply your existing pagination logic
+  const visibleOffers = showAllOffers
+    ? filteredOffers
+    : filteredOffers.slice(0, 2);
+
   const getImageSrc = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
@@ -576,6 +688,7 @@ const OrderSummary = () => {
       });
 
       const message = res?.message?.toLowerCase() || "";
+
       if (message.includes("offer applied successfully")) {
         toast.update(toastId, {
           render: "Offer applied successfully 🎉",
@@ -583,8 +696,38 @@ const OrderSummary = () => {
           isLoading: false,
           autoClose: 2000,
         });
+
         setAppliedOffers((prev) => [...prev, bogoId]);
         window.dispatchEvent(new Event("cart-updated"));
+      } else if (message.includes("no eligible")) {
+        toast.update(toastId, {
+          render: (
+            <div className="font-odop flex items-start gap-3 p-2">
+              {/* Content */}
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-semibold text-gray-800">
+                  No eligible products in your cart
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Add items that qualify for this offer to unlock the deal.
+                </p>
+
+                <button
+                  onClick={() => {
+                    router.push("/products/special-offers");
+                  }}
+                  className="mt-1 inline-flex items-center gap-1 bg-gradient-to-r from-[#A00300] to-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow hover:scale-105 transition-transform duration-200 w-fit"
+                >
+                  View Eligible Products
+                </button>
+              </div>
+            </div>
+          ),
+          type: "error",
+          isLoading: false,
+          autoClose: 4000,
+        });
       } else if (res?.status === "error") {
         toast.update(toastId, {
           render: res?.message || "Failed to apply offer ❌",
@@ -731,17 +874,31 @@ const OrderSummary = () => {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
-                      <img
-                        src={getImageSrc(item.image)}
-                        alt={item.name}
-                        className="w-16 h-16 rounded-md object-cover"
-                      />
+                      {/* Image + Badge */}
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={getImageSrc(item.image)}
+                          alt={item.name}
+                          title={item.name}
+                          className="w-16 h-16 rounded-md object-cover"
+                        />
+
+                        {/* Quantity Badge */}
+                        <span className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-gray-300 text-gray-700 text-[11px] font-semibold min-w-[18px] h-[18px] px-[4px] flex items-center justify-center rounded-full shadow-sm">
+                          {item.qty}
+                        </span>
+                      </div>
 
                       <div>
-                        <p className="text-sm font-medium">
-                          {decodeHTML(item.name)} <br /> x {item.qty}
+                        <p
+                          className={`text-sm font-medium ${
+                            item.code?.includes("FREE") || item.is_free_item
+                              ? "text-green-700"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          {decodeHTML(item.name)}
                         </p>
-
                         <p className="text-sm text-gray-600 mt-1">
                           ₹{(item.price * item.qty).toFixed(2)}
                         </p>
@@ -775,7 +932,7 @@ const OrderSummary = () => {
                         Custom Print
                       </p>
                       <p className="text-xs font-medium text-gray-900 break-words">
-                        “{customizedTexts[item.rowid]}”
+                        "{customizedTexts[item.rowid]}"
                       </p>
                     </div>
                   )}
@@ -797,6 +954,7 @@ const OrderSummary = () => {
                   // Only clear message if user actually changed the value meaningfully
                   if (newCode !== code) {
                     setIsApplied(false); // ✅ THIS IS THE KEY FIX
+                    setIsManualCouponApplied(false); // ✅ reset manual flag on input change
                     setCouponValue(0);
                     // optional: don't clear message immediately
                   }
@@ -816,15 +974,20 @@ const OrderSummary = () => {
               <div className="flex flex-col items-center relative">
                 <button
                   onClick={handleApply}
-                  disabled={isApplied || isApplyingRef.current}
+                  // ✅ FIX: only disable/show "Applied" when manual coupon is applied
+                  disabled={isManualCouponApplied || isApplyingRef.current}
                   className={`bg-gray-200 text-sm font-bold px-4 py-2 rounded-md relative z-10 transition-all duration-200 ${
-                    isApplied ? "text-green-600" : "text-gray-600"
+                    isManualCouponApplied ? "text-green-600" : "text-gray-600"
                   }`}
-                  title={isApplied ? "Coupon already applied" : "Apply coupon"}
+                  title={
+                    isManualCouponApplied
+                      ? "Coupon already applied"
+                      : "Apply coupon"
+                  }
                 >
-                  {isApplied ? "Applied" : "Apply"}
+                  {isManualCouponApplied ? "Applied" : "Apply"}
                 </button>
-                {isApplied && (
+                {isManualCouponApplied && (
                   <span className="mt-1 text-xs text-green-600 font-medium">
                     Coupon Applied
                   </span>
@@ -843,6 +1006,239 @@ const OrderSummary = () => {
                 {couponMessage}
               </span>
             ) : null}
+            {/* 🎯 Available Offers */}
+            {filteredOffers.length > 0 && (
+              <div className="mt-6">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-3.5">
+                  <div className="w-[22px] h-[22px] rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path
+                        d="M13 7L9 3H3v6l4 4 6-6z"
+                        stroke="#A00300"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                      <circle cx="6" cy="6" r="1.2" fill="#A00300" />
+                    </svg>
+                  </div>
+                  <span className="text-[13px] font-medium text-gray-800">
+                    Available offers
+                  </span>
+                  <span className="ml-auto text-[11px] font-medium text-[#A00300] bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                    {filteredOffers.length}{" "}
+                    {filteredOffers.length === 1 ? "offer" : "offers"}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                <div className="flex flex-col gap-2.5">
+                  {visibleOffers.map((offer, index) => {
+                    const isThisOfferApplied =
+                      couponSource === "offer" &&
+                      appliedOfferCode === offer.code;
+
+                    return (
+                      <div
+                        key={offer.id}
+                        onClick={() =>
+                          !isThisOfferApplied &&
+                          handleApplyOfferCode(offer.code)
+                        }
+                        className={`
+              group relative flex items-center gap-3 px-4 py-3.5 rounded-[18px] overflow-hidden
+              border transition-all duration-200 cursor-pointer
+              ${
+                isThisOfferApplied
+                  ? "border-green-300 bg-green-50 cursor-default"
+                  : "border-gray-200 bg-white hover:-translate-y-0.5 hover:border-[#A00300] hover:shadow-[0_8px_24px_rgba(160,3,0,0.08)]"
+              }
+            `}
+                        style={{
+                          animationDelay: `${index * 80}ms`,
+                        }}
+                      >
+                        {/* Left accent bar */}
+                        {!isThisOfferApplied && (
+                          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#A00300] rounded-none opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        )}
+
+                        {/* Icon */}
+                        <div
+                          className={`
+              w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+              transition-all duration-200
+              ${
+                isThisOfferApplied
+                  ? "bg-green-100"
+                  : "bg-red-50 group-hover:bg-red-100 group-hover:scale-105"
+              }
+            `}
+                        >
+                          {isThisOfferApplied ? (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                            >
+                              <path
+                                d="M4 10l4 4 8-8"
+                                stroke="#15803D"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                            >
+                              <path
+                                d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z"
+                                stroke="#A00300"
+                                strokeWidth="1.4"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-[10px] font-medium uppercase tracking-[0.08em] ${isThisOfferApplied ? "text-green-600" : "text-[#A00300]"}`}
+                          >
+                            {isThisOfferApplied ? "Applied" : "Special offer"}
+                          </p>
+                          <p className="text-[13.5px] font-bold text-gray-800 mt-0.5  uppercase">
+                            {offer.reference || "Save more on your order"}
+                          </p>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-px h-7 bg-gray-200 flex-shrink-0" />
+
+                        {/* Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApplyOfferCode(offer.code);
+                          }}
+                          disabled={isApplyingRef.current || isThisOfferApplied}
+                          className={`
+                flex-shrink-0 text-[12px] font-medium px-4 py-1.5 rounded-md
+                border-[1.5px] transition-all duration-200 whitespace-nowrap
+                active:scale-95 disabled:cursor-default
+                ${
+                  isThisOfferApplied
+                    ? "bg-green-50 text-green-700 border-green-300"
+                    : "bg-transparent text-[#A00300] border-[#A00300] hover:bg-[#A00300] hover:text-white"
+                }
+              `}
+                        >
+                          {isThisOfferApplied ? "Applied ✓" : "Apply"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 🔥 Show BOGO only when expanded */}
+                {showAllOffers && bogoOffers.length > 0 && (
+                  <div className="mt-6">
+                    <div className="space-y-4">
+                      {bogoOffers.map((offer) => {
+                        const isOfferApplied = appliedOffers.includes(offer.id);
+
+                        return (
+                          <div
+                            key={offer.id}
+                            className="relative flex bg-white rounded-2xl shadow-lg border border-gray-300 overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                          >
+                            {/* Ribbon Left */}
+                            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-b from-[#A00300] to-red-700 flex items-center justify-center">
+                              <span className="text-[26px] font-extrabold text-white transform -rotate-90 whitespace-nowrap tracking-wider uppercase italic shadow-md">
+                                {offer.title}
+                              </span>
+                            </div>
+
+                            {/* Offer Content */}
+                            <div className="flex-1 pl-20 p-5">
+                              <div className="flex justify-between items-start capitalize mb-3">
+                                <span
+                                  className="font-bold text-sm text-gray-600 text-justify"
+                                  dangerouslySetInnerHTML={{
+                                    __html: offer.description,
+                                  }}
+                                />
+
+                                <button
+                                  className={`text-xs font-semibold text-white px-3 py-1 rounded-lg shadow transition-colors ml-4 shrink-0
+                  ${
+                    isOfferApplied
+                      ? "bg-gray-500 cursor-not-allowed"
+                      : "bg-[#A00300] hover:bg-red-700"
+                  }`}
+                                  onClick={() =>
+                                    !isOfferApplied && applyBogoOffer(offer.id)
+                                  }
+                                  disabled={applyingOffer || isOfferApplied}
+                                  title={
+                                    isOfferApplied
+                                      ? "Offer already applied"
+                                      : "Click to apply offer"
+                                  }
+                                >
+                                  {isOfferApplied
+                                    ? "APPLIED"
+                                    : applyingOffer
+                                      ? "Applying"
+                                      : "APPLY"}
+                                </button>
+                              </div>
+
+                              <hr className="my-3 border-dashed border-gray-300" />
+
+                              {/* Eligible Products */}
+                              <details className="mt-2 group">
+                                <summary className="cursor-pointer text-xs font-semibold text-gray-600 hover:text-[#A00300] flex items-center gap-1">
+                                  <Link
+                                    href="/products/special-offers"
+                                    title="Special Offers"
+                                    className="hover:text-[#A00300] flex items-center gap-1"
+                                  >
+                                    <TrendingUp className="w-4 h-4 text-[#A00300]" />
+                                    Eligible Products
+                                  </Link>
+                                </summary>
+                              </details>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(filteredOffers.length > 1 || bogoOffers.length > 0) && (
+              <div className="flex justify-center mt-2">
+                <button
+                  onClick={() => setShowAllOffers((prev) => !prev)}
+                  className="text-[12px] font-medium text-[#A00300] hover:underline"
+                >
+                  {showAllOffers
+                    ? "Show less"
+                    : `View more offer${offers.length - 1 > 1 ? "s" : ""}`}
+                </button>
+              </div>
+            )}
+
             {/* 📦 Summary */}
             <div className="border-t pt-4 space-y-2 text-sm">
               <div className="flex justify-between items-start">
@@ -922,80 +1318,6 @@ const OrderSummary = () => {
             </div>
 
             {/* 💸 More Offers */}
-            {bogoOffers.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-base font-bold mb-3">More offers</h2>
-
-                <div className="space-y-4">
-                  {bogoOffers.map((offer) => {
-                    const isOfferApplied = appliedOffers.includes(offer.id);
-                    return (
-                      <div
-                        key={offer.id}
-                        className="relative flex bg-white rounded-2xl shadow-lg border border-gray-300 overflow-hidden hover:shadow-xl transition-shadow duration-300"
-                      >
-                        {/* Ribbon Left */}
-                        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-b from-[#A00300] to-red-700 flex items-center justify-center">
-                          <span className="text-[26px] font-extrabold text-white transform -rotate-90 whitespace-nowrap tracking-wider uppercase italic shadow-md">
-                            {offer.title}
-                          </span>
-                        </div>
-
-                        {/* Offer Content */}
-                        <div className="flex-1 pl-20 p-5">
-                          <div className="flex justify-between items-start capitalize mb-3">
-                            <span
-                              className="font-bold text-sm text-gray-600 text-justify"
-                              dangerouslySetInnerHTML={{
-                                __html: offer.description,
-                              }}
-                            />
-                            <button
-                              className={`text-xs font-semibold text-white px-3 py-1 rounded-lg shadow transition-colors ml-4 shrink-0
-                              ${
-                                isOfferApplied
-                                  ? "bg-gray-500 cursor-not-allowed"
-                                  : "bg-[#A00300] hover:bg-red-700"
-                              }`}
-                              onClick={() =>
-                                !isOfferApplied && applyBogoOffer(offer.id)
-                              }
-                              disabled={applyingOffer || isOfferApplied}
-                              title={
-                                isOfferApplied
-                                  ? "Offer already applied"
-                                  : "Click to apply offer"
-                              }
-                            >
-                              {isOfferApplied
-                                ? "APPLIED"
-                                : applyingOffer
-                                  ? "Applying"
-                                  : "APPLY"}
-                            </button>
-                          </div>
-
-                          <hr className="my-3 border-dashed border-gray-300" />
-
-                          {/* Eligible Products */}
-                          <details className="mt-2 group">
-                            <summary className="cursor-pointer text-xs font-semibold text-gray-600 hover:text-[#A00300] flex items-center gap-1">
-                              <Link
-                                href="/products/special-offers"
-                                className="hover:text-[#A00300] flex items-center gap-1"
-                              >
-                                <TrendingUp className="w-4 h-4 text-[#A00300]" />
-                                Eligible Products
-                              </Link>
-                            </summary>
-                          </details>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

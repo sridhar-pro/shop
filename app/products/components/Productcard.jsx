@@ -8,6 +8,7 @@ import Link from "next/link";
 import WishlistButton from "@/app/components/WishlistButton";
 import CartSidebar from "@/app/components/CartSideBar";
 import { itemVariants } from "@/app/utils/variants";
+import { useRouter } from "next/navigation";
 
 const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
@@ -19,6 +20,8 @@ function getImageSrc(image) {
 }
 
 export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
+  const router = useRouter();
+
   const [selectedVariant, setSelectedVariant] = useState(
     product.product_variants?.[0] || null,
   );
@@ -43,9 +46,42 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
     product.promotion == 1 &&
     new Date(product.end_date + "T23:59:59") >= new Date();
 
+  const isDropdownVariantRequired =
+    product.variant_dropdown &&
+    (product.variant_dropdown === 1 ||
+      product.variant_dropdown === "1" ||
+      product.variant_dropdown === true);
+
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (isDropdownVariantRequired) {
+      toast.info(
+        <div className="flex items-start gap-2 font-odop">
+          <div className="flex flex-col leading-tight">
+            <span className="font-semibold text-sm">Options required</span>
+            <span className="text-xs opacity-80">
+              Select product options to continue
+            </span>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 2200,
+          className:
+            "bg-white border border-[#A00300]/20 shadow-md rounded-xl px-3 py-2",
+          bodyClassName: "p-0 m-0",
+          progressClassName: "bg-[#A00300]",
+        },
+      );
+
+      setTimeout(() => {
+        router.push(`/products/${product.slug}`);
+      }, 600); // small delay for UX feel
+
+      return;
+    }
 
     if (isAdding === product.id) return;
 
@@ -155,6 +191,11 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
 
       <Link
         href={isOutOfStock ? "#" : `/products/${product.slug}`}
+        title={
+          isOutOfStock
+            ? `${product.name} is Out of Stock`
+            : `View ${product.name}`
+        }
         className={isOutOfStock ? "pointer-events-none" : ""}
       >
         <div className="relative">
@@ -179,6 +220,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
             <Image
               src={getImageSrc(displayImage)}
               alt={product.name || "Image not found!"}
+              title={product.name || "Image not found!"}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
               className="object-contain"
@@ -387,7 +429,12 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       >
         {isAdding === product.id && (
           <div className="absolute -top-14 z-50">
-            <img src="/add.gif" alt="Loading..." className="w-12 h-12" />
+            <img
+              src="/add.gif"
+              alt="Loading..."
+              title="Loading..."
+              className="w-12 h-12"
+            />
           </div>
         )}
         <button
@@ -419,13 +466,14 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
                 : "group-hover:-translate-y-0.5 group-hover:scale-110"
             }`}
           />
-
           <span>
             {isAdding === product.id
               ? "Adding..."
-              : isVariantRequired
-                ? "Select Variant"
-                : "Add to Cart"}
+              : isDropdownVariantRequired
+                ? "View Options"
+                : isVariantRequired
+                  ? "Select Variant"
+                  : "Add to Cart"}
           </span>
 
           {isAdding !== product.id && !isOutOfStock && (

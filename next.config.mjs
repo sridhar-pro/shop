@@ -18,9 +18,9 @@ const nextConfig = {
   experimental: {
     optimizeCss: true, // speeds up CSS extraction
   },
-  compiler: {
-    removeConsole: { exclude: ["error", "warn"] },
-  },
+  // compiler: {
+  //   removeConsole: { exclude: ["error", "warn"] },
+  // },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "marketplace.betalearnings.com" },
@@ -276,6 +276,10 @@ const nextConfig = {
       {
         source: "/api/cancelorder",
         destination: `${BASE_API}/cancelorder`,
+      },
+      {
+        source: "/api/seller_orderdetails",
+        destination: `${BASE_API}/seller_orderdetails`,
       },
 
       {

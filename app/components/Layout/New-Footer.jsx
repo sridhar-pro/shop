@@ -2,10 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Instagram, Facebook, Linkedin } from "lucide-react";
 
-const FooterItem = ({ text, link }) => {
+const FooterItem = ({ text, link, title }) => {
   return (
     <li>
-      <Link href={link} className="duration-200 hover:text-[#A00300] ">
+      <Link
+        href={link}
+        title={title}
+        className="duration-200 hover:text-[#A00300] "
+      >
         {text}
       </Link>
     </li>
@@ -36,27 +40,26 @@ const footerBlocks = [
         id: 1,
         text: "All Products",
         link: "/products",
+        title: "Browse All Products",
       },
       {
         id: 2,
         text: "Offers",
         link: "/offers",
+        title: "View Latest Offers",
       },
       {
         id: 3,
         text: "Personalized Gifts",
         link: "/festival-gifting",
+        title: "Shop Personalized Gifts",
       },
       {
         id: 4,
         text: "Corporate Gifts",
         link: "https://gift.yuukke.com/#featured-products",
+        title: "Explore Corporate Gifts",
       },
-      //   {
-      //     id: 5,
-      //     text: "Track Order",
-      //     link: "#",
-      //   },
     ],
   },
   {
@@ -67,27 +70,26 @@ const footerBlocks = [
         id: 1,
         text: "About Us",
         link: "https://yuukke.com/about/",
+        title: "Learn About Yuukke",
       },
       {
         id: 2,
         text: "Global-ambassadors",
         link: "https://yuukke.com/global-ambassadors/",
+        title: "Meet Yuukke Global Ambassadors",
       },
       {
         id: 3,
         text: "Contact",
         link: "https://yuukke.com/contact-us/",
+        title: "Contact Yuukke",
       },
       {
         id: 4,
         text: "Service-Provider",
         link: "https://connect.yuukke.com/yuukke-service",
+        title: "Yuukke Service Providers",
       },
-      //   {
-      //     id: 5,
-      //     text: "Services",
-      //     link: "#",
-      //   },
     ],
   },
   {
@@ -98,52 +100,55 @@ const footerBlocks = [
         id: 1,
         text: "Track Order",
         link: "/track-order",
+        title: "Track Your Order",
       },
       {
         id: 2,
         text: "ODOP Registration",
         link: "/odop-registration",
+        title: "ODOP Registration",
       },
       {
         id: 3,
         text: "Seller Registration",
         link: "/seller-registration",
+        title: "Register as a Seller",
       },
       {
         id: 4,
         text: "Empowering Community",
         link: "/empowering-community",
+        title: "Empowering Community Initiative",
       },
-      //   {
-      //     id: 5,
-      //     text: "How To Gain YuukkeMints",
-      //     link: "#",
-      //   },
     ],
   },
   {
     id: 4,
-    title: "Ressources",
+    title: "Resources",
     items: [
       {
         id: 1,
         text: "Blog",
         link: "/blog",
+        title: "Read Yuukke Blog",
       },
       {
         id: 2,
         text: "Privacy",
         link: "https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/Yuukke-Privacy-Policy.pdf",
+        title: "Yuukke Privacy Policy",
       },
       {
         id: 3,
         text: "Terms",
         link: "https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/yuukke_tnc.pdf",
+        title: "Yuukke Terms and Conditions",
       },
       {
         id: 4,
         text: "How To Gain YuukkeMints",
         link: "/gain-yuukkemints",
+        title: "Learn How To Gain YuukkeMints",
       },
     ],
   },
@@ -157,10 +162,11 @@ const FooterBlock = () => {
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Left Block */}
           <div className="lg:w-1/3 space-y-6">
-            <Link href="/" className="inline-block">
+            <Link href="/" title="Yuukke Home" className="inline-block">
               <Image
                 src="/new-logo.png"
-                alt="YourBrand Logo"
+                alt="Yuukke Eco-Friendly Marketplace Logo"
+                title="Yuukke Eco-Friendly Marketplace Logo"
                 width={150}
                 height={50}
                 className="object-contain"
@@ -169,10 +175,10 @@ const FooterBlock = () => {
             </Link>
 
             <p className="text-sm text-gray-800 leading-relaxed">
-              Our sale is more than discounts — it is a celebration of women
-              creators and entrepreneurs. Every purchase directly supports
-              women-led businesses, fuels financial independence, and builds
-              stronger communities.
+              A curated marketplace that gives members access to buying and
+              selling specialised products in their field of interest.
+              Entrepreneurs are encouraged to seize this opportunity and trade
+              on the platform to reach a global audience.
             </p>
 
             {/* Social Section */}
@@ -187,6 +193,7 @@ const FooterBlock = () => {
                 {/* Instagram */}
                 <a
                   href="https://www.instagram.com/yuukkeglobal/"
+                  title="Yuukke on Instagram"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram"
@@ -198,6 +205,7 @@ const FooterBlock = () => {
                 {/* LinkedIn */}
                 <a
                   href="https://www.linkedin.com/company/yuukkeglobal/posts/?feedView=all"
+                  title="Yuukke on LinkedIn"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="LinkedIn"

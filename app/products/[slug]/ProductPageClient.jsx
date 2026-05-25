@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import {
   ShoppingCart,
   ChevronRight,
@@ -41,12 +41,40 @@ export default function ProductPageClient() {
   const { t } = useTranslation();
   const reviewsRef = useRef(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { isLoggedIn } = useSession();
   const [showPopupenq, setShowPopupenq] = useState(false);
   const [sms, setSms] = useState("");
   const [loadingenq, setLoadingenq] = useState(false);
 
   const [invalidVideos, setInvalidVideos] = useState([]);
+
+  const [summaryTags, setSummaryTags] = useState([]);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+
+  const [positiveTags, setPositiveTags] = useState([]);
+  const [negativeTags, setNegativeTags] = useState([]);
+
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
+
+  const [zoomStyle, setZoomStyle] = useState({});
+
+  const imageRef = useRef(null);
+
+  const handleMouseMove = (e) => {
+    const { left, top, width, height } =
+      e.currentTarget.getBoundingClientRect();
+
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+
+    if (imageRef.current) {
+      imageRef.current.style.transformOrigin = `${x}% ${y}%`;
+    }
+  };
+
+  const [customModelText, setCustomModelText] = useState("");
 
   const [personalisedText, setPersonalisedText] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -209,10 +237,16 @@ export default function ProductPageClient() {
   };
 
   const handleEnquire = () => {
+    const fullPath =
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : pathname;
+
     if (!isLoggedIn) {
-      router.push("/login");
+      router.push(`/login?from=${encodeURIComponent(fullPath)}`);
       return;
     }
+
     setShowPopupenq(true);
   };
 
@@ -540,6 +574,7 @@ export default function ProductPageClient() {
             top_view: v.top_view || null,
             zoom_view: v.zoom_view || null,
           })),
+          variant_dropdown: p.variant_dropdown || [],
         });
 
         setSelectedImage(p.p_image || "/placeholder-product.jpg");
@@ -563,6 +598,132 @@ export default function ProductPageClient() {
 
     if (slug) fetchProductDetails();
   }, [slug, getValidToken]);
+
+  // Always keep reviews safe
+  const reviews = Array.isArray(product?.all_reviews)
+    ? product.all_reviews
+    : [];
+
+  const handleReviewClick = () => {
+    if (reviewsRef.current) {
+      reviewsRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  const getReviewSignature = (reviews) => {
+    return reviews
+      .map((r) => `${r.id}-${r.updated_at || r.created_at}`)
+      .join("|");
+  };
+
+  useEffect(() => {
+    console.group("🧠 Review Summary Engine");
+
+    if (!product?.id) {
+      console.warn("⛔ No product ID → skipping execution");
+      console.groupEnd();
+      return;
+    }
+
+    if (!reviews?.length) {
+      console.warn("🟡 No reviews available → nothing to process");
+      console.groupEnd();
+      return;
+    }
+
+    console.log("📦 Product ID:", product.id);
+    console.log("📝 Total Reviews:", reviews.length);
+
+    const cacheKey = `review_summary_${product.id}`;
+    const signatureKey = `review_signature_${product.id}`;
+
+    const currentSignature = getReviewSignature(reviews);
+
+    console.log("🔑 Current Signature:", currentSignature);
+
+    const cachedTags = localStorage.getItem(cacheKey);
+    const cachedSignature = localStorage.getItem(signatureKey);
+
+    // ✅ CACHE HIT
+    if (cachedTags && cachedSignature === currentSignature) {
+      console.log("⚡ CACHE HIT → Using stored summary");
+      console.log("📂 Cached Signature:", cachedSignature);
+
+      try {
+        const parsed = JSON.parse(cachedTags);
+
+        setSummaryTags(parsed.positiveTags || []);
+        setPositiveTags(parsed.positiveTags || []);
+        setNegativeTags(parsed.negativeTags || []);
+        console.log("🏷️ Cached Tags:", parsed);
+      } catch (err) {
+        console.error("❌ Failed to parse cached data:", err);
+      }
+
+      console.groupEnd();
+      return;
+    }
+
+    // ❌ CACHE MISS
+    console.log("🚀 CACHE MISS → Fetching new summary from API");
+
+    const controller = new AbortController();
+
+    fetch("/api/review-summary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reviews }),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        console.log("🌐 API Response Status:", res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success) {
+          console.log("✅ API SUCCESS");
+          console.log("🏷️ Generated Tags:", data.tags);
+
+          setSummaryTags(data.positiveTags || []);
+          setPositiveTags(data.positiveTags || []);
+          setNegativeTags(data.negativeTags || []);
+
+          // 💾 STORE CACHE
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              tags: data.tags,
+              positiveTags: data.positiveTags,
+              negativeTags: data.negativeTags,
+            }),
+          );
+          localStorage.setItem(signatureKey, currentSignature);
+
+          console.log("💾 Cache Stored Successfully");
+          console.log("📂 Cache Key:", cacheKey);
+        } else {
+          console.warn("⚠️ API returned success=false");
+        }
+      })
+      .catch((err) => {
+        if (err.name === "AbortError") {
+          console.log("🛑 Fetch aborted (expected during re-render)");
+        } else {
+          console.error("❌ API ERROR:", err);
+        }
+      });
+
+    return () => {
+      console.log("🧹 Cleanup → Aborting fetch if needed");
+      controller.abort();
+      console.groupEnd();
+    };
+  }, [reviews, product?.id]);
 
   // ✅ Use API-provided metaData for SEO updates
   useMetaUpdater(metaData);
@@ -736,6 +897,13 @@ export default function ProductPageClient() {
         ...(personalisedText?.trim() && {
           customize_text: personalisedText.trim(),
         }),
+        variant_dropdown: selectedModel
+          ? selectedModel.name.toLowerCase() === "others"
+            ? `${selectedModel.name}-${customModelText}`
+            : selectedModel.options?.length > 0
+              ? `${selectedModel.name}-${selectedOption?.name || ""}`
+              : selectedModel.name
+          : null,
       };
 
       // 3️⃣ Get or refresh token
@@ -1108,6 +1276,13 @@ export default function ProductPageClient() {
           is_offer: true,
           offer_price: matchingOffer.offer_price,
         }),
+        variant_dropdown: selectedModel
+          ? selectedModel.name.toLowerCase() === "others"
+            ? `${selectedModel.name}-${customModelText}`
+            : selectedModel.options?.length > 0
+              ? `${selectedModel.name}-${selectedOption?.name || ""}`
+              : selectedModel.name
+          : null,
       };
 
       // console.log("2.Variant ID :", payload.variant_id);
@@ -1406,6 +1581,7 @@ export default function ProductPageClient() {
         <div className="text-red-500 mb-4">{error}</div>
         <Link
           href="/"
+          title="Yuukke Home"
           className="flex items-center text-blue-600 hover:underline"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
@@ -1427,27 +1603,30 @@ export default function ProductPageClient() {
   const getImageSrcThumbs = (image) => {
     if (!image) return "/fallback.png";
     if (image.startsWith("http") || image.startsWith("/")) return image;
-    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${image}`;
+    return `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${image}`;
   };
 
-  // Always keep reviews safe
-  const reviews = Array.isArray(product?.all_reviews)
-    ? product.all_reviews
-    : [];
+  const handleModelChange = (modelId) => {
+    const model = product.variant_dropdown.find((m) => m.id === modelId);
 
-  const handleReviewClick = () => {
-    if (reviewsRef.current) {
-      reviewsRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
+    setSelectedModel(model);
+    setSelectedOption(null); // reset option when model changes
   };
 
   const isCustomizationRequired =
     product?.customize && !personalisedText?.trim();
 
-  const isBlocked = isAdding || isCustomizationRequired;
+  const isDropdownRequired =
+    Array.isArray(product?.variant_dropdown) &&
+    product.variant_dropdown.length > 0 &&
+    (!selectedModel ||
+      (selectedModel?.name?.toLowerCase() === "others"
+        ? !customModelText.trim()
+        : selectedModel?.options?.length > 0 && !selectedOption));
+
+  const isBlocked = isAdding || isCustomizationRequired || isDropdownRequired;
+
+  const isOthersSelected = selectedModel?.name?.toLowerCase() === "others";
 
   const getFinalPrice = (product) => {
     // ✅ If variants exist → use variant price
@@ -1473,6 +1652,15 @@ export default function ProductPageClient() {
     return price.toFixed(2);
   };
 
+  const availableQty =
+    Array.isArray(product?.variants) &&
+    product.variants.length > 0 &&
+    selectedVariants?.[product.id]
+      ? Number(selectedVariants[product.id].variant_quantity || 0)
+      : Number(product?.quantity || 0);
+
+  const isOutOfStock = availableQty <= 0;
+
   // Main product display
   return (
     <div className="min-h-screen relative font-odop">
@@ -1481,7 +1669,11 @@ export default function ProductPageClient() {
         <div className="container mx-auto">
           <ol className="flex items-center space-x-2 text-sm">
             <li>
-              <Link href="/" className="text-[#A00300] hover:underline">
+              <Link
+                href="/"
+                title="Yuukke Home"
+                className="text-[#A00300] hover:underline"
+              >
                 {t("Home")}
               </Link>
             </li>
@@ -1489,7 +1681,11 @@ export default function ProductPageClient() {
               <ChevronRight className="w-4 h-4 text-gray-400" />
             </li>
             <li>
-              <Link href="/products" className="text-[#A00300] hover:underline">
+              <Link
+                href="/products"
+                title="Browse all Products"
+                className="text-[#A00300] hover:underline"
+              >
                 {t("Products")}
               </Link>
             </li>
@@ -1683,6 +1879,7 @@ export default function ProductPageClient() {
                             <Image
                               src={img}
                               alt={`Thumbnail ${index + 1}`}
+                              title={`${product.name} Thumbnail ${index + 1}`}
                               width={80}
                               height={80}
                               className="object-cover w-full h-full"
@@ -1698,11 +1895,12 @@ export default function ProductPageClient() {
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={selectedImage || "default"}
-                        className="relative aspect-square w-full rounded-xl overflow-hidden bg-gray-100"
+                        className="relative aspect-square w-full rounded-xl overflow-hidden bg-gray-100 group cursor-pointer"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
+                        onMouseMove={handleMouseMove}
                       >
                         {(selectedImage || filteredMedia[0])?.endsWith(
                           ".mp4",
@@ -1714,6 +1912,7 @@ export default function ProductPageClient() {
                           />
                         ) : (
                           <Image
+                            ref={imageRef}
                             src={
                               selectedImage ||
                               mediaList[0] ||
@@ -1724,8 +1923,10 @@ export default function ProductPageClient() {
                                   : product.image)
                             }
                             alt={product?.name}
+                            title={product?.name}
                             fill
-                            className="object-contain"
+                            style={zoomStyle}
+                            className="object-contain transition-transform duration-300 ease-in-out group-hover:scale-150"
                           />
                         )}
                       </motion.div>
@@ -1769,6 +1970,7 @@ export default function ProductPageClient() {
                                 <Image
                                   src={img}
                                   alt={`Thumbnail ${index + 1}`}
+                                  title={`${product.name} Thumbnail ${index + 1}`}
                                   width={80}
                                   height={80}
                                   className="object-cover w-full h-full"
@@ -2051,6 +2253,78 @@ export default function ProductPageClient() {
                 </div>
               );
             })()}
+          {/* 🔥 MODEL DROPDOWN */}
+          {Array.isArray(product?.variant_dropdown) &&
+            product.variant_dropdown.length > 0 && (
+              <div className="flex flex-col gap-1 mt-4 px-4">
+                <label className="text-sm font-semibold text-gray-700 uppercase">
+                  Select Model:
+                </label>
+
+                <select
+                  value={selectedModel?.id || ""}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                >
+                  <option value="">Choose a model</option>
+
+                  {product.variant_dropdown.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          {/* OPTIONS OR CUSTOM INPUT */}
+          {selectedModel && (
+            <>
+              {/* 🧠 If model is "Others" → show input */}
+              {isOthersSelected ? (
+                <div className="flex flex-col gap-1 mt-4 px-4">
+                  <label className="text-sm font-semibold text-gray-700 uppercase">
+                    Enter Model:
+                  </label>
+
+                  <input
+                    type="text"
+                    value={customModelText}
+                    onChange={(e) => setCustomModelText(e.target.value)}
+                    placeholder="Type your model"
+                    className="w-full px-3 py-2 border rounded-md text-sm"
+                  />
+                </div>
+              ) : (
+                /* 🧠 Normal options dropdown */
+                selectedModel?.options?.length > 0 && (
+                  <div className="flex flex-col gap-1 px-4 mt-4">
+                    <label className="text-sm font-semibold text-gray-700 uppercase">
+                      Select Option:
+                    </label>
+
+                    <select
+                      value={selectedOption?.id || ""}
+                      onChange={(e) => {
+                        const opt = selectedModel.options.find(
+                          (o) => o.id === e.target.value,
+                        );
+                        setSelectedOption(opt);
+                      }}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                    >
+                      <option value="">Choose an option</option>
+
+                      {selectedModel.options.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              )}
+            </>
+          )}
           {/* ✍️ Personalised Text (Mobile) */}
           {product?.customize && (
             <div className="flex lg:hidden flex-col gap-3 font-odop mt-4 px-4">
@@ -2436,6 +2710,13 @@ export default function ProductPageClient() {
                   );
                 })()}
 
+                {/* Tax notice */}
+                <div className="hidden md:block">
+                  <p className="text-xs text-gray-500 mt-1">
+                    * Price shown is excluding taxes
+                  </p>
+                </div>
+
                 {/* 🎨 Variants Color Selector */}
                 {product.variants.length > 0 &&
                   (() => {
@@ -2503,6 +2784,78 @@ export default function ProductPageClient() {
                     );
                   })()}
 
+                {/* 🔥 MODEL DROPDOWN */}
+                {Array.isArray(product?.variant_dropdown) &&
+                  product.variant_dropdown.length > 0 && (
+                    <div className="flex flex-col gap-1 mt-4">
+                      <label className="text-sm font-semibold text-gray-700 uppercase">
+                        Select Model:
+                      </label>
+
+                      <select
+                        value={selectedModel?.id || ""}
+                        onChange={(e) => handleModelChange(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                      >
+                        <option value="">Choose a model</option>
+
+                        {product.variant_dropdown.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                {/* OPTIONS OR CUSTOM INPUT */}
+                {selectedModel && (
+                  <>
+                    {/* 🧠 If model is "Others" → show input */}
+                    {isOthersSelected ? (
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-semibold text-gray-700 uppercase">
+                          Enter Model:
+                        </label>
+
+                        <input
+                          type="text"
+                          value={customModelText}
+                          onChange={(e) => setCustomModelText(e.target.value)}
+                          placeholder="Type your model"
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                        />
+                      </div>
+                    ) : (
+                      /* 🧠 Normal options dropdown */
+                      selectedModel?.options?.length > 0 && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-sm font-semibold text-gray-700 uppercase">
+                            Select Option:
+                          </label>
+
+                          <select
+                            value={selectedOption?.id || ""}
+                            onChange={(e) => {
+                              const opt = selectedModel.options.find(
+                                (o) => o.id === e.target.value,
+                              );
+                              setSelectedOption(opt);
+                            }}
+                            className="w-full px-3 py-2 border rounded-md text-sm"
+                          >
+                            <option value="">Choose an option</option>
+
+                            {selectedModel.options.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    )}
+                  </>
+                )}
                 {/* ✍️ Personalised Text */}
                 {product?.customize && (
                   <div className="hidden lg:flex items-start gap-4 font-odop mt-4">
@@ -2553,12 +2906,6 @@ export default function ProductPageClient() {
                     </div>
                   </div>
                 )}
-              </div>
-              {/* Tax notice */}
-              <div className="hidden md:block">
-                <p className="text-xs text-gray-500 mt-1">
-                  * Price shown is excluding taxes
-                </p>
               </div>
 
               {/* Highlights */}
@@ -2890,50 +3237,200 @@ export default function ProductPageClient() {
                       {/* 📝 RIGHT: Reviews List */}
                       <div className="md:col-span-8">
                         <div className="space-y-6">
-                          {reviews.map((review) => (
-                            <div
-                              key={review.id}
-                              className="border-b border-gray-200 pb-6"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <p className="font-semibold text-gray-900">
-                                  {review.user_name || "Anonymous"}
-                                </p>
+                          {/* ─── AI Summary Tags  */}
+                          {summaryTags.length > 0 && (
+                            <>
+                              <style>{`
+      @keyframes stTagIn {
+        from { opacity: 0; transform: translateY(14px) scale(0.9); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes stHeaderIn {
+        from { opacity: 0; transform: translateX(-10px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes stPulse {
+        0%, 100% { box-shadow: 0 0 0 0px rgba(127,119,221,0.35); }
+        50%       { box-shadow: 0 0 0 6px rgba(127,119,221,0); }
+      }
+      @keyframes stShimmer {
+        from { background-position: -200% center; }
+        to   { background-position: 200% center; }
+      }
+      @keyframes stBarGrow { from { width: 0% } to { width: var(--bar-w) } }
+ 
+      .st-tag {
+        opacity: 0;
+        position: relative;
+        overflow: hidden;
+        animation: stTagIn 0.52s cubic-bezier(0.22,1,0.36,1) forwards;
+        transition: transform 0.18s ease;
+      }
+      .st-tag:hover { transform: translateY(-2px) scale(1.04); }
+      .st-tag::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+        background-size: 200% 100%; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+      }
+      .st-tag:hover::before { opacity: 1; animation: stShimmer 0.46s ease forwards; }
+      .st-bar { width: 0%; transition: width 1.1s cubic-bezier(0.22,1,0.36,1); }
+    `}</style>
 
-                                <div className="flex items-center gap-1">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <span
-                                      key={star}
-                                      className={`text-sm ${
-                                        Number(review.product_rating) >= star
-                                          ? "text-[#f5b50a]"
-                                          : "text-gray-300"
-                                      }`}
-                                    >
-                                      ★
-                                    </span>
-                                  ))}
+                              <div className="mb-6">
+                                {/* Header */}
+                                <div
+                                  className="flex items-center gap-2 mb-3"
+                                  style={{
+                                    animation:
+                                      "stHeaderIn 0.5s cubic-bezier(0.22,1,0.36,1) both",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: "50%",
+                                      background: "#7F77DD",
+                                      display: "inline-block",
+                                      flexShrink: 0,
+                                      animation:
+                                        "stPulse 2.4s ease-in-out infinite",
+                                    }}
+                                  />
+                                  <h3 className="text-xs font-medium tracking-widest uppercase text-gray-400">
+                                    What customers are saying
+                                  </h3>
+                                </div>
+
+                                {/* Tags */}
+                                <div className="flex flex-wrap gap-2">
+                                  {summaryTags.map((tag, index) => {
+                                    const palettes = [
+                                      {
+                                        bg: "#EEEDFE",
+                                        border: "#AFA9EC",
+                                        color: "#3C3489",
+                                      }, // purple
+                                      {
+                                        bg: "#E1F5EE",
+                                        border: "#5DCAA5",
+                                        color: "#085041",
+                                      }, // teal
+                                      {
+                                        bg: "#E6F1FB",
+                                        border: "#85B7EB",
+                                        color: "#0C447C",
+                                      }, // blue
+                                      {
+                                        bg: "#EAF3DE",
+                                        border: "#97C459",
+                                        color: "#27500A",
+                                      }, // green
+                                      {
+                                        bg: "#FBEAF0",
+                                        border: "#ED93B1",
+                                        color: "#72243E",
+                                      }, // pink
+                                      {
+                                        bg: "#FAEEDA",
+                                        border: "#EF9F27",
+                                        color: "#633806",
+                                      }, // amber
+                                      {
+                                        bg: "#FAECE7",
+                                        border: "#F0997B",
+                                        color: "#712B13",
+                                      }, // coral
+                                    ];
+                                    const p = palettes[index % palettes.length];
+
+                                    return (
+                                      <span
+                                        key={index}
+                                        className="st-tag"
+                                        style={{
+                                          animationDelay: `${0.06 + index * 0.07}s`,
+                                          padding: "6px 14px",
+                                          borderRadius: 999,
+                                          border: `0.5px solid ${p.border}`,
+                                          background: p.bg,
+                                          color: p.color,
+                                          fontSize: 12,
+                                          fontWeight: 400,
+                                          cursor: "default",
+                                          userSelect: "none",
+                                        }}
+                                      >
+                                        {tag}
+                                      </span>
+                                    );
+                                  })}
                                 </div>
                               </div>
+                            </>
+                          )}
 
-                              {review.headline && (
-                                <p className="font-medium text-gray-800 mb-1">
-                                  {review.headline}
+                          {(showAllReviews ? reviews : reviews.slice(0, 2)).map(
+                            (review) => (
+                              <div
+                                key={review.id}
+                                className="border-b border-gray-200 pb-6"
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="font-semibold text-gray-900 capitalize">
+                                    {review.user_name || "Anonymous"}
+                                  </p>
+
+                                  <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span
+                                        key={star}
+                                        className={`text-sm ${
+                                          Number(review.product_rating) >= star
+                                            ? "text-[#f5b50a]"
+                                            : "text-gray-300"
+                                        }`}
+                                      >
+                                        ★
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {review.headline && (
+                                  <p className="font-medium text-gray-800 mb-1">
+                                    {review.headline}
+                                  </p>
+                                )}
+
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  {review.written_review}
                                 </p>
-                              )}
 
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {review.written_review}
-                              </p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                  Reviewed on{" "}
+                                  {new Date(
+                                    review.created_at,
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+                            ),
+                          )}
 
-                              <p className="text-xs text-gray-400 mt-2">
-                                Reviewed on{" "}
-                                {new Date(
-                                  review.created_at,
-                                ).toLocaleDateString()}
-                              </p>
+                          {reviews.length > 2 && (
+                            <div className="mt-4 text-center">
+                              <button
+                                onClick={() =>
+                                  setShowAllReviews((prev) => !prev)
+                                }
+                                className="text-sm font-medium text-[#7F77DD] hover:underline"
+                              >
+                                {showAllReviews
+                                  ? "Show Less"
+                                  : `Show More (${reviews.length - 2} more)`}
+                              </button>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2950,7 +3447,8 @@ export default function ProductPageClient() {
                       >
                         <Image
                           src={`/${img}`}
-                          alt={`image ${i + 1}`}
+                          alt={`${product.name || "Product"} Image ${i + 1}`}
+                          title={`${product.name || "Product"} Image ${i + 1}`}
                           width={300}
                           height={300}
                           className="object-cover"
@@ -2959,112 +3457,6 @@ export default function ProductPageClient() {
                     ),
                   )}
                 </div>
-              </div>
-
-              {/* Enquire Section */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center uppercase">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5 text-[#A00300] mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.42 9.42 0 01-3.945-.84L3 20l1.454-3.637A7.964 7.964 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  {t("Enquire")}
-                </h3>
-
-                <p className="text-gray-700 text-sm mb-4 text-center">
-                  Have questions or want to place{" "}
-                  <span className="font-semibold">bulk orders</span>?
-                </p>
-
-                <div className="flex justify-center">
-                  <button
-                    onClick={handleEnquire}
-                    className="px-8 py-2 border-2 border-black dark:border-white uppercase bg-white text-black 
-            transition duration-200 text-sm 
-            shadow-lg"
-                  >
-                    Enquire Now
-                  </button>
-                </div>
-
-                <AnimatePresence>
-                  {showPopupenq && (
-                    <motion.div
-                      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 font-odop"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <motion.div
-                        className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 w-full max-w-md shadow-2xl relative border border-gray-200"
-                        initial={{ scale: 0.8, opacity: 0, y: 30 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 30 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 150,
-                          damping: 18,
-                        }}
-                      >
-                        <h2 className="text-lg font-semibold mb-3 text-center text-gray-900">
-                          Send Your Enquiry
-                        </h2>
-
-                        <textarea
-                          value={sms}
-                          onChange={(e) => setSms(e.target.value)}
-                          placeholder="Type your enquiry..."
-                          className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:outline-none 
-            focus:ring-2 focus:ring-black focus:border-transparent resize-none shadow-inner"
-                          rows={4}
-                        ></textarea>
-
-                        <div className="flex justify-end gap-3 mt-5">
-                          <motion.button
-                            onClick={() => setShowPopupenq(false)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100 transition"
-                          >
-                            Cancel
-                          </motion.button>
-
-                          <motion.button
-                            disabled={loadingenq || !sms.trim()}
-                            whileHover={
-                              !loadingenq && sms.trim() ? { scale: 1.05 } : {}
-                            }
-                            whileTap={
-                              !loadingenq && sms.trim() ? { scale: 0.95 } : {}
-                            }
-                            onClick={handleSubmit}
-                            className="px-5 py-2 bg-black text-white rounded-lg hover:bg-gray-900 
-              disabled:opacity-50 transition"
-                          >
-                            {loadingenq ? "Sending..." : "Submit"}
-                          </motion.button>
-                        </div>
-
-                        <button
-                          onClick={() => setShowPopupenq(false)}
-                          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition"
-                        >
-                          <XCircle className="w-5 h-5" />
-                        </button>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
               {/* Store Section */}
@@ -3081,6 +3473,7 @@ export default function ProductPageClient() {
                       warehouses_id: product.store_details?.[0]?.slug || "",
                     },
                   }}
+                  title="Browse all Products"
                   passHref
                 >
                   <div className="bg-[#fcfcfc] rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
@@ -3089,6 +3482,10 @@ export default function ProductPageClient() {
                         <Image
                           src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${product.store_details[0].store_logo}`}
                           alt={
+                            product.store_details[0].company_name ||
+                            "Store logo"
+                          }
+                          title={
                             product.store_details[0].company_name ||
                             "Store logo"
                           }
@@ -3161,6 +3558,7 @@ export default function ProductPageClient() {
                       <Link
                         key={item.id}
                         href={`/products/${item.slug}`}
+                        title={`View ${item.name}`}
                         className="group"
                       >
                         <div className="relative flex flex-col h-full">
@@ -3186,6 +3584,7 @@ export default function ProductPageClient() {
                             <Image
                               src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
                               alt={item.name}
+                              title={item.name}
                               fill
                               className="object-cover w-full h-full transition-opacity group-hover:opacity-85"
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 30vw, 20vw"
@@ -3297,19 +3696,31 @@ export default function ProductPageClient() {
                 <div className="relative group">
                   <button
                     onClick={handleAddToCart}
-                    disabled={isBlocked}
+                    disabled={isBlocked || isOutOfStock}
                     className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-medium
-          border border-black transition-all duration-300 ease-in-out
-          ${isBlocked ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
-        `}
+    border border-black transition-all duration-300 ease-in-out
+    ${
+      isBlocked || isOutOfStock
+        ? "opacity-60 cursor-not-allowed"
+        : "hover:border-transparent"
+    }
+  `}
                     style={{ isolation: "isolate" }}
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-white">
+                    <span
+                      className={`relative z-10 flex items-center justify-center gap-2 transition-colors duration-300
+    ${!isOutOfStock && !isBlocked ? "group-hover:text-white" : ""}
+  `}
+                    >
                       <ShoppingCart className="w-5 h-5" />
-                      {isAdding ? t("Adding...") : t("Add to Cart")}
+                      {isOutOfStock
+                        ? "Out of Stock"
+                        : isAdding
+                          ? t("Adding...")
+                          : t("Add to Cart")}
                     </span>
 
-                    {!isCustomizationRequired && (
+                    {!isCustomizationRequired && !isOutOfStock && (
                       <span className="absolute left-0 top-0 h-full w-0 bg-black transition-all duration-300 group-hover:w-full z-[1] rounded-lg" />
                     )}
                   </button>
@@ -3330,19 +3741,36 @@ export default function ProductPageClient() {
                 <div className="relative group">
                   <button
                     onClick={handleBuyNow}
-                    disabled={isCustomizationRequired}
+                    disabled={
+                      isCustomizationRequired ||
+                      isOutOfStock ||
+                      isDropdownRequired
+                    }
                     className={`relative w-full overflow-hidden rounded-lg py-3 px-4 font-medium
-          border border-white transition-all duration-300 ease-in-out
-          ${isCustomizationRequired ? "opacity-60 cursor-not-allowed" : "hover:border-transparent"}
-        `}
+      border border-white transition-all duration-300 ease-in-out
+      ${
+        isCustomizationRequired || isOutOfStock || isDropdownRequired
+          ? "opacity-60 cursor-not-allowed"
+          : "hover:border-transparent"
+      }
+    `}
                     style={{ isolation: "isolate" }}
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 group-hover:text-black text-white">
+                    <span
+                      className={`relative z-10 flex items-center justify-center gap-2 transition-colors duration-300
+    ${
+      !isOutOfStock && !isCustomizationRequired
+        ? "group-hover:text-black text-white"
+        : "text-white"
+    }
+  `}
+                    >
                       <CreditCard className="w-5 h-5" />
-                      {t("Buy Now")}
+                      {isOutOfStock ? "Out of Stock" : t("Buy Now")}
                     </span>
 
-                    {!isCustomizationRequired && (
+                    {/* Hover fill effect only if clickable */}
+                    {!isCustomizationRequired && !isOutOfStock && (
                       <span className="absolute left-0 top-0 h-full w-0 bg-white transition-all duration-300 group-hover:w-full z-[1] rounded-lg" />
                     )}
 
@@ -3350,13 +3778,19 @@ export default function ProductPageClient() {
                   </button>
 
                   {/* Tooltip */}
-                  {isCustomizationRequired && (
+                  {(isCustomizationRequired || isOutOfStock) && (
                     <div
                       className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2
-          whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white
-          opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-odop"
+      whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white
+      opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-odop"
                     >
-                      Please enter a personalised message
+                      {isOutOfStock
+                        ? "This product is currently out of stock"
+                        : isCustomizationRequired
+                          ? "Please enter a personalised message"
+                          : isDropdownRequired
+                            ? "Please select a model"
+                            : ""}
                     </div>
                   )}
                 </div>
@@ -3364,6 +3798,166 @@ export default function ProductPageClient() {
 
               <WishlistButton productId={product.id} variant="full" />
             </div>
+
+            {/* 🚚 Shipping Info (Optional) */}
+            {/*
+    <div>
+      <h3 className="text-sm font-semibold text-gray-900 mb-2">
+        Shipping Information
+      </h3>
+      <ul className="space-y-3 text-sm text-gray-600">
+        <li className="flex items-start gap-2">
+          <Truck className="w-4 h-4 mt-0.5 text-[#A00300]" />
+          <span>Free shipping on orders over ₹500</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Clock className="w-4 h-4 mt-0.5 text-[#A00300]" />
+          <span>Delivery in 3-5 business days</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <RefreshCw className="w-4 h-4 mt-0.5 text-[#A00300]" />
+          <span>30-day easy returns</span>
+        </li>
+      </ul>
+    </div>
+    */}
+            {/* Enquire Section */}
+            <div className="border-t border-gray-200">
+              {/* Body Card */}
+              <div className="relative bg-gray-50 rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-4 overflow-hidden">
+                {/* Red top bar */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#A00300] rounded-t-xl" />
+
+                <p className="text-gray-600 text-sm text-center leading-relaxed">
+                  Have questions or want to place{" "}
+                  <span className="font-semibold text-gray-900">
+                    bulk orders
+                  </span>
+                  ? We&apos;re here to help.
+                </p>
+
+                {/* Feature pills */}
+                <div className="flex gap-4 flex-wrap justify-center">
+                  {["Fast response", "Bulk pricing", "Custom orders"].map(
+                    (feat) => (
+                      <div
+                        key={feat}
+                        className="flex items-center gap-1.5 text-xs text-gray-500"
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#A00300] flex-shrink-0" />
+                        {feat}
+                      </div>
+                    ),
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 w-full">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[11px] uppercase tracking-widest text-gray-400">
+                    get in touch
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  onClick={handleEnquire}
+                  className="group relative flex items-center gap-2 px-8 py-2.5 border-[1.5px] border-[#A00300] text-[#A00300] text-xs font-medium uppercase tracking-widest overflow-hidden rounded-sm transition-all duration-200"
+                >
+                  <span className="absolute inset-0 bg-[#A00300] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-200 ease-in-out z-0" />
+                  <span className="relative z-10 transition-colors duration-200 group-hover:text-white">
+                    Enquire Now
+                  </span>
+                  <span className="relative z-10 transition-colors duration-200 group-hover:text-white text-base leading-none">
+                    →
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal */}
+            <AnimatePresence>
+              {showPopupenq && (
+                <motion.div
+                  className="fixed inset-0 bg-black/55 backdrop-blur-sm flex justify-center items-center z-50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowPopupenq(false)}
+                >
+                  <motion.div
+                    className="relative bg-white rounded-2xl p-8 w-full max-w-md mx-4 border border-gray-200 shadow-2xl overflow-hidden"
+                    initial={{ scale: 0.88, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                    transition={{ type: "spring", stiffness: 160, damping: 20 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Red top bar */}
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#A00300]" />
+
+                    {/* Close button */}
+                    <button
+                      onClick={() => setShowPopupenq(false)}
+                      className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 border border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-white transition"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+
+                    <h2
+                      className="text-lg font-bold text-gray-900 text-center mb-1"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      Send Your Enquiry
+                    </h2>
+                    <p className="text-xs text-gray-400 text-center mb-5">
+                      We&apos;ll get back to you within 24 hours.
+                    </p>
+
+                    <label className="block text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1.5">
+                      Your message
+                    </label>
+                    <textarea
+                      value={sms}
+                      onChange={(e) => setSms(e.target.value)}
+                      placeholder="Describe your requirements, quantities, or questions..."
+                      maxLength={500}
+                      className="w-full border border-gray-200 rounded-lg p-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#A00300]/25 focus:border-[#A00300] resize-none transition"
+                      rows={4}
+                    />
+                    <div className="text-right text-[11px] text-gray-300 mt-1 mb-5">
+                      {sms?.length ?? 0} / 500
+                    </div>
+
+                    <div className="flex justify-end gap-2.5">
+                      <motion.button
+                        onClick={() => setShowPopupenq(false)}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="px-5 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
+                      >
+                        Cancel
+                      </motion.button>
+
+                      <motion.button
+                        disabled={loadingenq || !sms?.trim()}
+                        whileHover={
+                          !loadingenq && sms?.trim() ? { scale: 1.03 } : {}
+                        }
+                        whileTap={
+                          !loadingenq && sms?.trim() ? { scale: 0.97 } : {}
+                        }
+                        onClick={handleSubmit}
+                        className="px-6 py-2 bg-[#A00300] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition tracking-wide"
+                      >
+                        {loadingenq ? "Sending..." : "Submit"}
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* 📍 Delivery Location */}
             <div className="relative">
@@ -3420,29 +4014,6 @@ export default function ProductPageClient() {
                 </div>
               )}
             </div>
-
-            {/* 🚚 Shipping Info (Optional) */}
-            {/*
-    <div>
-      <h3 className="text-sm font-semibold text-gray-900 mb-2">
-        Shipping Information
-      </h3>
-      <ul className="space-y-3 text-sm text-gray-600">
-        <li className="flex items-start gap-2">
-          <Truck className="w-4 h-4 mt-0.5 text-[#A00300]" />
-          <span>Free shipping on orders over ₹500</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Clock className="w-4 h-4 mt-0.5 text-[#A00300]" />
-          <span>Delivery in 3-5 business days</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <RefreshCw className="w-4 h-4 mt-0.5 text-[#A00300]" />
-          <span>30-day easy returns</span>
-        </li>
-      </ul>
-    </div>
-    */}
           </div>
         </div>
 
@@ -3478,6 +4049,7 @@ export default function ProductPageClient() {
               </h3>
               <Link
                 href="/products"
+                title="Browse all Products"
                 className="text-sm font-medium text-gray-900  hover:underline flex items-center gap-1"
               >
                 {t("View all")} <ChevronRight className="w-4 h-4" />
@@ -3486,6 +4058,14 @@ export default function ProductPageClient() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-x-24 gap-y-16 md:gap-y-20">
               {product.related_items.slice(1, 17).map((item) => {
+                // ✅ SAME LOGIC (but for each related item)
+                const availableQty =
+                  Array.isArray(item?.variants) && item.variants.length > 0
+                    ? Number(item.variants?.[0]?.variant_quantity || 0) // fallback (no selection here)
+                    : Number(item?.quantity || 0);
+
+                const isOutOfStock = availableQty <= 0;
+
                 const hasValidPromo =
                   item?.promo_price !== null &&
                   item?.promo_price !== undefined &&
@@ -3499,7 +4079,9 @@ export default function ProductPageClient() {
                   <motion.div
                     key={item.id}
                     variants={itemVariants}
-                    className="relative group flex flex-col transition"
+                    className={`relative group flex flex-col transition ${
+                      isOutOfStock ? "opacity-70" : ""
+                    }`}
                     style={{ height: "100%" }}
                   >
                     {/* Premium Badge */}
@@ -3514,21 +4096,44 @@ export default function ProductPageClient() {
                       <WishlistButton productId={item.id} variant="icon" />
                     </div>
                     {/* Image */}
-                    <Link
-                      href={`/products/${item.slug}`}
-                      className="block w-full overflow-hidden group mb-2"
-                    >
-                      <div className="relative w-full h-[220px] bg-[#fcfcfc]">
-                        <Image
-                          src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
-                          alt={item.name}
-                          fill
-                          className="object-contain group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                          priority={false} // Set to true only for above-the-fold images
-                        />
+                    {isOutOfStock ? (
+                      // ❌ NO LINK when out of stock
+                      <div className="block w-full overflow-hidden mb-2 cursor-not-allowed">
+                        <div className="relative w-full h-[220px] bg-[#fcfcfc]">
+                          <Image
+                            src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
+                            alt={item.name}
+                            title={item.name}
+                            fill
+                            className="object-contain opacity-80"
+                          />
+
+                          {/* Overlay */}
+                          <div className="absolute inset-0 bg-white/10 z-30 rounded-2xl flex items-center justify-center">
+                            <span className="bg-[#A00300] text-white text-sm font-bold px-3 py-1 rounded-lg">
+                              Out of Stock
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </Link>
+                    ) : (
+                      // ✅ NORMAL LINK
+                      <Link
+                        href={`/products/${item.slug}`}
+                        title="Browse product"
+                        className="block w-full overflow-hidden group mb-2"
+                      >
+                        <div className="relative w-full h-[220px] bg-[#fcfcfc]">
+                          <Image
+                            src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`}
+                            alt={item.name}
+                            title={item.name}
+                            fill
+                            className="object-contain group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                      </Link>
+                    )}
 
                     {/* Product Info */}
                     <div className="flex flex-col ml-4">

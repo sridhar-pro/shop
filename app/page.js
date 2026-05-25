@@ -6,6 +6,7 @@ import { ImagesSliderDemo } from "./home/slider";
 import { WobbleCardDemo } from "./home/card";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import HomeSchema from "./HomeSchema";
 
 // ⏳ Product card skeleton loader
 const LoadingFallback = ({ count = 6 }) => (
@@ -66,6 +67,8 @@ const WishlistProducts = dynamic(() => import("./home/WishlistProducts"), {
 export default function Home() {
   return (
     <>
+      <HomeSchema />
+
       <ImagesSliderDemo />
 
       {/* 🌀 Lazy-loaded spinner wheel */}

@@ -25,6 +25,8 @@ export default function CheckoutPage({ formData }) {
   const [loading, setLoading] = useState(false);
   const [customizedTexts, setCustomizedTexts] = useState({});
 
+  const [orderData, setOrderData] = useState(null);
+
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const [couponValue, setCouponValue] = useState(0);
@@ -371,7 +373,11 @@ export default function CheckoutPage({ formData }) {
 
   const handleProcessingStart = () => {
     setIsProcessingPayment(true);
-    setPaymentFailure(false); // reset failure
+    setPaymentFailure(false);
+
+    // 🧹 clear old order
+    setOrderData(null);
+    localStorage.removeItem("order_success_details");
   };
 
   const handlePaymentSuccess = () => {
@@ -516,6 +522,15 @@ export default function CheckoutPage({ formData }) {
           const data = await res.json();
           // console.log("✅ Payment notification response:", data);
 
+          // ✅ update state (THIS triggers re-render)
+          setOrderData(data.data);
+
+          // optional backup
+          localStorage.setItem(
+            "order_success_details",
+            JSON.stringify(data.data),
+          );
+
           // Clear only the cart data, keep confirmation data
           const keysToRemove = [
             "cart_tax_details",
@@ -589,15 +604,21 @@ export default function CheckoutPage({ formData }) {
     /* Load order_success_details from localStorage */
   }
   // ✅ Get success data from localStorage
-  const orderSuccessData =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("order_success_details") || "{}")
-      : {};
+  const orderSuccessData = orderData || {};
 
-  // ✅ Convert contents object into array
-  const success_orderedItems = orderSuccessData?.contents
-    ? Object.values(orderSuccessData.contents)
-    : [];
+  const customer = orderSuccessData?.customer || {};
+  const address = orderSuccessData?.address || {};
+
+  const formattedAddress = [
+    address?.line1,
+    address?.line2,
+    address?.city,
+    address?.state,
+    address?.postal_code,
+    address?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   // ✅ Parse currency strings safely
   const parsePrice = (price) =>
@@ -611,288 +632,694 @@ export default function CheckoutPage({ formData }) {
 
   return (
     <div className="min-h-screen bg-gray-100 font-odop">
-      <div className="max-w-5xl mx-auto flex flex-col lg:flex-row min-h-screen lg:min-h-screen">
-        <div className="w-full min-h-[70vh] flex justify-center bg-transparent">
-          {isProcessingPayment && !paymentSuccess ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="w-full space-y-0 text-center p-4 backdrop-blur-sm"
+      {isProcessingPayment && !paymentSuccess ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full space-y-0 text-center p-4 backdrop-blur-sm"
+        >
+          {/* 🌀 Skeleton Animation */}
+          <div className="w-32 h-32 mx-auto bg-gray-200 animate-pulse rounded-full" />
+          {/* Title Skeleton */}
+          <div className="mt-4 w-64 h-8 bg-gray-200 mx-auto rounded-md animate-pulse" />
+          {/* Button Skeleton */}
+          <div className="mt-6 w-52 h-10 bg-gray-200 mx-auto rounded-full animate-pulse" />
+
+          {/* Skeleton Card */}
+          <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 mt-4">
+            {/* Header */}
+            <div className="bg-gray-300 animate-pulse p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-2">
+                <div className="w-56 h-5 bg-gray-200 rounded" />
+                <div className="w-40 h-3 bg-gray-200 rounded" />
+              </div>
+            </div>
+
+            {/* Ordered Items Skeleton */}
+            <div className="divide-y divide-gray-200 px-10 py-4 max-h-[320px] overflow-y-auto pr-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-4">
+                  <div className="w-14 h-14 bg-gray-200 rounded-md animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="w-3/4 h-4 bg-gray-200 rounded animate-pulse" />
+                    <div className="w-1/3 h-3 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                  <div className="w-16 h-4 bg-gray-200 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+
+            <hr className="my-3 border-gray-200" />
+
+            {/* Payment Method Skeleton */}
+            <div className="px-5 pb-4 flex items-center justify-between">
+              <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+              <div className="w-32 h-4 bg-gray-200 rounded animate-pulse" />
+            </div>
+
+            <hr className="my-3 border-gray-200" />
+
+            {/* Price Summary Skeleton */}
+            <div className="px-5 pb-4 text-sm space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex justify-between">
+                  <div className="w-28 h-3 bg-gray-200 rounded animate-pulse" />
+                  <div className="w-20 h-3 bg-gray-200 rounded animate-pulse" />
+                </div>
+              ))}
+              <hr className="border-gray-300" />
+              <div className="flex justify-between font-bold text-lg">
+                <div className="w-32 h-5 bg-gray-300 rounded animate-pulse" />
+                <div className="w-24 h-5 bg-gray-300 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ) : paymentSuccess ? (
+        <>
+          <style>{`
+    @keyframes oss-fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes oss-fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes oss-scaleIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
+    @keyframes oss-dashCircle { from { stroke-dashoffset:220; } to { stroke-dashoffset:0; } }
+    @keyframes oss-dashCheck { from { stroke-dashoffset:60; } to { stroke-dashoffset:0; } }
+    @keyframes oss-shimmer { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
+    @keyframes oss-progressBar { from { width:0; } to { width:28%; } }
+
+    .oss-check-ring { animation: oss-scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.05s both; display:inline-block; }
+    .oss-ring-anim { animation: oss-dashCircle 0.65s ease-out 0.1s both; }
+    .oss-tick-anim { animation: oss-dashCheck 0.4s ease-out 0.6s both; }
+    .oss-hero-h1 { animation: oss-fadeUp 0.4s ease 0.25s both; }
+    .oss-hero-p { animation: oss-fadeUp 0.4s ease 0.35s both; }
+    .oss-hero-btn { animation: oss-fadeIn 0.4s ease 0.45s both; }
+    .oss-grid { animation: oss-fadeUp 0.5s ease 0.5s both; }
+    .oss-timeline { animation: oss-fadeUp 0.5s ease 0.65s both; }
+    .oss-notify { animation: oss-fadeIn 0.5s ease 0.8s both; }
+    .oss-progress-bar { animation: oss-progressBar 1.2s ease 0.8s both; width:0; }
+
+    .oss-step-dot-active { animation: oss-shimmer 2s ease-in-out infinite; }
+
+    .oss-cta-btn {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:10px 22px; border-radius:999px; border:0.5px solid #d1d5db;
+      background:#fff; color:#111827; font-size:13px; font-weight:500;
+      cursor:pointer; transition:background 0.15s, transform 0.1s;
+    }
+    .oss-cta-btn:hover { background:#f9fafb; }
+    .oss-cta-btn:active { transform:scale(0.97); }
+
+    .oss-items-list::-webkit-scrollbar { width:4px; }
+    .oss-items-list::-webkit-scrollbar-track { background:transparent; }
+    .oss-items-list::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:2px; }
+  `}</style>
+          <div className="w-full">
+            <div
+              style={{
+                maxWidth: 1400, // your control now 😏
+                width: "100%",
+                margin: "0 auto",
+                padding: "1.5rem 0.75rem",
+              }}
             >
-              {/* 🌀 Skeleton Animation */}
-              <div className="w-32 h-32 mx-auto bg-gray-200 animate-pulse rounded-full" />
-              {/* Title Skeleton */}
-              <div className="mt-4 w-64 h-8 bg-gray-200 mx-auto rounded-md animate-pulse" />
-              {/* Button Skeleton */}
-              <div className="mt-6 w-52 h-10 bg-gray-200 mx-auto rounded-full animate-pulse" />
-
-              {/* Skeleton Card */}
-              <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 mt-4">
-                {/* Header */}
-                <div className="bg-gray-300 animate-pulse p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="w-56 h-5 bg-gray-200 rounded" />
-                    <div className="w-40 h-3 bg-gray-200 rounded" />
-                  </div>
+              {/* ✅ Hero */}
+              <div style={{ textAlign: "center", marginBottom: "0.8rem" }}>
+                <div className="oss-check-ring">
+                  <svg width="88" height="88" viewBox="0 0 80 80" fill="none">
+                    <circle cx="40" cy="40" r="34" fill="#dcfce7" />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="34"
+                      stroke="#16a34a"
+                      strokeWidth="2.5"
+                      fill="none"
+                      strokeDasharray="220"
+                      strokeDashoffset="220"
+                      className="oss-ring-anim"
+                    />
+                    <polyline
+                      points="24,41 35,52 56,30"
+                      stroke="#16a34a"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                      strokeDasharray="60"
+                      strokeDashoffset="60"
+                      className="oss-tick-anim"
+                    />
+                  </svg>
                 </div>
 
-                {/* Ordered Items Skeleton */}
-                <div className="divide-y divide-gray-200 px-10 py-4 max-h-[320px] overflow-y-auto pr-1">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-4 py-4">
-                      <div className="w-14 h-14 bg-gray-200 rounded-md animate-pulse" />
-                      <div className="flex-1 space-y-2">
-                        <div className="w-3/4 h-4 bg-gray-200 rounded animate-pulse" />
-                        <div className="w-1/3 h-3 bg-gray-100 rounded animate-pulse" />
-                      </div>
-                      <div className="w-16 h-4 bg-gray-200 rounded animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-
-                <hr className="my-3 border-gray-200" />
-
-                {/* Payment Method Skeleton */}
-                <div className="px-5 pb-4 flex items-center justify-between">
-                  <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
-                  <div className="w-32 h-4 bg-gray-200 rounded animate-pulse" />
-                </div>
-
-                <hr className="my-3 border-gray-200" />
-
-                {/* Price Summary Skeleton */}
-                <div className="px-5 pb-4 text-sm space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex justify-between">
-                      <div className="w-28 h-3 bg-gray-200 rounded animate-pulse" />
-                      <div className="w-20 h-3 bg-gray-200 rounded animate-pulse" />
-                    </div>
-                  ))}
-                  <hr className="border-gray-300" />
-                  <div className="flex justify-between font-bold text-lg">
-                    <div className="w-32 h-5 bg-gray-300 rounded animate-pulse" />
-                    <div className="w-24 h-5 bg-gray-300 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ) : paymentSuccess ? (
-            <>
-              {/* 🎁 Scratch Card Popup */}
-              {/* {showScratch && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
+                <h1
+                  className="oss-hero-h1"
+                  style={{
+                    fontSize: "clamp(20px, 5vw, 26px)",
+                    fontWeight: 500,
+                    color: "#111827",
+                    margin: "4px 0 6px",
+                  }}
                 >
-                  <ScratchCardPopup onClose={() => setShowScratch(false)} />
-                </motion.div>
-              )} */}
-              <div className="w-full  min-h-screen flex  justify-center bg-transparent">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="w-full space-y-0 text-center p-4  backdrop-blur-sm"
+                  Payment confirmed!
+                </h1>
+
+                <p
+                  className="oss-hero-p"
+                  style={{
+                    fontSize: 14,
+                    color: "#6b7280",
+                    margin: "0 0 20px",
+                  }}
                 >
-                  {/* 🎉 Success GIF Animation */}
-                  <motion.img
-                    src="/Success.gif" // make sure the gif itself is non-looping!
-                    alt="Success Animation"
-                    initial={{ scale: 0.3, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{
-                      duration: 1.4,
-                      type: "spring",
-                      stiffness: 80,
-                    }}
-                    className="w-32 h-32 mx-auto  object-contain"
-                  />
-
-                  {/* Title and message */}
-                  <motion.h1
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2, duration: 0.4 }}
-                    className="text-3xl font-bold text-black capitalize"
-                  >
-                    Thanks for your order!
-                  </motion.h1>
-
-                  <button
-                    onClick={() => {
-                      // 🧹 Clear saved checkout data from localStorage
-                      localStorage.removeItem("checkout_name");
-                      localStorage.removeItem("checkout_email");
-                      localStorage.removeItem("checkout_contact");
-                      localStorage.removeItem("applied_coupon");
-                      localStorage.removeItem("last_applied_coupon");
-                      localStorage.removeItem("cart_coupon_value");
-
-                      setCartItems([]);
-
-                      router.push("/");
-                    }}
-                    className="mt-4 inline-flex items-center gap-2 justify-center px-6 py-3 text-sm bg-white hover:bg-gray-50 text-black font-semibold rounded-full transition-all duration-300 shadow-md"
-                  >
-                    <ShoppingBag className="w-5 h-5" />
-                    Continue Shopping
-                  </button>
-
-                  <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 mt-4">
-                    {/* Header */}
-                    <div className="bg-green-700 text-white p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-xl text-left uppercase">
-                          Order ID :{" "}
-                          <span className="">
-                            {idordered || "Not Available"}
-                          </span>
-                        </p>
-                        <p className="text-xs mt-1 text-left text-yellow-200">
-                          Order Date :{" "}
-                          <span className="font-medium">{orderDate}</span>{" "}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Ordered Items */}
-                    <div className="divide-y divide-gray-400 px-10 py-4 max-h-[320px] overflow-y-auto pr-1">
-                      {cartItems.map((item) => (
-                        <div
-                          key={item.rowid}
-                          className="flex items-center gap-4 py-4"
-                        >
-                          <img
-                            src={getImageSrc(item.image)}
-                            alt={item.name}
-                            className="w-14 h-14 object-cover rounded-md"
-                          />
-                          <div className="flex-1">
-                            <p
-                              className="font-medium text-sm text-left"
-                              dangerouslySetInnerHTML={{ __html: item.name }}
-                            />
-                          </div>
-                          <div className="text-right px-5">
-                            <p className="text-sm mt-1 text-right">
-                              ₹
-                              {(
-                                parsePrice(item.price) * Number(item.qty)
-                              ).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Qty: {item.qty}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Divider */}
-                    {/* <hr className="my-3 border-gray-200" /> */}
-                    {/* Address / Payment / Delivery */}
-                    {/* <div className="px-5 pb-4 flex items-center justify-between">
-                      <p className="text-sm font-semibold">Payment method</p>
-                      <span className="text-sm text-gray-700 break-all">
-                        Razorpay • {paymentId || "Not available"}
-                      </span>
-                    </div> */}
-                    <hr className="my-3 border-gray-200" />
-
-                    {/* Price Summary */}
-                    <div className="px-5 pb-4 text-sm space-y-2">
-                      <div className="flex justify-between">
-                        <span>Item cost</span>
-                        <span>₹{subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Tax</span>
-                        <span>₹{tax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Shipping fee</span>
-                        <span>₹{shipping.toFixed(2)}</span>
-                      </div>
-
-                      <hr className="border-gray-300" />
-                      <div className="flex justify-between font-bold text-lg">
-                        <span>Total Cost</span>
-                        <span>₹{total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </>
-          ) : paymentFailure ? (
-            <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="w-full space-y-0 text-center p-4  backdrop-blur-sm"
-              >
-                <motion.img
-                  src="/Failure.gif" // make sure the gif itself is non-looping!
-                  alt="Success Animation"
-                  initial={{ scale: 0.3, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 1.4, type: "spring", stiffness: 80 }}
-                  className="w-32 h-32 mx-auto  object-contain"
-                />
-
-                {/* Title and message */}
-                <motion.h1
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
-                  className="text-3xl font-bold text-black capitalize"
-                >
-                  Payment Failed !
-                </motion.h1>
+                  Your order has been placed successfully. A confirmation email
+                  is on its way.
+                </p>
 
                 <button
+                  className="oss-cta-btn oss-hero-btn w-full sm:w-auto justify-center"
                   onClick={() => {
-                    router.push("/");
-
+                    localStorage.removeItem("checkout_name");
+                    localStorage.removeItem("checkout_email");
+                    localStorage.removeItem("checkout_contact");
+                    localStorage.removeItem("applied_coupon");
+                    localStorage.removeItem("last_applied_coupon");
+                    localStorage.removeItem("cart_coupon_value");
                     setCartItems([]);
+                    router.push("/");
                   }}
-                  className="mt-4 inline-flex items-center gap-2 justify-center px-6 py-3 text-sm bg-white hover:bg-gray-50 text-black font-semibold rounded-full transition-all duration-300 shadow-md"
                 >
-                  <ShoppingBag className="w-5 h-5" />
-                  Continue Shopping
+                  <ShoppingBag style={{ width: 14, height: 14 }} />
+                  Continue shopping
                 </button>
+              </div>
 
-                {/* Retry Payment */}
-                <button
-                  onClick={() => {
-                    setPaymentFailure(false); // go back to normal checkout
+              {/* 🧍 LEFT + 📦 RIGHT */}
+              <div
+                className="oss-grid grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+                style={{
+                  display: "grid",
+                  gap: 16,
+                  marginBottom: 16,
+                }}
+              >
+                {/* LEFT — Customer */}
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "0.5px solid #e5e7eb",
+                    borderRadius: 16,
+                    overflow: "hidden",
                   }}
-                  className="mt-4 ml-3 inline-flex items-center gap-2 justify-center px-6 py-3 text-sm bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full transition-all duration-300 shadow-md"
                 >
-                  <RefreshCcw className="w-5 h-5" />
-                  Retry Payment
-                </button>
-                <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 mt-4">
-                  {/* Header */}
-                  <div className="bg-red-600 text-white p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "18px 20px",
+                      borderBottom: "0.5px solid #e5e7eb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        background: "#dcfce7",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#166534",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {customer?.name
+                        ? customer.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()
+                        : "?"}
+                    </div>
                     <div>
-                      <p className="font-semibold text-xl text-left uppercase">
-                        Order ID :{" "}
-                        <span className="">{idordered || "Not Available"}</span>
+                      <p
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 500,
+                          color: "#111827",
+                          margin: "0 0 2px",
+                        }}
+                      >
+                        {customer?.name || "—"}
                       </p>
-                      <p className="text-xs mt-1 text-left text-yellow-200">
-                        Order Date :{" "}
-                        <span className="font-medium">{orderDate}</span>{" "}
-                        {/* &nbsp; | */}
-                        {/* &nbsp;
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#9ca3af",
+                          margin: 0,
+                        }}
+                      >
+                        Customer
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "18px 20px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 16,
+                    }}
+                  >
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.1em",
+                          color: "#9ca3af",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Email
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 16,
+                          color: "#6b7280",
+                          margin: 0,
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {customer?.email || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.1em",
+                          color: "#9ca3af",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Phone
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 16,
+                          color: "#111827",
+                          margin: 0,
+                        }}
+                      >
+                        {customer?.phone || "—"}
+                      </p>
+                    </div>
+
+                    <hr
+                      style={{
+                        border: "none",
+                        borderTop: "0.5px solid #e5e7eb",
+                        margin: 0,
+                      }}
+                    />
+
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.1em",
+                          color: "#9ca3af",
+                          margin: "0 0 6px",
+                        }}
+                      >
+                        Deliver to
+                      </p>
+                      {formattedAddress ? (
+                        <div
+                          style={{
+                            fontSize: 15,
+                            color: "#6b7280",
+                            lineHeight: 1.65,
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontWeight: 500,
+                              color: "#111827",
+                              margin: "0 0 4px",
+                            }}
+                          >
+                            {address?.name || customer?.name}
+                          </p>
+                          <p style={{ margin: 0 }}>{formattedAddress}</p>
+                          {/* <p style={{ marginTop: 6, color: "#9ca3af" }}>
+                            {address?.phone || customer?.phone}
+                          </p> */}
+                        </div>
+                      ) : (
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "#9ca3af",
+                            fontStyle: "italic",
+                            margin: 0,
+                          }}
+                        >
+                          No address available
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT — Order Summary */}
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "0.5px solid #e5e7eb",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  {/* Green Header */}
+                  <div
+                    style={{
+                      background: "#14532d",
+                      padding: "20px 20px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        color: "#86efac",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        margin: "0 0 4px",
+                      }}
+                    >
+                      Order confirmed
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 500,
+                        color: "#fff",
+                        margin: "0 0 4px",
+                        letterSpacing: "0.03em",
+                      }}
+                    >
+                      #{idordered || "—"}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#bbf7d0", margin: 0 }}>
+                      {orderDate}
+                      {orderSuccessData?.reference_no && (
+                        <> &nbsp;·&nbsp; Ref: {orderSuccessData.reference_no}</>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Items */}
+                  <div
+                    className="oss-items-list"
+                    style={{
+                      padding: "0 20px",
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      flex: 1,
+                    }}
+                  >
+                    {cartItems.map((item, idx) => (
+                      <div
+                        key={item.rowid || idx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "12px 0",
+                          borderBottom: "0.5px solid #e5e7eb",
+                        }}
+                      >
+                        <img
+                          src={getImageSrc(item.image)}
+                          alt={item.name}
+                          title={item.name}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 8,
+                            objectFit: "cover",
+                            background: "#f3f4f6",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: "#111827",
+                              margin: "0 0 3px",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                            dangerouslySetInnerHTML={{ __html: item.name }}
+                          />
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: "#9ca3af",
+                              margin: 0,
+                            }}
+                          >
+                            Qty: {item.qty}
+                          </p>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: "#111827",
+                            flexShrink: 0,
+                            marginLeft: "auto",
+                          }}
+                        >
+                          ₹{(item.price * Number(item.qty)).toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div
+                    style={{
+                      background: "#f9fafb",
+                      borderTop: "0.5px solid #e5e7eb",
+                      padding: "16px 20px",
+                      marginTop: "auto",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                        color: "#6b7280",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span>Item cost</span>
+                      <span>₹{subtotal.toFixed(2)}</span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                        color: "#6b7280",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span>Tax</span>
+                      <span>₹{tax.toFixed(2)}</span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                        color: "#6b7280",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span>Shipping</span>
+                      <span
+                        style={
+                          success_shipping === 0
+                            ? { color: "#15803d", fontWeight: 500 }
+                            : {}
+                        }
+                      >
+                        {success_shipping === 0
+                          ? "Free"
+                          : `₹${success_shipping.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 15,
+                        fontWeight: 500,
+                        color: "#111827",
+                        paddingTop: 10,
+                        borderTop: "0.5px solid #e5e7eb",
+                      }}
+                    >
+                      <span>Total paid</span>
+                      <span style={{ color: "#15803d" }}>
+                        ₹{total.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              {/* <div
+                style={{
+                  height: 3,
+                  background: "#e5e7eb",
+                  borderRadius: 2,
+                  marginBottom: 14,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  className="oss-progress-bar"
+                  style={{
+                    height: "100%",
+                    background: "#16a34a",
+                    borderRadius: 2,
+                  }}
+                />
+              </div> */}
+
+              {/* 🔔 Notification Strip */}
+              <div
+                className="oss-notify"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "#f9fafb",
+                  border: "0.5px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: "14px 18px",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 01-3.46 0" />
+                </svg>
+                <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+                  You'll receive a shipping notification via SMS and email once
+                  your order is dispatched.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : paymentFailure ? (
+        <div className="w-full min-h-[70vh] flex  justify-center bg-transparent">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="w-full space-y-0 text-center p-4  backdrop-blur-sm"
+          >
+            <motion.img
+              src="/Failure.gif" // make sure the gif itself is non-looping!
+              alt="Success Animation"
+              title="Success Animation"
+              initial={{ scale: 0.3, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.4, type: "spring", stiffness: 80 }}
+              className="w-32 h-32 mx-auto  object-contain"
+            />
+
+            {/* Title and message */}
+            <motion.h1
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="text-3xl font-bold text-black capitalize"
+            >
+              Payment Failed !
+            </motion.h1>
+
+            <button
+              onClick={() => {
+                router.push("/");
+
+                setCartItems([]);
+              }}
+              className="mt-4 inline-flex items-center gap-2 justify-center px-6 py-3 text-sm bg-white hover:bg-gray-50 text-black font-semibold rounded-full transition-all duration-300 shadow-md"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              Continue Shopping
+            </button>
+
+            {/* Retry Payment */}
+            <button
+              onClick={() => {
+                setPaymentFailure(false); // go back to normal checkout
+              }}
+              className="mt-4 ml-3 inline-flex items-center gap-2 justify-center px-6 py-3 text-sm bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full transition-all duration-300 shadow-md"
+            >
+              <RefreshCcw className="w-5 h-5" />
+              Retry Payment
+            </button>
+            <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 mt-4">
+              {/* Header */}
+              <div className="bg-red-600 text-white p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-xl text-left uppercase">
+                    Order ID :{" "}
+                    <span className="">{idordered || "Not Available"}</span>
+                  </p>
+                  <p className="text-xs mt-1 text-left text-yellow-200">
+                    Order Date :{" "}
+                    <span className="font-medium">{orderDate}</span>{" "}
+                    {/* &nbsp; | */}
+                    {/* &nbsp;
                     <span className="text-yellow-300">
                       Estimated delivery : {estimatedDelivery}
                     </span> */}
-                      </p>
-                    </div>
-                    {/* <div className="flex gap-3">
+                  </p>
+                </div>
+                {/* <div className="flex gap-3">
                   <button className="px-4 py-2 text-sm bg-white text-[#A00300] font-semibold rounded-full hover:bg-gray-100 transition">
                     <FileText className="w-4 h-4 inline mr-2" />
                     Download Invoice
@@ -901,86 +1328,82 @@ export default function CheckoutPage({ formData }) {
                     Track Order
                   </button>
                 </div> */}
+              </div>
+
+              {/* Ordered Items */}
+              <div className="divide-y divide-gray-400 px-10 py-4 max-h-[320px] overflow-y-auto pr-1">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4 py-4">
+                    <img
+                      src={getImageSrc(item.image)}
+                      alt={item.name}
+                      title={item.name}
+                      className="w-14 h-14 object-cover rounded-md"
+                    />
+                    <div className="flex-1">
+                      <p
+                        className="font-medium text-sm text-left"
+                        dangerouslySetInnerHTML={{ __html: item.name }}
+                      />
+                    </div>
+                    <div className="text-right px-5">
+                      <p className="text-sm mt-1 text-right">
+                        ₹
+                        {(
+                          Number(
+                            item.price?.toString().replace(/[^0-9.-]+/g, ""),
+                          ) * Number(item.qty)
+                        ).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                    </div>
                   </div>
+                ))}
+              </div>
 
-                  {/* Ordered Items */}
-                  <div className="divide-y divide-gray-400 px-10 py-4 max-h-[320px] overflow-y-auto pr-1">
-                    {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-4 py-4"
-                      >
-                        <img
-                          src={getImageSrc(item.image)}
-                          alt={item.name}
-                          className="w-14 h-14 object-cover rounded-md"
-                        />
-                        <div className="flex-1">
-                          <p
-                            className="font-medium text-sm text-left"
-                            dangerouslySetInnerHTML={{ __html: item.name }}
-                          />
-                        </div>
-                        <div className="text-right px-5">
-                          <p className="text-sm mt-1 text-right">
-                            ₹
-                            {(
-                              Number(
-                                item.price
-                                  ?.toString()
-                                  .replace(/[^0-9.-]+/g, ""),
-                              ) * Number(item.qty)
-                            ).toFixed(2)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Qty: {item.qty}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* Divider */}
+              {/* <hr className="my-3 border-gray-200" /> */}
 
-                  {/* Divider */}
-                  {/* <hr className="my-3 border-gray-200" /> */}
-
-                  {/* Address / Payment / Delivery */}
-                  {/* <div className="px-5 pb-4 flex items-center justify-between">
+              {/* Address / Payment / Delivery */}
+              {/* <div className="px-5 pb-4 flex items-center justify-between">
                     <p className="text-sm font-semibold">Payment method</p>
                     <span className="text-sm text-gray-700 break-all">
                       Razorpay • Payment Failed
                     </span>
                   </div> */}
 
-                  <hr className="my-3 border-gray-200" />
+              <hr className="my-3 border-gray-200" />
 
-                  {/* Price Summary */}
-                  <div className="px-5 pb-4 text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span>Item cost</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Tax</span>
-                      <span>₹{tax.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Shipping fee</span>
-                      <span>₹{shipping.toFixed(2)}</span>{" "}
-                      {/* You can make this dynamic if needed */}
-                    </div>
-
-                    <hr className="border-gray-300" />
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Total Cost</span>
-                      <span>₹{total.toFixed(2)}</span>
-                    </div>
-                  </div>
+              {/* Price Summary */}
+              <div className="px-5 pb-4 text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span>Item cost</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-              </motion.div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>₹{tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping fee</span>
+                  <span>₹{shipping.toFixed(2)}</span>{" "}
+                  {/* You can make this dynamic if needed */}
+                </div>
+
+                <hr className="border-gray-300" />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total Cost</span>
+                  <span>₹{total.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-          ) : (
-            // 🧾 Normal checkout layout (split screen)
-            <>
+          </motion.div>
+        </div>
+      ) : (
+        // 🧾 Normal checkout layout (split screen)
+        <>
+          <div className="max-w-5xl mx-auto flex flex-col lg:flex-row min-h-screen lg:min-h-screen">
+            <div className="w-full min-h-[70vh] flex justify-center bg-transparent">
               {/* Left: Scrollable Form Section */}
               <CheckoutForm
                 total={total}
@@ -1006,10 +1429,10 @@ export default function CheckoutPage({ formData }) {
                 handleToggle={handleToggle}
                 showInfo={showInfo}
               />
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

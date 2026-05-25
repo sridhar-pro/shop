@@ -1,7 +1,9 @@
+import { cache } from "react";
 import ProductPageClient from "./ProductPageClient";
 import ProductSchema from "./ProductSchema";
 
-async function getProduct(slug) {
+// Cached so generateMetadata + Page share one fetch
+const getProduct = cache(async (slug) => {
   const baseUrl =
     process.env.NODE_ENV === "production"
       ? "https://shop.yuukke.com/"
@@ -37,15 +39,17 @@ async function getProduct(slug) {
 
   const data = await res.json();
   return data?.data?.[0] || null;
-}
+});
 
 export async function generateMetadata({ params: paramsPromise }) {
   const { slug } = await paramsPromise;
-  const product = await getProduct(slug);
+  const product = await getProduct(slug); // uses cache
 
   if (!product) {
     return { title: "Product Not Found | Yuukke" };
   }
+
+  const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const title =
     product.meta_title ||
@@ -63,62 +67,26 @@ export async function generateMetadata({ params: paramsPromise }) {
       ? [product.p_image]
       : [];
 
-  const resolvedImages = imgs.map((img) =>
-    img.startsWith("http")
-      ? img
-      : `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${img}`,
-  );
-
-  // JSON-LD Schema
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    description,
-    image: resolvedImages,
-    sku: String(product.code || product.id),
-    itemCondition: "https://schema.org/NewCondition",
-    brand: {
-      "@type": "Brand",
-      name: product.brand || "Unknown",
-    },
-    seller: {
-      "@type": "Organization",
-      name: product.store_details?.[0]?.name || "Marketplace Seller",
-    },
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "INR",
-      price: product.price,
-      availability:
-        product.quantity > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-      url: `https://marketplace.yuukke.com/products/${slug}`,
-    },
-  };
-
-  if (product.review) {
-    schema.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: product.review,
-      reviewCount: product.all_reviews?.length || 0,
-    };
-  }
+  const resolvedImages = imgs
+    .filter(Boolean)
+    .map((img) =>
+      img.startsWith("http")
+        ? img
+        : `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${img}`,
+    );
 
   return {
     title,
     description,
+    alternates: {
+      canonical: `https://shop.yuukke.com/products/${slug}`,
+    },
     openGraph: {
       title,
       description,
-      url: `https://marketplace.yuukke.com/products/${slug}`,
+      url: `https://shop.yuukke.com/products/${slug}`,
       siteName: "Yuukke Marketplace",
-      images: resolvedImages.map((u) => ({
-        url: u,
-        width: 800,
-        height: 600,
-      })),
+      images: resolvedImages.map((u) => ({ url: u, width: 800, height: 600 })),
       type: "website",
     },
     twitter: {
@@ -132,7 +100,7 @@ export async function generateMetadata({ params: paramsPromise }) {
 
 export default async function Page({ params: paramsPromise }) {
   const { slug } = await paramsPromise;
-  const product = await getProduct(slug); // pass to schema
+  const product = await getProduct(slug); // hits cache, no second API call
 
   return (
     <>

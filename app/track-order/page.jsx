@@ -58,7 +58,7 @@ const TrackOrder = () => {
 
   return (
     <div className="w-full min-h-[80vh] bg-gradient-to-br from-gray-50 to-red-50 flex items-center justify-center px-4 py-12 font-odop">
-      <div className="max-w-6xl w-full">
+      <div className="max-w-7xl w-full">
         {!trackingData ? (
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left Section */}
@@ -76,7 +76,8 @@ const TrackOrder = () => {
               <div className="mt-8">
                 <Image
                   src="/tracking.png"
-                  alt="Package tracking illustration"
+                  alt="Package tracking"
+                  title="Package tracking"
                   width={350}
                   height={250}
                   className="object-contain"
@@ -122,8 +123,8 @@ const TrackOrder = () => {
                   {trackBy === "AWB"
                     ? "Airway Bill Number (AWB)"
                     : trackBy === "Order Id"
-                    ? "Order ID"
-                    : "Phone Number"}
+                      ? "Order ID"
+                      : "Phone Number"}
                 </label>
                 <input
                   type={trackBy === "Phone Number" ? "tel" : "text"}
@@ -131,8 +132,8 @@ const TrackOrder = () => {
                     trackBy === "AWB"
                       ? "e.g. ABC123456789"
                       : trackBy === "Order Id"
-                      ? "e.g. SALE/2025/00/0000"
-                      : "e.g. 9876543210"
+                        ? "e.g. SALE/2025/00/0000"
+                        : "e.g. 9876543210"
                   }
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}

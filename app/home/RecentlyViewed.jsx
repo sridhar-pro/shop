@@ -237,6 +237,7 @@ const RecentlyViewed = () => {
       {/* View All link */}
       <motion.a
         href="/products"
+        title="Browse All Products"
         className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -373,12 +374,18 @@ const RecentlyViewed = () => {
         {/* Product Image */}
         <Link
           href={!isOutOfStock ? `/products/${product.slug || product.id}` : "#"}
+          title={
+            !isOutOfStock
+              ? `View ${product.name}`
+              : `${product.name} is Out of Stock`
+          }
           passHref
         >
           <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden mb-3 md:mb-4 group">
             <Image
               src={getImageSrc(product.image)}
               alt={product.name || "Image not found!"}
+              title={product.name || "Image not found!"}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
               className={`object-contain ${isOutOfStock ? "opacity-70" : ""}`}
@@ -405,6 +412,7 @@ const RecentlyViewed = () => {
                     <Image
                       src={getImageSrc(hoverImage)}
                       alt="Hover preview"
+                      title="Hover preview"
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 object-contain"
@@ -472,7 +480,11 @@ const RecentlyViewed = () => {
               </div>
             )}
 
-            <Link href={`/products/${product.slug}`} passHref>
+            <Link
+              href={`/products/${product.slug}`}
+              title={`View ${product.name}`}
+              passHref
+            >
               <h3
                 className={`text-xs md:text-base line-clamp-2 mb-0.5 md:mb-1 capitalize ${
                   isOutOfStock
@@ -792,6 +804,7 @@ const RecentlyViewed = () => {
                               mainImage || quickViewProduct.image,
                             )}
                             alt={quickViewProduct.name || "Image not found!"}
+                            title={quickViewProduct.name || "Image not found!"}
                             fill
                             priority
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
@@ -832,6 +845,7 @@ const RecentlyViewed = () => {
                             <Image
                               src={getImageSrcThumbs(img)}
                               alt={`thumb-${i}`}
+                              title={`thumb-${i}`}
                               fill
                               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                               className="object-cover rounded-md"
@@ -917,6 +931,7 @@ const RecentlyViewed = () => {
                     <div className="mt-4">
                       <Link
                         href={`/products/${quickViewProduct.slug}`}
+                        title={`View ${quickViewProduct.name}`}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm sm:text-base font-semibold text-white bg-gray-900 hover:bg-gray-700 transition-colors rounded-lg shadow-md cursor-pointer"
                       >
                         {t("View Full Details")}
@@ -975,6 +990,7 @@ const RecentlyViewed = () => {
                             <img
                               src="/add.gif"
                               alt="Loading..."
+                              title="Loading..."
                               className="w-14 h-14"
                             />
                           </div>

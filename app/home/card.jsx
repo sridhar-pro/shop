@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WobbleCard } from "@/app/components/ui/wobble-card";
 import Image from "next/image";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import CategoriesSection from "./CategorieSection";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -145,7 +145,10 @@ export function WobbleCardDemo() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
               {/* LEFT SIDE */}
               <div className="lg:col-span-8 relative">
-                <Link href={`/products/${active.link || ""}`}>
+                <Link
+                  href={`/products/${active.link || ""}`}
+                  title={active.name ? `View ${active.name}` : "View Product"}
+                >
                   <WobbleCard containerClassName="relative h-[420px] md:h-[460px] rounded-3xl overflow-hidden cursor-pointer bg-gradient-to-br from-[#A00300] via-[#b11226] to-[#7a0000]">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.18),transparent_60%)]" />
 
@@ -167,6 +170,7 @@ export function WobbleCardDemo() {
                             <Image
                               src={active.image}
                               alt={active.title}
+                              title={active.title}
                               fill
                               className="object-contain p-6 md:p-12 drop-shadow-[0_40px_70px_rgba(0,0,0,0.45)]"
                               priority
@@ -205,7 +209,7 @@ export function WobbleCardDemo() {
                       }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-white text-[#A00300] rounded-full p-3 shadow-xl hover:scale-110 transition z-20"
                     >
-                      <FiArrowLeft />
+                      <ChevronLeft className="w-5 h-5" />
                     </button>
 
                     <button
@@ -216,7 +220,7 @@ export function WobbleCardDemo() {
                       }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-white text-[#A00300] rounded-full p-3 shadow-xl hover:scale-110 transition z-20"
                     >
-                      <FiArrowRight />
+                      <ChevronRight className="w-5 h-5" />
                     </button>
                   </WobbleCard>
                 </Link>
@@ -225,7 +229,11 @@ export function WobbleCardDemo() {
               {/* RIGHT SIDE */}
               <div className="lg:col-span-4 flex flex-col gap-5 h-full">
                 {slides.slice(0, 3).map((item, i) => (
-                  <Link key={i} href={`/products/${item.link}`}>
+                  <Link
+                    key={i}
+                    href={`/products/${item.link}`}
+                    title={`View ${item.name || "Product"}`}
+                  >
                     <motion.div
                       whileHover={{ y: -4 }}
                       className="
@@ -240,6 +248,7 @@ export function WobbleCardDemo() {
                         <Image
                           src={item.image}
                           alt={item.title}
+                          title={item.title}
                           fill
                           className="object-contain p-2"
                         />

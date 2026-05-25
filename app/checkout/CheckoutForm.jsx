@@ -68,6 +68,14 @@ const CheckoutForm = ({
   const [bogoOffers, setBogoOffers] = useState([]);
   const [applyingOffer, setApplyingOffer] = useState(false); // track button state
 
+  const [offers, setOffers] = useState([]);
+
+  // ✅ Filter only ACTIVE offers (status null / 0)
+  const filteredOffers = (offers || []).filter(
+    (offer) =>
+      offer.status === null || offer.status === "0" || offer.status === 0,
+  );
+
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -621,6 +629,11 @@ const CheckoutForm = ({
 
   const [isApplied, setIsApplied] = useState(false);
 
+  // ✅ ADD THESE
+  const [couponSource, setCouponSource] = useState(null); // "manual" | "offer"
+  const [appliedOfferCode, setAppliedOfferCode] = useState(null);
+  const [isManualCouponApplied, setIsManualCouponApplied] = useState(false);
+
   // Limited-deal config
   const LIMITED_DEAL_CODE = "FLATY100"; //Test50  //FLATY100
   const LIMITED_DEAL_DURATION = 600; // ⭐ NEW: 10 minutes in seconds
@@ -628,8 +641,7 @@ const CheckoutForm = ({
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION); // ⭐ UPDATED
 
-  const handleApply = async () => {
-    // ✅ kill pending debounce
+  const handleApply = async (overrideCode = null) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -638,9 +650,11 @@ const CheckoutForm = ({
     isApplyingRef.current = true;
 
     const cartId = localStorage.getItem("cart_id");
-    const trimmed = code.trim();
 
-    // 🔹 Basic guard: no cart / no code
+    // ✅ use override if passed
+    const finalCode = overrideCode || code;
+    const trimmed = finalCode.trim();
+
     if (!cartId || !trimmed) {
       setCouponMessage("");
       setIsApplied(false);
@@ -649,7 +663,6 @@ const CheckoutForm = ({
     }
 
     try {
-      // 1️⃣ Apply coupon
       const applyResponse = await fetchWithAuth("/api/applyCoupon", {
         method: "POST",
         body: { cart_id: cartId, coupon_code: trimmed },
@@ -664,92 +677,102 @@ const CheckoutForm = ({
         setCouponMessage(applyResponse?.message || "Invalid coupon");
         setIsApplied(false);
         setCouponValue(0);
+
+        // ❗ RESET EVERYTHING
+        setCouponSource(null);
+        setAppliedOfferCode(null);
+        setIsManualCouponApplied(false);
+
+        localStorage.removeItem("coupon_source");
+        localStorage.removeItem("applied_offer_code");
+        localStorage.setItem("last_applied_coupon", "0");
+
+        // ✅ IMPORTANT: STILL SYNC WITH SERVER
         try {
-          localStorage.removeItem("applied_coupon");
-          localStorage.setItem("last_applied_coupon", "0");
+          const summaryResponse = await fetchWithAuth("/api/getTax", {
+            method: "POST",
+            body: { cart_id: cartId },
+          });
+
+          const cartData = summaryResponse?.cart_data;
+
+          const newCouponValue =
+            cartData?.coupon_id && cartData?.coupon_id !== "0"
+              ? parseCurrency(cartData.coupon_value || 0)
+              : 0;
+
+          setCouponValue(newCouponValue);
+
+          localStorage.setItem("cart_coupon_value", newCouponValue);
+
+          window.dispatchEvent(new Event("cart-updated"));
         } catch (e) {
-          console.warn("Error clearing coupon storage", e);
+          console.error("Failed to sync cart after invalid coupon", e);
         }
 
-        // Let OrderSummary & others refresh
-        window.dispatchEvent(new Event("cart-updated"));
         return;
       }
 
-      // ✅ Success
-      setCouponMessage("Discount applied successfully!");
+      setCouponMessage("");
       setIsApplied(true);
 
+      if (overrideCode) {
+        // 🎁 OFFER FLOW
+        setCouponSource("offer");
+        setAppliedOfferCode(trimmed);
+        setIsManualCouponApplied(false);
+
+        setCode("");
+
+        localStorage.setItem("coupon_source", "offer");
+        localStorage.setItem("applied_offer_code", trimmed);
+      } else {
+        // 🧑‍💻 MANUAL FLOW
+        setCouponSource("manual");
+        setIsManualCouponApplied(true);
+        setAppliedOfferCode(null);
+
+        setCode(trimmed);
+
+        localStorage.setItem("coupon_source", "manual");
+        localStorage.removeItem("applied_offer_code");
+      }
+
+      /* ✅ ✅ ADD HERE — EXACTLY HERE */
+      localStorage.setItem("last_applied_coupon", trimmed);
       skipNextApplyRef.current = true;
-
-      // A normal coupon overrides any active hot deal
-      setLimitedDealApplied(false);
-      setDealTimer(0);
-
-      // ⭐ Normal coupon kills hot-deal expiry
-      try {
-        localStorage.removeItem("limited_deal_expiry");
-      } catch (e) {
-        console.warn(
-          "Error clearing limited_deal_expiry after manual coupon",
-          e,
-        );
-      }
-
-      try {
-        localStorage.setItem("applied_coupon", trimmed);
-        localStorage.setItem("last_applied_coupon", trimmed);
-      } catch (e) {
-        console.warn("Error persisting coupon storage", e);
-      }
-
-      // Trigger global cart refresh (OrderSummary will pull latest totals)
-      window.dispatchEvent(new Event("cart-updated"));
-
-      // 2️⃣ Fetch updated cart summary (tax, totals, items)
+      /* ✅ ✅ END */
       const summaryResponse = await fetchWithAuth("/api/getTax", {
         method: "POST",
         body: { cart_id: cartId },
       });
 
       const cartData = summaryResponse?.cart_data;
-      if (!cartData) return;
 
-      const appliedCoupon = cartData.coupon_id && cartData.coupon_id !== "0";
+      const newCouponValue =
+        cartData?.coupon_id && cartData?.coupon_id !== "0"
+          ? parseCurrency(cartData.coupon_value || 0)
+          : 0;
 
-      // Keep discount amount in sync
-      setCouponValue(
-        appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0,
-      );
+      setCouponValue(newCouponValue);
 
-      if (appliedCoupon) {
-        // Sync input with backend coupon id
-        setCode(cartData.coupon_id);
-      }
+      // ✅ ALSO STORE (important for fallback consistency)
+      localStorage.setItem("cart_coupon_value", newCouponValue);
 
-      // Persist full tax/summary snapshot
-      try {
-        localStorage.setItem(
-          "cart_tax_details",
-          JSON.stringify(summaryResponse),
-        );
-      } catch (e) {
-        console.warn("Error saving cart_tax_details", e);
-      }
-
-      // Notify any listeners relying on this snapshot
-      window.dispatchEvent(
-        new CustomEvent("local-storage-update", {
-          detail: { key: "cart_tax_details" },
-        }),
-      );
+      // ✅ NOW trigger UI update
+      window.dispatchEvent(new Event("cart-updated"));
     } catch (err) {
-      console.error("❌ Error applying coupon or fetching cart summary:", err);
-      setCouponMessage("Failed to apply coupon. Try again.");
-      setIsApplied(false);
+      console.error("❌ Apply failed:", err);
+      setCouponMessage("Failed to apply coupon");
     } finally {
       isApplyingRef.current = false;
     }
+  };
+
+  const handleApplyOfferCode = (offerCode) => {
+    if (!offerCode) return;
+
+    handleApply(offerCode); // already handled in override flow
   };
 
   const getClientIP = async () => {
@@ -1016,7 +1039,13 @@ const CheckoutForm = ({
       setIsApplied(false);
       setCouponValue(0);
 
-      // ✅ NO API CALL
+      setCouponSource(null);
+      setAppliedOfferCode(null);
+      setIsManualCouponApplied(false);
+
+      localStorage.removeItem("coupon_source");
+      localStorage.removeItem("applied_offer_code");
+
       return;
     }
 
@@ -1040,6 +1069,21 @@ const CheckoutForm = ({
     fetchBogoOffers();
   }, []);
 
+  useEffect(() => {
+    const storedSource = localStorage.getItem("coupon_source");
+    const storedOfferCode = localStorage.getItem("applied_offer_code");
+
+    if (storedSource === "offer" && storedOfferCode) {
+      setCouponSource("offer");
+      setAppliedOfferCode(storedOfferCode);
+    }
+
+    if (storedSource === "manual") {
+      setCouponSource("manual");
+      setIsManualCouponApplied(true);
+    }
+  }, []);
+
   const fetchBogoOffers = async () => {
     const cartId = localStorage.getItem("cart_id");
     if (!cartId) {
@@ -1056,6 +1100,9 @@ const CheckoutForm = ({
 
       if (response?.bogo_offers) {
         setBogoOffers(response.bogo_offers);
+
+        // ✅ NEW
+        setOffers(response?.offers || []);
       } else {
         setBogoOffers([]);
       }
@@ -1147,6 +1194,7 @@ const CheckoutForm = ({
               <img
                 src={getImageSrc(item.image)}
                 alt={item.name}
+                title={item.name}
                 className="w-16 h-16 rounded-md object-cover"
               />
 
@@ -1543,6 +1591,168 @@ const CheckoutForm = ({
 
             <div className="w-full lg:w-[400px] order-2 lg:order-none sticky lg:top-0 h-fit lg:h-screen overflow-y-auto py-8 border-t lg:border-t-0 lg:border-l border-gray-300 block lg:hidden">
               <div className="space-y-6">
+                {filteredOffers.length > 0 && (
+                  <div className="mt-2">
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="flex-shrink-0"
+                      >
+                        <path
+                          d="M17 9L11 3H3v8l6 6 8-8z"
+                          stroke="#A00300"
+                          strokeWidth="1.5"
+                          strokeLinejoin="round"
+                        />
+                        <circle cx="7.5" cy="7.5" r="1.4" fill="#A00300" />
+                      </svg>
+                      <h2 className="text-[13px] font-medium text-gray-900 tracking-[0.01em]">
+                        Available offers
+                      </h2>
+                      <span className="ml-auto text-[10.5px] font-medium text-[#A00300] bg-[#FEF2F2] rounded-full px-2.5 py-0.5">
+                        {filteredOffers.length}{" "}
+                        {filteredOffers.length === 1 ? "offer" : "offers"}
+                      </span>
+                    </div>
+
+                    {/* Cards */}
+                    <div className="flex flex-col gap-2.5">
+                      {filteredOffers.map((offer, index) => {
+                        const isAppliedOffer =
+                          couponSource === "offer" &&
+                          appliedOfferCode === offer.code;
+
+                        return (
+                          <motion.div
+                            key={offer.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              delay: index * 0.08,
+                              duration: 0.32,
+                              ease: "easeOut",
+                            }}
+                            className={`relative overflow-hidden rounded-2xl border flex items-center gap-3 px-4 py-3.5 group transition-all duration-200 ${
+                              isAppliedOffer
+                                ? "border-green-300 bg-green-50"
+                                : "border-gray-200 bg-white hover:-translate-y-px hover:border-[#A00300]"
+                            }`}
+                          >
+                            {/* Left accent bar */}
+                            <div
+                              className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl bg-[#A00300] transition-opacity duration-200 ${
+                                isAppliedOffer
+                                  ? "opacity-0"
+                                  : "opacity-0 group-hover:opacity-100"
+                              }`}
+                            />
+
+                            {/* Hover shimmer */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#A00300]/[0.04] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+
+                            {/* Icon */}
+                            <div
+                              className={`w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 transition-colors duration-250 ${
+                                isAppliedOffer ? "bg-green-100" : "bg-[#FEF2F2]"
+                              }`}
+                            >
+                              {isAppliedOffer ? (
+                                <svg
+                                  width="15"
+                                  height="15"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M4 10l4 4 8-8"
+                                    stroke="#15803D"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ) : (
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z"
+                                    stroke="#A00300"
+                                    strokeWidth="1.4"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+
+                            {/* Text */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${
+                                    isAppliedOffer
+                                      ? "bg-green-500"
+                                      : "bg-[#A00300] animate-pulse"
+                                  }`}
+                                />
+                                <span
+                                  className={`text-[9.5px] font-medium uppercase tracking-[0.09em] ${
+                                    isAppliedOffer
+                                      ? "text-green-600"
+                                      : "text-[#A00300]"
+                                  }`}
+                                >
+                                  {isAppliedOffer ? "Applied" : "Special offer"}
+                                </span>
+                              </div>
+                              <p className="text-[13px] font-bold text-gray-800 mt-0.5 leading-snug uppercase">
+                                {offer.reference || "Save more on your order"}
+                              </p>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="w-px h-7 bg-gray-200 flex-shrink-0" />
+
+                            {/* Button */}
+                            <motion.button
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => handleApplyOfferCode(offer.code)}
+                              disabled={isAppliedOffer || isApplyingRef.current}
+                              className={`flex-shrink-0 text-[11.5px] font-medium px-[14px] py-[7px] rounded-full border-[1.5px] transition-all duration-200 whitespace-nowrap ${
+                                isAppliedOffer
+                                  ? "bg-green-50 text-green-700 border-green-300 cursor-default"
+                                  : "bg-transparent text-[#A00300] border-[#A00300] hover:bg-[#A00300] hover:text-white"
+                              }`}
+                            >
+                              {isAppliedOffer ? "Applied ✓" : "Apply"}
+                            </motion.button>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Coupon message (error or success) */}
+                    {couponMessage && (
+                      <p
+                        className={`text-xs font-medium mt-4 px-2 ${
+                          isManualCouponApplied
+                            ? "text-green-600"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {couponMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* 💸 More Offers */}
                 {bogoOffers.length > 0 && (
                   <div className="mt-6">
@@ -1602,6 +1812,7 @@ const CheckoutForm = ({
                               <summary className="cursor-pointer text-xs font-semibold text-gray-600 hover:text-[#A00300] flex items-center gap-1">
                                 <Link
                                   href="/products/special-offers"
+                                  title="Special Offers"
                                   className="hover:text-[#A00300] flex items-center gap-1"
                                 >
                                   <TrendingUp className="w-4 h-4 text-[#A00300]" />
@@ -1625,6 +1836,7 @@ const CheckoutForm = ({
                     <img
                       src={getImageSrc(item.image)}
                       alt={item.name}
+                      title={item.name}
                       className="w-16 h-16 rounded-md object-cover"
                     />
 
@@ -1670,9 +1882,9 @@ const CheckoutForm = ({
                       onChange={(e) => {
                         const newCode = e.target.value;
 
-                        // ✅ ONLY clear when actual change happens
                         if (newCode !== code) {
                           setIsApplied(false);
+                          setIsManualCouponApplied(false); // ✅ ADD
                           setCouponValue(0);
                           setCouponMessage("");
                         }
@@ -1685,12 +1897,14 @@ const CheckoutForm = ({
                     <div className="flex flex-col items-center relative">
                       <button
                         onClick={handleApply}
-                        disabled={isApplied}
+                        disabled={
+                          isManualCouponApplied || isApplyingRef.current
+                        }
                         className={`bg-gray-200 text-sm font-bold p-4 rounded-md relative z-10 transition-all duration-200 ${
                           isApplied ? "text-green-600" : "text-gray-600"
                         }`}
                       >
-                        {isApplied ? "Applied" : "Apply"}
+                        {isManualCouponApplied ? "Applied" : "Apply"}
                       </button>
                     </div>
                   </div>
@@ -1699,7 +1913,9 @@ const CheckoutForm = ({
                   {couponMessage && (
                     <p
                       className={`text-xs font-medium mt-1 ${
-                        isApplied ? "text-green-600" : "text-red-500"
+                        isManualCouponApplied
+                          ? "text-green-600"
+                          : "text-red-500"
                       }`}
                     >
                       {couponMessage}
@@ -1833,21 +2049,25 @@ const CheckoutForm = ({
                     <img
                       src="/upi.svg"
                       alt="UPI"
+                      title="UPI"
                       className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                     />
                     <img
                       src="/visa.svg"
                       alt="Visa"
+                      title="Visa"
                       className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                     />
                     <img
                       src="/master.svg"
                       alt="Master"
+                      title="Master"
                       className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                     />
                     <img
                       src="/rupay.svg"
                       alt="Rupay"
+                      title="Rupay"
                       className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                     />
                     <div className="relative group">
@@ -1860,6 +2080,7 @@ const CheckoutForm = ({
                             key={i}
                             src={`/${i + 1}.svg`}
                             alt={`Payment ${i + 1}`}
+                            title={`Supported Payment Method ${i + 1}`}
                             className="w-7 h-7 object-contain"
                           />
                         ))}

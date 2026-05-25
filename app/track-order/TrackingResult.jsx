@@ -12,6 +12,9 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowLeft,
+  MapPin,
+  Calendar,
+  Hash,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 
@@ -19,14 +22,10 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
   const singleTrack = trackingData?.tracking_data;
   const multiWarehouse = trackingData?.data?.warehouses;
 
-  // 1️⃣ Boolean flag to check if any warehouse is own shipment
   const ownShipment = multiWarehouse?.some((wh) => wh?.ownshipment) || false;
-
-  // 2️⃣ Or get only the own shipment warehouses
   const ownShipmentWarehouses =
     multiWarehouse?.filter((wh) => wh?.ownshipment) || [];
 
-  // For multiWarehouse
   if (multiWarehouse?.warehouses?.length > 0) {
     const warehouseError =
       Array.isArray(multiWarehouse?.warehouses) &&
@@ -35,50 +34,56 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
         : null;
     if (warehouseError) {
       return (
-        <p className="text-red-600 text-center py-6 font-medium">
-          {warehouseError}
-        </p>
+        <div className="flex flex-col items-center py-10 px-4">
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-8 py-6 text-center max-w-md w-full">
+            <XCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <p className="text-red-700 font-semibold text-base">
+              {warehouseError}
+            </p>
+          </div>
+        </div>
       );
     }
   }
 
-  // For singleTrack (your existing logic stays)
   if (trackingData?.status_code && trackingData.status_code !== 200) {
     return (
-      <p className="text-red-600 text-center py-6 font-medium">
-        {trackingData.message || "An error occurred."}
-      </p>
+      <div className="flex flex-col items-center py-10 px-4">
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-8 py-6 text-center max-w-md w-full">
+          <XCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+          <p className="text-red-700 font-semibold text-base">
+            {trackingData.message || "An error occurred."}
+          </p>
+        </div>
+      </div>
     );
   }
 
   if (!singleTrack && !multiWarehouse) {
     return (
-      <>
-        {/* Tracking Image */}
-        <div className="flex justify-center">
+      <div className="flex flex-col items-center py-12 px-4 gap-5">
+        <div className="bg-gray-50 border border-gray-200 rounded-3xl p-8 text-center max-w-sm w-full">
           <img
             src="/tracking.png"
             alt="Tracking Illustration"
-            className="w-32 h-32 object-contain opacity-90"
+            className="w-28 h-28 object-contain opacity-80 mx-auto mb-5"
           />
-        </div>
-
-        {/* Message */}
-        <p className="text-[#a00300] text-xl text-center py-6 capitalize">
-          No tracking data available for entered details.
-        </p>
-
-        {/* Back Button */}
-        <div className="flex justify-center mt-2">
+          <p className="text-[#a00300] text-lg font-semibold mb-1">
+            No Tracking Data Found
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            We couldn't find any tracking information for the details you
+            entered.
+          </p>
           <button
             onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-6 py-2 bg-[#a00300] text-white font-semibold rounded-full shadow-md hover:bg-[#c20404] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#a00300] text-white font-semibold rounded-full shadow hover:bg-[#c20404] transition-all text-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Tracking
           </button>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -118,6 +123,8 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
     const scrollRef = useRef(null);
     const stepRef = useRef(null);
     const [scrollIndex, setScrollIndex] = useState(0);
+    const [stepWidth, setStepWidth] = useState(0);
+    const [maxIndex, setMaxIndex] = useState(0);
 
     useEffect(() => {
       if (stepRef.current) {
@@ -125,25 +132,21 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
       }
     }, []);
 
-    const [stepWidth, setStepWidth] = useState(0);
-
     useEffect(() => {
       if (scrollRef.current && stepWidth > 0) {
         const visibleCount = Math.floor(
-          scrollRef.current.clientWidth / stepWidth
+          scrollRef.current.clientWidth / stepWidth,
         );
         const maxSteps = filteredActivities.length - visibleCount;
         setMaxIndex(maxSteps > 0 ? maxSteps : 0);
       }
     }, [stepWidth, filteredActivities.length]);
 
-    const [maxIndex, setMaxIndex] = useState(0);
-
     const handleNext = () => {
       setScrollIndex((prev) => {
         const newIndex = Math.min(prev + 1, maxIndex);
         scrollRef.current.scrollTo({
-          left: newIndex * stepWidth + 8, // +8px so last item isn't cropped
+          left: newIndex * stepWidth + 8,
           behavior: "smooth",
         });
         return newIndex;
@@ -162,128 +165,175 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
     };
 
     const isScrollable = filteredActivities.length > 5;
-
     const totalSteps = filteredActivities.length;
 
-    // Helper for last step icon
     const getLastStepIcon = (status) => {
       const s = status.toLowerCase();
-
-      if (s.includes("not delivered")) {
-        return <Clock className="w-5 h-5 text-yellow-600" />; // pending
-      }
-      if (s.includes("cancelled") || s.includes("canceled")) {
-        return <XCircle className="w-5 h-5 text-red-600" />; // cancelled
-      }
-      if (s.includes("pickup not done")) {
-        return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
-      }
-      if (s.includes("in transit")) {
-        return <Truck className="w-5 h-5 text-yellow-600" />;
-      }
-      if (s.includes("picked successfully")) {
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      }
-      if (s.includes("reached at destination") || s.includes("delivered")) {
-        return <PackageCheck className="w-5 h-5 text-green-600" />; // completed
-      }
-      return <Circle className="w-5 h-5" />; // default gray circle
+      if (s.includes("not delivered"))
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      if (s.includes("cancelled") || s.includes("canceled"))
+        return <XCircle className="w-4 h-4 text-red-600" />;
+      if (s.includes("pickup not done"))
+        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+      if (s.includes("in transit"))
+        return <Truck className="w-4 h-4 text-yellow-600" />;
+      if (s.includes("picked successfully"))
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      if (s.includes("reached at destination") || s.includes("delivered"))
+        return <PackageCheck className="w-4 h-4 text-green-600" />;
+      return <Circle className="w-4 h-4 text-gray-400" />;
     };
 
-    // Helper for custom step icons and colors (matches Step Icon design)
     const getStatusIcon = (status) => {
       const s = status.toLowerCase();
-      let bg = "bg-gray-200";
-      let border = "border-gray-300";
       let text = "text-gray-500";
       let IconComponent = Circle;
 
       switch (s) {
         case "pending":
-          bg = "bg-gray-300";
-          border = "border-gray-400";
           text = "text-gray-700";
           IconComponent = Clock;
           break;
         case "processing":
-          bg = "bg-yellow-400";
-          border = "border-yellow-500";
           text = "text-white";
           IconComponent = AlertTriangle;
           break;
         case "dispatched":
-          bg = "bg-orange-500";
-          border = "border-orange-600";
           text = "text-white";
           IconComponent = Truck;
           break;
         case "delivered":
-          bg = "bg-green-500";
-          border = "border-green-500";
           text = "text-white";
           IconComponent = PackageCheck;
           break;
         case "cancelled":
         case "canceled":
-          bg = "bg-red-500";
-          border = "border-red-600";
           text = "text-white";
           IconComponent = XCircle;
           break;
       }
 
-      return <IconComponent className={`w-5 h-5 ${text}`} />;
+      return <IconComponent className={`w-4 h-4 ${text}`} />;
     };
 
-    return (
-      <div className="relative px-0 py-8 capitalize">
+    const getOwnShipmentClasses = (activity) => {
+      const s = activity.toLowerCase();
+      if (s === "pending") return "bg-gray-300 border-gray-400";
+      if (s === "processing") return "bg-yellow-400 border-yellow-500";
+      if (s === "dispatched") return "bg-orange-500 border-orange-600";
+      if (s === "delivered") return "bg-green-500 border-green-600";
+      if (s === "cancelled" || s === "canceled")
+        return "bg-red-500 border-red-600";
+      return "bg-gray-200 border-gray-300";
+    };
+
+    // ── Mobile vertical timeline ──────────────────────────────────────────────
+    const renderMobileTimeline = () => (
+      <div className="flex flex-col gap-0 md:hidden">
+        {filteredActivities.map((act, i) => {
+          const isCompleted = i < totalSteps - 1;
+          const isLastStep = i === totalSteps - 1;
+
+          const circleClass = ownShipment
+            ? `${getOwnShipmentClasses(act.activity)} text-white`
+            : isCompleted
+              ? "bg-green-500 border-green-500 text-white"
+              : "bg-white border-gray-300 text-gray-400";
+
+          return (
+            <div key={i} className="flex gap-4 relative">
+              {/* Timeline spine */}
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border-2 z-10 flex-shrink-0 ${circleClass}`}
+                >
+                  {ownShipment ? (
+                    getStatusIcon(act.activity)
+                  ) : isCompleted ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : isLastStep ? (
+                    getLastStepIcon(act.activity)
+                  ) : (
+                    <Circle className="w-4 h-4" />
+                  )}
+                </div>
+                {i < totalSteps - 1 && (
+                  <div
+                    className={`w-0.5 flex-1 min-h-[2rem] mt-1 mb-1 ${isCompleted ? "bg-green-400" : "bg-gray-200"}`}
+                  />
+                )}
+              </div>
+
+              {/* Content */}
+              <div
+                className={`pb-5 flex-1 ${i === totalSteps - 1 ? "pb-1" : ""}`}
+              >
+                <p className="text-sm font-semibold text-gray-800 capitalize leading-snug">
+                  {act.activity}
+                </p>
+                {act.date && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-500">
+                      {act.date.split(" ")[0]} &nbsp;
+                      {act.date.split(" ")[1]?.split(".")[0]}
+                    </span>
+                  </div>
+                )}
+                {act.location && (
+                  <div className="flex items-start gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs text-gray-400 leading-snug">
+                      {act.location}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+
+    // ── Desktop horizontal stepper ────────────────────────────────────────────
+    const renderDesktopStepper = () => (
+      <div className="relative hidden md:block px-8">
         <div
           ref={scrollRef}
-          className={`relative w-full ${
-            isScrollable ? "md:flex overflow-x-hidden" : "md:flex"
-          } flex-col md:flex-row`}
-          style={{
-            scrollBehavior: "smooth",
-          }}
+          className="flex overflow-x-hidden"
+          style={{ scrollBehavior: "smooth" }}
         >
           {filteredActivities.map((act, i) => {
             const isCompleted = i < totalSteps - 1;
             const isLastStep = i === totalSteps - 1;
 
+            const circleClass = ownShipment
+              ? `${getOwnShipmentClasses(act.activity)} text-white`
+              : isCompleted
+                ? "bg-green-500 border-green-500 text-white"
+                : "bg-white border-gray-300 text-gray-400";
+
             return (
               <div
                 key={i}
-                ref={i === 0 ? stepRef : null} // only measure first one
-                className={`flex md:flex-col items-center md:text-center text-left relative ${
-                  isScrollable
-                    ? "md:flex-none md:w-44 space-y-20 md:space-y-0"
-                    : "flex-1"
-                }`}
+                ref={i === 0 ? stepRef : null}
+                className={`flex flex-col items-center text-center relative ${isScrollable ? "flex-none w-44" : "flex-1"}`}
               >
-                {/* Step Icon */}
+                {/* Connector line */}
+                {i < totalSteps - 1 && (
+                  <div
+                    className={`absolute top-4 left-1/2 h-0.5 z-0 ${isCompleted ? "bg-green-400" : "bg-gray-200"}`}
+                    style={{
+                      width: "100%",
+                      marginLeft: "1rem",
+                      marginRight: "1rem",
+                    }}
+                  />
+                )}
+
+                {/* Circle icon */}
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center border-2 z-10 ${
-                    ownShipment
-                      ? (() => {
-                          const s = act.activity.toLowerCase();
-                          if (s === "pending")
-                            return "bg-gray-300 border-gray-400 text-gray-700";
-                          if (s === "processing")
-                            return "bg-yellow-400 border-yellow-500 text-white";
-                          if (s === "dispatched")
-                            return "bg-orange-500 border-orange-600 text-white";
-                          if (s === "delivered")
-                            return "bg-green-500 border-green-500 text-white";
-                          if (s === "cancelled" || s === "canceled")
-                            return "bg-red-500 border-red-600 text-white";
-                          return "bg-gray-200 border-gray-300 text-gray-500";
-                        })()
-                      : isCompleted
-                      ? "bg-green-500 border-green-500 text-white"
-                      : isLastStep
-                      ? "bg-white border-gray-300 text-gray-500"
-                      : "bg-white border-gray-300 text-gray-400"
-                  }`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 z-10 shadow-sm ${circleClass}`}
                 >
                   {ownShipment ? (
                     getStatusIcon(act.activity)
@@ -296,64 +346,37 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
                   )}
                 </div>
 
-                {/* Connector */}
-                {i < totalSteps - 1 && (
-                  <div
-                    className={`absolute md:top-4 md:left-1/2 md:h-0.5 ${
-                      isCompleted ? "bg-green-500" : "bg-gray-200"
-                    }`}
-                    style={
-                      window.innerWidth < 768
-                        ? {
-                            width: "2px",
-                            height: "100%",
-                            top: "2rem",
-                            left: "1rem",
-                            zIndex: 0,
-                          }
-                        : {
-                            width: "100%",
-                            marginLeft: "1rem",
-                            marginRight: "1rem",
-                            zIndex: 0,
-                          }
-                    }
-                  />
-                )}
-
-                {/* Activity Text */}
-                <div className="md:mt-3 md:text-center ml-4 md:ml-0">
-                  <p className="text-sm font-medium leading-tight">
+                {/* Text info */}
+                <div className="mt-3 px-1">
+                  <p className="text-xs font-semibold text-gray-800 capitalize leading-tight">
                     {[
                       "Pickup Scheduled",
                       "Pickup Reassigned",
                       "Softdata Upload",
-                      //   "Reached At Destination",
                     ].includes(act.activity)
-                      ? act.activity.split(" ").map((word, idx) => (
+                      ? act.activity.split(" ").map((word, idx, arr) => (
                           <React.Fragment key={`${act.activity}-${idx}`}>
                             {word}
-                            {idx < act.activity.split(" ").length - 1 && <br />}
+                            {idx < arr.length - 1 && <br />}
                           </React.Fragment>
                         ))
                       : act.activity}
                   </p>
-
-                  {/* Date & Time */}
                   {act.date && (
-                    <div className="text-xs text-gray-500">
-                      <p>{act.date.split(" ")[0]}</p>
-                      <p>{act.date.split(" ")[1]?.split(".")[0]}</p>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {act.date.split(" ")[0]}
+                      <br />
+                      {act.date.split(" ")[1]?.split(".")[0]}
+                    </p>
                   )}
-
-                  {/* Location */}
                   {act.location && (
-                    <div className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">
                       {act.location.split(",").map((line, idx) => (
-                        <p key={idx}>{line.trim()}</p>
+                        <span key={idx} className="block">
+                          {line.trim()}
+                        </span>
                       ))}
-                    </div>
+                    </p>
                   )}
                 </div>
               </div>
@@ -361,28 +384,47 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
           })}
         </div>
 
-        {/* Right Scroll Button (desktop only) */}
         {isScrollable && scrollIndex < filteredActivities.length - 6 && (
           <button
             onClick={handleNext}
-            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-2 z-20"
+            className="absolute right-0 top-4 -translate-y-1/2 bg-white shadow-lg rounded-full p-2 z-20 border border-gray-100"
           >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
+            <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
         )}
-
-        {/* Left Scroll Button (desktop only) */}
         {isScrollable && scrollIndex > 0 && (
           <button
             onClick={handlePrev}
-            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-full p-2 z-20"
+            className="absolute left-0 top-4 -translate-y-1/2 bg-white shadow-lg rounded-full p-2 z-20 border border-gray-100"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
         )}
       </div>
     );
+
+    return (
+      <div className="py-4 capitalize">
+        {renderMobileTimeline()}
+        {renderDesktopStepper()}
+      </div>
+    );
   };
+
+  // ── Summary badge helper ───────────────────────────────────────────────────
+  const SummaryBadge = ({ icon: Icon, label, value }) => (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1 text-gray-400">
+        <Icon className="w-3 h-3" />
+        <span className="text-xs font-semibold uppercase tracking-wide">
+          {label}
+        </span>
+      </div>
+      <p className="text-sm font-semibold text-gray-800 leading-snug">
+        {value || "—"}
+      </p>
+    </div>
+  );
 
   const renderCard = (
     awbCode,
@@ -391,131 +433,125 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
     courier,
     destination,
     eta,
-    warehouseName // <-- new param
+    warehouseName,
   ) => (
-    <div className="rounded-xl shadow-md bg-white overflow-hidden border border-gray-100">
+    <div className="rounded-2xl shadow-sm bg-white overflow-hidden border border-gray-100">
       {/* Header */}
-      <div className="bg-[#a00300] text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex flex-col">
-          {warehouseName && (
-            <span className="text-sm md:text-base font-bold tracking-wide uppercase">
-              {warehouseName}
+      <div className="bg-[#a00300] text-white px-5 py-4">
+        <div className="flex items-start justify-between flex-wrap gap-2">
+          <div>
+            {warehouseName && (
+              <p className="text-base font-bold tracking-wide uppercase leading-tight">
+                {warehouseName}
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Hash className="w-3.5 h-3.5 text-red-200" />
+              <span className="text-xs font-medium text-red-100 tracking-wide">
+                AWB: {awbCode}
+              </span>
+            </div>
+          </div>
+          {status && (
+            <span className="self-start mt-0.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30 capitalize">
+              {status}
             </span>
           )}
-          <span className=" text-xs md:text-sm font-medium text-gray-200">
-            TRACKING: {awbCode}
-          </span>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-4 bg-gray-50 text-sm">
-        <div>
-          <p className="text-gray-500 font-semibold text-xs">Status</p>
-          <p className="font-bold text-gray-900">{status}</p>
-        </div>
-        <div>
-          <p className="text-gray-500 font-semibold text-xs">Courier</p>
-          <p className="text-gray-800">{courier}</p>
-        </div>
-        <div>
-          <p className="text-gray-500 font-semibold text-xs">Destination</p>
-          <p className="text-gray-800">{destination}</p>
-        </div>
-        <div>
-          <p className="text-gray-500 font-semibold text-xs">
-            ETA (Estimated Time of Arrival)
-          </p>
-          <p className="text-gray-800">{eta}</p>
-        </div>
+      {/* Summary strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4 px-5 py-4 bg-gray-50 border-b border-gray-100">
+        <SummaryBadge icon={CheckCircle} label="Status" value={status} />
+        <SummaryBadge icon={Truck} label="Courier" value={courier} />
+        <SummaryBadge icon={MapPin} label="Destination" value={destination} />
+        <SummaryBadge icon={Clock} label="ETA" value={eta} />
       </div>
 
       {/* Tracker */}
-      <div className="p-6">{renderStepTracker(activities)}</div>
+      <div className="px-5 pb-6 pt-2">{renderStepTracker(activities)}</div>
     </div>
   );
 
   return (
-    <div className="space-y-8">
-      {/* Page Heading */}
-      <div className="text-center mb-6">
-        <div className="flex justify-center items-center gap-2">
-          <Package className="w-7 h-7 text-[#a00300]" />
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-[#a00300] uppercase">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 md:px-0">
+      {/* Page heading */}
+      <div className="text-center pt-2 pb-1">
+        <div className="inline-flex items-center gap-2.5 mb-1">
+          <div className="w-9 h-9 rounded-xl bg-[#a00300]/10 flex items-center justify-center">
+            <Package className="w-5 h-5 text-[#a00300]" />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#a00300] uppercase">
             Shipment Tracking
           </h1>
         </div>
-        <p className="text-gray-600 mt-1 text-sm md:text-sm">
+        <p className="text-gray-500 text-sm mt-1">
           Stay <span className="text-[#a00300] font-semibold">updated</span>{" "}
           with the latest status of your orders
         </p>
       </div>
 
-      {/* 🟢 Own Shipment Tracking Section */}
+      {/* Own shipment */}
       {ownShipment ? (
         ownShipmentWarehouses.map((wh, idx) => (
           <div
             key={`own-${idx}`}
-            className="rounded-xl shadow-md bg-white overflow-hidden border border-gray-100"
+            className="rounded-2xl shadow-sm bg-white overflow-hidden border border-gray-100"
           >
-            {/* Header */}
-            <div className="bg-[#a00300] text-white px-6 py-4 flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-sm md:text-base font-bold tracking-wide uppercase">
-                  {wh.warehouse_name || "Own Shipment"}
-                </span>
-                <span className="text-xs md:text-sm font-medium text-gray-200">
-                  Order ID: {trackingData?.data?.order_id || "-"}
-                </span>
+            <div className="bg-[#a00300] text-white px-5 py-4">
+              <div className="flex items-start justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-base font-bold tracking-wide uppercase">
+                    {wh.warehouse_name || "Own Shipment"}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Hash className="w-3.5 h-3.5 text-red-200" />
+                    <span className="text-xs font-medium text-red-100 tracking-wide">
+                      Order ID: {trackingData?.data?.order_id || "-"}
+                    </span>
+                  </div>
+                </div>
+                {wh.awb_status && (
+                  <span className="self-start mt-0.5 bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30 capitalize">
+                    {wh.awb_status}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-4 bg-gray-50 text-sm">
-              <div>
-                <p className="text-gray-500 font-semibold text-xs">
-                  Item Count
-                </p>
-                <p className="font-bold text-gray-900">
-                  {wh.item_count || "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 font-semibold text-xs">Status</p>
-                <p className="font-bold text-gray-900 capitalize">
-                  {wh.awb_status || "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 font-semibold text-xs">AWB Code</p>
-                <p className="text-gray-800">{wh.awb_codes || "N/A"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 font-semibold text-xs">
-                  Shipment Type
-                </p>
-                <p className="text-gray-800">Own Shipment</p>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4 px-5 py-4 bg-gray-50 border-b border-gray-100">
+              <SummaryBadge
+                icon={Package}
+                label="Item Count"
+                value={wh.item_count}
+              />
+              <SummaryBadge
+                icon={CheckCircle}
+                label="Status"
+                value={wh.awb_status}
+              />
+              <SummaryBadge icon={Hash} label="AWB Code" value={wh.awb_codes} />
+              <SummaryBadge
+                icon={Truck}
+                label="Shipment Type"
+                value="Own Shipment"
+              />
             </div>
 
-            {/* Step Tracker (latest first) */}
-            <div className="p-6">
+            <div className="px-5 pb-6 pt-2">
               {wh.tracking_info?.length > 0 ? (
                 renderStepTracker(
-                  [...wh.tracking_info] // shallow copy
-                    .reverse() // latest first
-                    .map((info) => ({
-                      activity: info.current_status || "Unknown Status",
-                      date: info.date
-                        ? new Date(info.date).toLocaleString()
-                        : "No timestamp",
-                      location: info.location || "",
-                      // Flag to use own shipment icons/colors
-                      isOwnShipment: true,
-                    }))
+                  [...wh.tracking_info].reverse().map((info) => ({
+                    activity: info.current_status || "Unknown Status",
+                    date: info.date
+                      ? new Date(info.date).toLocaleString()
+                      : "No timestamp",
+                    location: info.location || "",
+                    isOwnShipment: true,
+                  })),
                 )
               ) : (
-                <p className="text-gray-500 italic text-center">
+                <p className="text-gray-400 italic text-center py-6 text-sm">
                   No tracking updates available
                 </p>
               )}
@@ -524,7 +560,6 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
         ))
       ) : (
         <>
-          {/* 🧩 Existing multiWarehouse mapping continues here */}
           {multiWarehouse &&
             multiWarehouse.map((wh, idx) => {
               const tInfo = wh.tracking_info;
@@ -533,12 +568,12 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
                 return (
                   <div
                     key={idx}
-                    className="rounded-xl bg-white shadow-md border border-gray-200 p-6 text-center"
+                    className="rounded-2xl bg-white shadow-sm border border-gray-100 p-6 text-center"
                   >
-                    <h2 className="text-lg font-bold text-[#a00300] mb-2 capitalize">
+                    <h2 className="text-base font-bold text-[#a00300] mb-2 capitalize">
                       {wh.warehouse_name || "Warehouse"}
                     </h2>
-                    <p className="text-gray-700">{tInfo}</p>
+                    <p className="text-gray-600 text-sm">{tInfo}</p>
                   </div>
                 );
               }
@@ -547,12 +582,14 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
                 return (
                   <div
                     key={idx}
-                    className="rounded-xl bg-red-50 border border-red-300 p-6 text-center capitalize"
+                    className="rounded-2xl bg-red-50 border border-red-200 p-6 text-center"
                   >
-                    <h2 className="text-lg font-bold text-red-700 mb-2">
+                    <h2 className="text-base font-bold text-red-700 mb-2 capitalize">
                       {wh.warehouse_name || "Warehouse"}
                     </h2>
-                    <p className="text-red-600 font-medium">{tInfo.error}</p>
+                    <p className="text-red-600 text-sm font-medium">
+                      {tInfo.error}
+                    </p>
                   </div>
                 );
               }
@@ -564,7 +601,7 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
                 tInfo?.shipment_track?.[0]?.courier_name || "",
                 tInfo?.shipment_track?.[0]?.destination || "",
                 tInfo?.etd || "",
-                wh?.warehouse_name || ""
+                wh?.warehouse_name || "",
               );
             })}
 
@@ -577,28 +614,30 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
               singleTrack.shipment_track?.[0]?.courier_name,
               singleTrack.shipment_track?.[0]?.destination,
               singleTrack.etd,
-              singleTrack.shipment_track?.[0]?.warehouse_name
+              singleTrack.shipment_track?.[0]?.warehouse_name,
             )}
 
           {singleTrack?.error && (
-            <div className="rounded-xl bg-red-50 border border-red-300 p-6 text-center">
-              <h2 className="text-lg font-bold text-red-700 mb-2">
+            <div className="rounded-2xl bg-red-50 border border-red-200 p-6 text-center">
+              <h2 className="text-base font-bold text-red-700 mb-2">
                 Tracking Error
               </h2>
-              <p className="text-red-600 font-medium">{singleTrack.error}</p>
+              <p className="text-red-600 text-sm font-medium">
+                {singleTrack.error}
+              </p>
             </div>
           )}
         </>
       )}
 
-      {/* Back Button */}
+      {/* Back button */}
       {showBackButton && (
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center pt-2 pb-6">
           <button
             onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-6 py-2 bg-[#a00300] text-white font-semibold rounded-full shadow-md hover:bg-[#c20404] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#a00300] text-white font-semibold rounded-full shadow hover:bg-[#c20404] transition-all text-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Tracking
           </button>
         </div>

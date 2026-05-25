@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { FaInstagram, FaLinkedinIn } from "react-icons/fa";
+import { MailCheck } from "lucide-react";
+
 import { useAuth } from "@/app/utils/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MailCheck } from "lucide-react";
-import { fetchWithAuthGlobal } from "@/app/utils/fetchWithAuth";
 
 export default function Footer() {
   const pathname = usePathname();
@@ -19,22 +18,27 @@ export default function Footer() {
       {
         name: "Blog",
         slug: "/blog",
+        title: "Read Yuukke Blog",
       },
       {
         name: "ODOP Registration",
         slug: "/odop-registration",
+        title: "ODOP Registration",
       },
       {
         name: "Seller Registration",
         slug: "/seller-registration",
+        title: "Register as a Seller",
       },
       {
         name: "Empowering Community",
         slug: "/empowering-community",
+        title: "Empowering Community Initiative",
       },
       {
         name: "How To Gain YuukkeMints",
         slug: "/gain-yuukkemints",
+        title: "Learn How To Gain YuukkeMints",
       },
     ],
   };
@@ -179,6 +183,7 @@ export default function Footer() {
                 ) : (
                   <Link
                     href={`/products/category/${section.parentSlug}`}
+                    title={`Explore ${section.parentName} Products`}
                     aria-label={`Explore ${section.parentName} category`}
                     className="font-bold underline hover:text-[#6e0e2d]"
                   >
@@ -197,6 +202,7 @@ export default function Footer() {
                         link.slug.startsWith("http") ? (
                           <a
                             href={link.slug}
+                            title={link.name || "Open Link"}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:underline"
@@ -204,7 +210,11 @@ export default function Footer() {
                             {link.name}
                           </a>
                         ) : (
-                          <Link href={link.slug} className="hover:underline">
+                          <Link
+                            href={link.slug}
+                            title={link.title || link.name}
+                            className="hover:underline"
+                          >
                             {link.name}
                           </Link>
                         )
@@ -212,6 +222,7 @@ export default function Footer() {
                         // Keep normal behavior for other sections
                         <Link
                           href={`/products/category/${section.parentSlug}/${link.slug}`}
+                          title={`Explore ${link.name} Products`}
                           aria-label={`Explore ${link.name} category`}
                           className="hover:underline"
                         >
@@ -313,17 +324,19 @@ export default function Footer() {
           <div className="flex flex-wrap justify-center gap-2 sm:gap-4 text-[10px] sm:text-xs md:text-sm">
             <a
               href="https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/Yuukke-Privacy-Policy.pdf"
+              title="Open Link"
               className="hover:underline"
             >
               Privacy
             </a>
             <span className="hidden sm:inline">|</span>
-            <a href="/shipping" className="hover:underline">
+            <a href="/shipping" title="Shipping" className="hover:underline">
               Shipping
             </a>
             <span className="hidden sm:inline">|</span>
             <a
               href="https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/Returns.pdf"
+              title="Open Link"
               className="hover:underline"
             >
               Returns & Refund
@@ -331,6 +344,7 @@ export default function Footer() {
             <span className="hidden sm:inline">|</span>
             <a
               href="https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/yuukke_tnc.pdf"
+              title="Open Link"
               className="hover:underline"
             >
               T&C
@@ -338,6 +352,7 @@ export default function Footer() {
             <span className="hidden sm:inline">|</span>
             <a
               href="https://yuukke.com/contact-us/"
+              title="Open Link"
               className="hover:underline"
             >
               Contact
@@ -350,20 +365,34 @@ export default function Footer() {
 
             <a
               href="https://www.instagram.com/yuukkeglobal/"
+              title="Open Link"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Visit Yuukke Instagram Page"
             >
-              <FaInstagram className="w-4 h-4 sm:w-5 sm:h-5 hover:text-gray-300 cursor-pointer" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-4 h-4 sm:w-5 sm:h-5 hover:text-gray-300 cursor-pointer"
+              >
+                <path d="M7.75 2C4.57 2 2 4.57 2 7.75v8.5C2 19.43 4.57 22 7.75 22h8.5C19.43 22 22 19.43 22 16.25v-8.5C22 4.57 19.43 2 16.25 2h-8.5zm0 2h8.5A3.75 3.75 0 0120 7.75v8.5A3.75 3.75 0 0116.25 20h-8.5A3.75 3.75 0 014 16.25v-8.5A3.75 3.75 0 017.75 4zm8.75 1a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z" />
+              </svg>
             </a>
 
             <a
               href="https://www.linkedin.com/company/yuukkeglobal/posts/?feedView=all"
+              title="Open Link"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Visit Yuukke LinkedIn Page"
             >
-              <FaLinkedinIn className="w-4 h-4 sm:w-5 sm:h-5 hover:text-gray-300 cursor-pointer" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-4 h-4 sm:w-5 sm:h-5 hover:text-gray-300 cursor-pointer"
+              >
+                <path d="M4.98 3.5C4.98 4.6 4.1 5.5 3 5.5S1.02 4.6 1.02 3.5 1.9 1.5 3 1.5s1.98.9 1.98 2zM1.5 8h3V22h-3V8zm7 0h2.88v1.91h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59V22h-3v-7.12c0-1.7-.03-3.88-2.36-3.88-2.37 0-2.73 1.85-2.73 3.76V22h-3V8z" />
+              </svg>
             </a>
           </div>
         </div>

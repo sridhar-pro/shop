@@ -14,11 +14,13 @@ const BlogCard = ({ img, title, subtitle, tags, slug, link }) => {
   return (
     <Link
       href={href}
+      title="Yuukke Blog"
       className="bg-white h-full border border-gray-200 flex flex-col p-6 space-y-4 rounded-xl shadow-md hover:shadow-lg transition duration-300"
     >
       {/* Cover Image */}
       <Image
         alt={title}
+        title={title}
         className="w-full aspect-video object-cover rounded-lg"
         src={img}
         width={1263}
@@ -102,6 +104,7 @@ export default function BlogSection() {
         <div className="text-sm text-gray-500 mb-4 flex items-center justify-center space-x-2">
           <Link
             href="/"
+            title="Yuukke Home"
             className="flex items-center gap-1 hover:text-[#7d0431]"
           >
             <Home className="w-4 h-4" />

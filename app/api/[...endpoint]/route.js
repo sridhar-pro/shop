@@ -13,20 +13,20 @@ export async function GET(req, context) {
   try {
     const { params } = context;
     const endpointPath = params.endpoint.join("/");
-    console.log("📡 API request for:", endpointPath);
+    // console.log("📡 API request for:", endpointPath);
 
     const now = Date.now();
 
     // 🔐 Token logic (ONLY cache here)
     if (!cachedToken || now > tokenExpiry) {
-      console.log("🔄 Token expired or missing, fetching new token...");
+      // console.log("🔄 Token expired or missing, fetching new token...");
       const loginRes = await axios.post(
         `${process.env.BACKEND_BASE_URL}/api_login`,
         {
           username: process.env.ADMIN_USERNAME,
           password: process.env.ADMIN_PASSWORD,
         },
-        { timeout: 30000 }
+        { timeout: 30000 },
       );
 
       const token = loginRes.data.token;
@@ -34,9 +34,9 @@ export async function GET(req, context) {
 
       cachedToken = token;
       tokenExpiry = now + TOKEN_TTL;
-      console.log("🔑 New token cached for 1 hour");
+      // console.log("🔑 New token cached for 1 hour");
     } else {
-      console.log("✅ Using cached token");
+      // console.log("✅ Using cached token");
     }
 
     // 🚀 ALWAYS fetch fresh data (NO response cache)
@@ -52,7 +52,7 @@ export async function GET(req, context) {
     console.error("❌ Failed to fetch:", err.response?.data || err.message);
     return NextResponse.json(
       { error: "Failed to fetch data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

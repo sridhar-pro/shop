@@ -18,8 +18,9 @@ const CategoriesSection = () => {
     return [];
   });
   const [loading, setLoading] = useState(true);
-  const sliderRef = useRef(null);
-  const isHoveringRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+  const trackRef = useRef(null);
+
   const words = [
     { label: "Bags", href: "/products/category/bags" },
     { label: "Stationery", href: "/products/category/stationery" },
@@ -39,17 +40,13 @@ const CategoriesSection = () => {
       try {
         const res = await fetch("/api/homeCategory");
         const data = await res.json();
-
         const formatted = data.map((cat) => ({
           name: cat.name,
           slug: cat.slug,
           offer: cat.offer_lable,
           image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${cat.image}`,
         }));
-
         setCategories(formatted);
-
-        /* Save cache */
         localStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
         localStorage.setItem(CACHE_TIME_KEY, Date.now());
       } catch (err) {
@@ -63,10 +60,8 @@ const CategoriesSection = () => {
       try {
         const cachedData = localStorage.getItem(CACHE_KEY);
         const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-
         if (cachedData && cachedTime) {
           const isExpired = Date.now() - cachedTime > ONE_DAY;
-
           if (!isExpired) {
             setCategories(JSON.parse(cachedData));
             setLoading(false);
@@ -76,55 +71,44 @@ const CategoriesSection = () => {
       } catch (err) {
         console.error("Cache read error:", err);
       }
-
       return false;
     };
 
-    const hasCache = loadCached();
-
-    if (!hasCache) {
-      fetchCategories();
-    }
+    if (!loadCached()) fetchCategories();
   }, []);
 
-  /* ================= AUTO SLIDE ================= */
+  /* ================= DYNAMIC KEYFRAME ================= */
+  // Inject the @keyframes rule once we know the track width
   useEffect(() => {
-    if (!sliderRef.current || categories.length === 0) return;
+    if (!trackRef.current || categories.length === 0) return;
 
-    const slider = sliderRef.current;
-    let rafId;
-
-    const speed = 0.6; // must be >= 0.6 to visually move consistently
-    let position = 0;
-
-    const animate = () => {
-      if (!isHoveringRef.current) {
-        position += speed;
-
-        const halfWidth = slider.scrollWidth / 2;
-
-        if (position >= halfWidth) {
-          position = 0;
+    // The track contains two copies; we slide exactly one copy width (50%)
+    const styleId = "marquee-keyframes";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        @keyframes marquee-slide {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
         }
-
-        slider.scrollLeft = position;
-      }
-
-      rafId = requestAnimationFrame(animate);
-    };
-
-    rafId = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(rafId);
+      `;
+      document.head.appendChild(style);
+    }
   }, [categories]);
 
   const displayCategories = [...categories, ...categories];
+
+  // Card width + gap in px — must match the inline style below
+  const CARD_W = 176; // 160px card + gap ~16px  (mobile)
+  const totalCards = categories.length;
+  // Duration: how long to scroll one full set. ~18s feels natural.
+  const DURATION = Math.max(18, totalCards * 3);
 
   return (
     <section className="relative bg-[#FBF8F3] py-16 overflow-hidden font-odop">
       {/* TOP BLEND */}
       <div className="pointer-events-none absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-white to-transparent z-20" />
-
       {/* BOTTOM BLEND */}
       <div className="pointer-events-none absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-white to-transparent z-20" />
 
@@ -143,12 +127,12 @@ const CategoriesSection = () => {
               <div className="h-px w-12 bg-[#A00300]" />
             </div>
 
-            <h2 className="text-5xl md:text-6xl font-serif text-[#1F1F1F] font-medium tracking-tight">
+            <h1 className="text-5xl md:text-6xl font-serif text-[#1F1F1F] font-medium tracking-tight">
               {t("Explore our")}{" "}
-              <span className="" translate="no">
+              <span translate="no">
                 <FlipWords className="text-[#A00300]" words={words} />
               </span>
-            </h2>
+            </h1>
 
             <p className="mt-6 text-base text-[#6F6F6F] max-w-md">
               {t("Discover curated collections crafted with elegance and care")}
@@ -158,6 +142,7 @@ const CategoriesSection = () => {
           {/* CTA */}
           <Link
             href="/products"
+            title="Browse All Products"
             className="mt-10 lg:mt-0 inline-flex items-center gap-4 px-6 py-3 rounded-full border border-[#D8CFC6] text-sm text-[#1F1F1F] hover:border-[#A00300] hover:text-[#A00300] transition"
           >
             {t("Discover All Categories")}
@@ -167,49 +152,65 @@ const CategoriesSection = () => {
           </Link>
         </div>
 
-        {/* SLIDER */}
-        {/* SLIDER */}
-        <div
-          ref={sliderRef}
-          className="overflow-x-auto scrollbar-hide whitespace-nowrap"
-          onMouseEnter={() => (isHoveringRef.current = true)}
-          onMouseLeave={() => (isHoveringRef.current = false)}
-          onTouchStart={() => (isHoveringRef.current = true)}
-          onTouchEnd={() => (isHoveringRef.current = false)}
-        >
-          <div className="flex gap-10 w-max">
+        {/* ── MARQUEE SLIDER ── */}
+        {/* Outer: clips overflow, no scroll */}
+        <div className="overflow-hidden w-full">
+          {/* Inner track: CSS animation drives it — browser owns the transform,
+              so touch events on child links are never intercepted */}
+          <div
+            ref={trackRef}
+            className="flex gap-6 md:gap-10"
+            style={{
+              width: "max-content",
+              animationName: loading ? "none" : "marquee-slide",
+              animationDuration: `${DURATION}s`,
+              animationTimingFunction: "linear",
+              animationIterationCount: "infinite",
+              animationPlayState: paused ? "paused" : "running",
+              willChange: "transform",
+            }}
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onTouchStart={() => setPaused(true)}
+            onTouchEnd={() => {
+              // Small delay so tap completes before animation resumes
+              setTimeout(() => setPaused(false), 300);
+            }}
+          >
             {loading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex-shrink-0 animate-pulse">
-                    <div className="w-[210px] h-[200px] rounded-2xl bg-[#EFE8DE]" />
-                    <div className="mt-6 h-4 w-24 mx-auto bg-[#E2D8CC] rounded" />
+                    <div className="w-[160px] h-[160px] md:w-[210px] md:h-[200px] rounded-2xl bg-[#EFE8DE]" />
+                    <div className="mt-4 h-4 w-20 mx-auto bg-[#E2D8CC] rounded" />
                   </div>
                 ))
               : displayCategories.map((cat, i) => (
                   <Link
                     key={`${cat.slug}-${i}`}
                     href={`/products/category/${cat.slug}`}
+                    title={`Explore ${cat.name} Products`}
                     className="group flex-shrink-0 fade-up"
+                    draggable={false}
                   >
-                    <div className="relative w-[210px] h-[200px] rounded-2xl bg-[#FDFBF7] border border-[#E6DED3] shadow-sm transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-md">
+                    <div className="relative w-[160px] h-[160px] md:w-[210px] md:h-[200px] rounded-2xl bg-[#FDFBF7] border border-[#E6DED3] shadow-sm transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-md">
                       {cat.offer && (
-                        <span className="absolute top-4 right-4 text-[11px] px-3 py-1 rounded-full bg-[#A00300] text-white font-semibold tracking-wide">
+                        <span className="absolute top-3 right-3 text-[10px] md:text-[11px] px-2 py-1 rounded-full bg-[#A00300] text-white font-semibold tracking-wide">
                           {cat.offer}
                         </span>
                       )}
-
-                      <div className="absolute inset-0 flex items-center justify-center p-8">
+                      <div className="absolute inset-0 flex items-center justify-center p-6 md:p-8">
                         <Image
                           src={cat.image}
                           alt={cat.name}
+                          title={`${cat.name} Products on Yuukke`}
                           width={140}
                           height={140}
                           className="object-contain"
+                          draggable={false}
                         />
                       </div>
                     </div>
-
-                    <h3 className="mt-6 text-center font-serif text-[15px] text-[#1F1F1F] group-hover:text-[#A00300] transition">
+                    <h3 className="mt-4 text-center font-serif text-[13px] md:text-[15px] text-[#1F1F1F] group-hover:text-[#A00300] transition">
                       {cat.name}
                     </h3>
                   </Link>

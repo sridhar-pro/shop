@@ -128,6 +128,7 @@ function PuthanduSaleHeader() {
           <img
             src="/puthandu-image.jpeg"
             alt="Puthandu Banner"
+            title="Puthandu Banner"
             className="block md:hidden w-full h-full object-cover rounded-2xl"
           />
 
@@ -637,14 +638,86 @@ export default function PageSectionHeader({
     isGetTitle12Page,
   ];
 
-  if (featuredPages.some(Boolean)) {
+  function FeaturedCollectionHeader({ title }) {
+    const formatTitle = (title) => {
+      if (!title) return "";
+
+      const decoded = title.replace(/[’‘]/g, "'");
+
+      return decoded.replace(/\b\w/g, (c) => c.toUpperCase());
+    };
     return (
-      <SectionHeader
-        label="Featured Collection"
-        title={title}
-        description={featuredDescription}
-      />
+      <div className="w-full mb-4">
+        <div className="relative overflow-hidden px-4 pt-2 pb-0">
+          {/* Decorative SVG — right */}
+          <svg
+            className="absolute right-0 top-0 bottom-0 h-full w-48 pointer-events-none"
+            viewBox="0 0 200 280"
+            fill="none"
+            preserveAspectRatio="xMaxYMid meet"
+          >
+            <g opacity="0.06" stroke="#A00300" strokeWidth="1.2">
+              <circle cx="140" cy="80" r="40" />
+              <circle cx="140" cy="80" r="24" />
+              <circle cx="140" cy="80" r="10" />
+            </g>
+            <g opacity="0.05" stroke="#c97d00" strokeWidth="1">
+              <line x1="100" y1="160" x2="190" y2="260" />
+              <line x1="120" y1="140" x2="190" y2="230" />
+              <circle cx="155" cy="210" r="16" />
+            </g>
+          </svg>
+
+          {/* Label row */}
+          <div className="flex items-center gap-2.5 mb-[18px] animate-rise-1">
+            <div className="w-7 h-0.5 bg-[#A00300] rounded flex-shrink-0" />
+            <span className="text-[10.5px] font-medium tracking-[0.2em] uppercase text-[#A00300]">
+              Featured Collection
+            </span>
+            <div className="w-1 h-1 rounded-full bg-[#c97d00] flex-shrink-0" />
+            <span className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#c97d00]">
+              Yuukke Picks
+            </span>
+          </div>
+
+          {/* Title */}
+          <div className="mb-5">
+            <p className="text-[13px] tracking-[0.08em] uppercase text-[#7a3a00] mb-1.5 animate-rise-1">
+              Curated just for you
+            </p>
+            <h2 className="font-serif text-[clamp(2.6rem,6vw,3.8rem)] font-semibold leading-none text-[#140200] flex flex-wrap items-baseline gap-x-3 animate-rise-2">
+              <span>{formatTitle(title)}</span>
+            </h2>
+          </div>
+
+          {/* Ornament */}
+          <div className="flex items-center gap-1.5 mb-[18px] animate-expand-rule origin-left">
+            <div className="w-9 h-px bg-[#e8cdb0]" />
+            <div className="w-[3px] h-[3px] rotate-45 bg-[#c97d00] flex-shrink-0" />
+            <div className="w-[5px] h-[5px] rotate-45 bg-[#A00300] flex-shrink-0" />
+            <div className="w-[3px] h-[3px] rotate-45 bg-[#c97d00] flex-shrink-0" />
+            <div className="w-[72px] h-px bg-[#e8cdb0]" />
+            <div className="w-[3px] h-[3px] rotate-45 bg-[#c97d00] flex-shrink-0" />
+            <div className="w-[5px] h-[5px] rotate-45 bg-[#A00300] flex-shrink-0" />
+            <div className="w-[3px] h-[3px] rotate-45 bg-[#c97d00] flex-shrink-0" />
+            <div className="w-7 h-px bg-[#e8cdb0]" />
+          </div>
+
+          {/* Description */}
+          <p className="text-[14px] font-light text-[#5c2a00] leading-[1.85] max-w-[400px] mb-[22px] animate-rise-3">
+            Discover our most popular products, loved by thousands of happy
+            customers!
+          </p>
+
+          {/* Bottom rule */}
+          <div className="mt-6 h-px bg-gradient-to-r from-[rgba(160,3,0,0.25)] via-[rgba(201,125,0,0.15)] to-transparent" />
+        </div>
+      </div>
     );
+  }
+
+  if (featuredPages.some(Boolean)) {
+    return <FeaturedCollectionHeader title={title} />;
   }
 
   return null;

@@ -207,6 +207,7 @@ export default function TestimonialCarousel() {
                       key={si}
                       src="/star.png"
                       alt="Star"
+                      title="Star"
                       width={16}
                       height={16}
                       className="mr-1"

@@ -5,9 +5,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoaderWrapper from "../Loader/LoaderWrapper";
 import Navbar from "./Navbar";
-import { AuthProvider } from "@/app/utils/AuthContext";
-import { SessionProvider } from "@/app/context/SessionContext";
-import { CartProvider } from "@/app/context/CartContext";
 import { useEffect } from "react";
 import "../../i18n";
 import NewFooter from "./New-Footer";
@@ -117,36 +114,29 @@ function LazyAnalytics() {
 export default function ClientAppWrapper({ children }) {
   return (
     <LoaderWrapper>
-      <AuthProvider>
-        <SessionProvider>
-          <CartProvider>
-            <main className="pb-16 md:pb-0">
-              <TranslationProvider />
-              <Navbar />
-              {children}
-              <FlashSaleOffer />
-              <ConditionalFooter />
-              <FloatingWhatsAppButton />
-              {/* <NewFooter /> */}
-            </main>
+      <main className="pb-16 md:pb-0">
+        <TranslationProvider />
+        <Navbar />
+        {children}
+        <FlashSaleOffer />
+        <ConditionalFooter />
+        <FloatingWhatsAppButton />
+      </main>
 
-            <MobileBottomBar />
+      <MobileBottomBar />
 
-            <ToastContainer
-              position="top-right"
-              autoClose={3000}
-              hideProgressBar
-              newestOnTop
-              closeOnClick
-              pauseOnHover
-              theme="light"
-              style={{ marginBottom: "2.5rem", zIndex: 999999 }}
-            />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        theme="light"
+        style={{ marginBottom: "2.5rem", zIndex: 999999 }}
+      />
 
-            <LazyAnalytics />
-          </CartProvider>
-        </SessionProvider>
-      </AuthProvider>
+      <LazyAnalytics />
     </LoaderWrapper>
   );
 }

@@ -111,12 +111,17 @@ export default function CommonBlogPage({ slug }) {
         <div className="mb-6 flex items-center gap-2 text-sm text-gray-500">
           <Link
             href="/"
+            title="Yuukke Home"
             className="flex items-center gap-1 hover:text-[#7d0431]"
           >
             <Home className="w-4 h-4" /> Home
           </Link>
           <span>/</span>
-          <Link href="/blog" className="hover:text-[#7d0431]">
+          <Link
+            href="/blog"
+            title="Yuukke Blog"
+            className="hover:text-[#7d0431]"
+          >
             Blog
           </Link>
           <span>/</span>
@@ -134,6 +139,7 @@ export default function CommonBlogPage({ slug }) {
           <Image
             src={getImageSrc(blog.image)}
             alt={blog.title}
+            title={blog.title}
             width={900}
             height={500}
             className="rounded-xl shadow-lg object-cover w-full max-h-[550px]"
@@ -164,11 +170,13 @@ export default function CommonBlogPage({ slug }) {
                 <Link
                   key={rel.id}
                   href={`/blog/${rel.slug}`}
+                  title="Related Blog"
                   className="flex gap-4 items-start group"
                 >
                   <Image
                     src={getImageSrc(rel.image)}
                     alt={rel.title}
+                    title={rel.title}
                     width={110}
                     height={80}
                     className="rounded-md object-cover flex-shrink-0"

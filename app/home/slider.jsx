@@ -88,9 +88,9 @@ export function ImagesSliderDemo() {
             href: item.link || "#",
             title: item.title || "",
             type,
+            order: item.order ? Number(item.order) : null, // ✅ ADD THIS
           };
         };
-
         const formattedDesktop = Object.values(desktopData)
           .map(normalizeDesktop)
           .sort((a, b) => {
@@ -101,7 +101,13 @@ export function ImagesSliderDemo() {
             return a.order - b.order;
           });
 
-        const formattedMobile = Object.values(mobileData).map(normalizeMobile);
+        const formattedMobile = Object.values(mobileData)
+          .map(normalizeMobile)
+          .sort((a, b) => {
+            if (a.order === null) return 1;
+            if (b.order === null) return -1;
+            return a.order - b.order;
+          });
 
         // ✅ Inject YouTube stream as first slide (if exists)
         if (streamUrl) {
@@ -197,6 +203,9 @@ export function ImagesSliderDemo() {
               <motion.a
                 key={currentIndex}
                 href={images[currentIndex]?.href || "#"}
+                title={
+                  images[currentIndex]?.title || "View Featured Collection"
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 initial="initial"
@@ -229,6 +238,7 @@ export function ImagesSliderDemo() {
                   <Image
                     src={images[currentIndex].src || "/fallback.png"}
                     alt={images[currentIndex]?.title || "Slide"}
+                    title={images[currentIndex]?.title || "Slide"}
                     fill
                     className="object-contain lg:rounded-2xl"
                     priority

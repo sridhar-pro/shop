@@ -28,11 +28,11 @@ export default function OtherProductsGrid() {
           },
           body: JSON.stringify({
             filters: {
-              page: "1",
+              page: "2",
               limit: 12,
               min_price: "1",
               max_price: "0",
-              sort_by_v: "",
+              sort_by_v: "1bs",
             },
           }),
         });
@@ -50,10 +50,16 @@ export default function OtherProductsGrid() {
 
   return (
     <div className="mt-6">
-      <h3 className="flex items-center gap-2 text-lg font-semibold mb-4 text-gray-800 font-odop uppercase">
-        <Gift className="w-5 h-5 text-[#A00300]" />
-        You Might Like
-      </h3>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1 h-[1px] bg-gray-200"></div>
+
+        <h3 className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase font-semibold text-[#000930]">
+          {/* <Gift className="w-4 h-4 text-[#A00300]" /> */}
+          You Might Like
+        </h3>
+
+        <div className="flex-1 h-[1px] bg-gray-200"></div>
+      </div>
 
       {loading ? (
         <div className="flex space-x-1 mt-4">
@@ -70,6 +76,11 @@ export default function OtherProductsGrid() {
               <Link
                 key={product.id}
                 href={isOutOfStock ? "#" : `/products/${product.slug}`}
+                title={
+                  isOutOfStock
+                    ? `${product.name} is Out of Stock`
+                    : `View ${product.name}`
+                }
                 className={`group rounded-xl sm:rounded-3xl bg-white transition-all duration-300 overflow-hidden relative ${
                   isOutOfStock
                     ? "opacity-70 cursor-not-allowed"
@@ -80,6 +91,7 @@ export default function OtherProductsGrid() {
                   <img
                     src={getImageSrc(product.image)}
                     alt={product.name}
+                    title={product.name}
                     className={`object-contain w-full h-full ${
                       isOutOfStock ? "blur-[1.5px]" : ""
                     }`}
@@ -96,7 +108,7 @@ export default function OtherProductsGrid() {
                 </div>
 
                 <div className="p-3 sm:p-5">
-                  <h3 className="text-xs sm:text-sm md:text-base font-semibold line-clamp-2 mb-1 capitalize">
+                  <h3 className="text-xs sm:text-sm md:text-base font-medium line-clamp-2 mb-1 capitalize">
                     {product.name}
                   </h3>
                   <div className="flex items-center justify-between mt-1">
@@ -107,14 +119,14 @@ export default function OtherProductsGrid() {
                       <div className="flex justify-between w-full">
                         <div className="flex flex-col">
                           <div className="flex items-baseline gap-1.5 md:gap-2 text-[#a00030]">
-                            <p className="text-sm md:text-lg font-bold">
+                            <p className="text-sm md:text-lg font-semibold">
                               ₹{Number(product.promo_price).toFixed(2)}
                             </p>
                             <p className="text-xs md:text-sm text-gray-400 line-through">
                               ₹{Number(product.price).toFixed(2)}
                             </p>
                           </div>
-                          <span className="mt-1 text-[10px] md:text-xs font-bold text-red-600 bg-transparent md:bg-green-100 px-1.5 md:px-2 py-[1px] md:py-0.5 rounded-lg w-fit">
+                          <span className="mt-1 text-[10px] md:text-xs font-semibold text-red-600 bg-transparent md:bg-green-100 px-1.5 md:px-2 py-[1px] md:py-0.5 rounded-lg w-fit">
                             {Math.round(
                               ((Number(product.price) -
                                 Number(product.promo_price)) /
@@ -126,7 +138,7 @@ export default function OtherProductsGrid() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm md:text-lg font-bold text-gray-950">
+                      <p className="text-sm md:text-lg font-semibold text-gray-950">
                         ₹ {Number(product.price).toFixed(2)}
                       </p>
                     )}

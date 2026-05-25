@@ -4,7 +4,8 @@ import { getServerToken } from "@/app/utils/authServer";
 const isValidId = (value) => value && !isNaN(Number(value));
 
 // 🚀 generateMetadata works here (server)
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params: paramsPromise }) {
+  const params = await paramsPromise;
   // console.log("🔍 Raw params:", params);
   // console.log("🔍 Raw slug array:", params.slug);
 
@@ -172,6 +173,102 @@ export async function generateMetadata({ params }) {
 }
 
 // ✅ just render the client file
-export default function CategoryPage(props) {
-  return <CategoryPageClient {...props} />;
+export default async function CategoryPage(props) {
+  const params = await props.params;
+
+  const [categorySlug, subCategorySlug, subSubCategorySlug] = params.slug || [];
+
+  const currentSlug =
+    subSubCategorySlug || subCategorySlug || categorySlug || "products";
+
+  const categorySchema = {
+    "@context": "https://schema.org",
+
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+
+        "@id": `https://shop.yuukke.com/products/category/${params.slug.join("/")}`,
+
+        name: currentSlug.replaceAll("-", " "),
+
+        url: `https://shop.yuukke.com/products/category/${params.slug.join("/")}`,
+
+        description: `Explore ${currentSlug.replaceAll("-", " ")} products on Yuukke.`,
+      },
+
+      {
+        "@type": "BreadcrumbList",
+
+        itemListElement: [
+          {
+            "@type": "ListItem",
+
+            position: 1,
+
+            name: "Home",
+
+            item: "https://shop.yuukke.com",
+          },
+
+          {
+            "@type": "ListItem",
+
+            position: 2,
+
+            name: "Products",
+
+            item: "https://shop.yuukke.com/products",
+          },
+
+          {
+            "@type": "ListItem",
+
+            position: 3,
+
+            name: currentSlug.replaceAll("-", " "),
+
+            item: `https://shop.yuukke.com/products/category/${params.slug.join("/")}`,
+          },
+        ],
+      },
+
+      {
+        "@type": "ItemList",
+
+        name: `${currentSlug.replaceAll("-", " ")} Products`,
+
+        itemListElement: [
+          {
+            "@type": "ListItem",
+
+            position: 1,
+
+            url: "https://shop.yuukke.com/products/kundan-designer-mobile-phone-case-handcrafted-ethnic-pr",
+          },
+
+          {
+            "@type": "ListItem",
+
+            position: 2,
+
+            url: "https://shop.yuukke.com/products/another-product-slug",
+          },
+        ],
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(categorySchema),
+        }}
+      />
+
+      <CategoryPageClient {...props} />
+    </>
+  );
 }

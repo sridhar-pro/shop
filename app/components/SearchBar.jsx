@@ -152,10 +152,8 @@ const SearchBar = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap');
-
+       
         .sb-root * {
-          font-family: 'Sora', sans-serif;
           box-sizing: border-box;
         }
 
@@ -456,7 +454,6 @@ const SearchBar = () => {
           transition: all 0.25s ease;
           letter-spacing: 0.03em;
           text-transform: uppercase;
-          font-family: 'Sora', sans-serif;
         }
         .sb-view-all:hover { background: linear-gradient(135deg, #850200 0%, #A00300 100%); }
         .sb-view-all svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
@@ -481,7 +478,6 @@ const SearchBar = () => {
           color: #888;
           cursor: pointer;
           transition: all 0.2s ease;
-          font-family: 'Sora', sans-serif;
         }
         .sb-hint-btn:hover { border-color: #A00300; color: #A00300; }
         .sb-hint-btn kbd {

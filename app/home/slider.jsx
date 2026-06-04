@@ -212,7 +212,7 @@ export function ImagesSliderDemo() {
                 animate="animate"
                 exit="exit"
                 variants={slideVariants}
-                transition={{ duration: 0.6 }}
+                transition={{ duration: 0.25 }}
                 className="absolute inset-0 block w-full h-full lg:rounded-2xl overflow-hidden"
               >
                 {images[currentIndex]?.type === "video" ? (
@@ -242,7 +242,9 @@ export function ImagesSliderDemo() {
                     fill
                     className="object-contain lg:rounded-2xl"
                     priority
-                    sizes="(max-width: 768px) 100vw, 90vw"
+                    fetchPriority="high"
+                    loading="eager"
+                    sizes="100vw"
                   />
                 )}
               </motion.a>
@@ -281,13 +283,17 @@ export function ImagesSliderDemo() {
                 <button
                   key={index}
                   onClick={() => setCurrentIndex(index)}
-                  className={`h-2 w-2 rounded-full transition-all duration-300 ${
-                    index === currentIndex
-                      ? "bg-red-600 scale-110 shadow"
-                      : "bg-red-600/40 hover:bg-red-600"
-                  }`}
                   aria-label={`Go to slide ${index + 1}`}
-                />
+                  className="flex items-center justify-center w-10 h-10"
+                >
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                      index === currentIndex
+                        ? "bg-red-600 scale-110 shadow"
+                        : "bg-red-600/40 hover:bg-red-600"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </>

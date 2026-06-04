@@ -53,10 +53,10 @@ export default function OtherProductsGrid() {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 h-[1px] bg-gray-200"></div>
 
-        <h3 className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase font-semibold text-[#000930]">
+        <h2 className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase font-semibold text-[#000930]">
           {/* <Gift className="w-4 h-4 text-[#A00300]" /> */}
           You Might Like
-        </h3>
+        </h2>
 
         <div className="flex-1 h-[1px] bg-gray-200"></div>
       </div>
@@ -108,9 +108,9 @@ export default function OtherProductsGrid() {
                 </div>
 
                 <div className="p-3 sm:p-5">
-                  <h3 className="text-xs sm:text-sm md:text-base font-medium line-clamp-2 mb-1 capitalize">
+                  <h2 className="text-xs sm:text-sm md:text-base font-medium line-clamp-2 mb-1 capitalize">
                     {product.name}
-                  </h3>
+                  </h2>
                   <div className="flex items-center justify-between mt-1">
                     {product.promo_price &&
                     product.end_date &&

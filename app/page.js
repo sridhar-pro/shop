@@ -1,66 +1,52 @@
-"use client";
-
 import React from "react";
 import dynamic from "next/dynamic";
 import { ImagesSliderDemo } from "./home/slider";
-import { WobbleCardDemo } from "./home/card";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 import HomeSchema from "./HomeSchema";
 
 // ⏳ Product card skeleton loader
-const LoadingFallback = ({ count = 6 }) => (
+const LoadingFallback = ({ count = 8 }) => (
   <div className="p-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {Array.from({ length: count }).map((_, index) => (
-      <div
-        key={index}
-        className="rounded-lg p-4 shadow-sm bg-white animate-pulse"
-      >
-        <Skeleton height={180} />
-        <Skeleton height={20} style={{ marginTop: "1rem" }} />
-        <Skeleton height={20} width={"80%"} />
-        <Skeleton height={30} width={"60%"} style={{ marginTop: "1rem" }} />
-      </div>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="h-[280px] rounded-xl bg-gray-100 animate-pulse" />
     ))}
   </div>
 );
 
-// 🔥 NEW: Lazy-loaded RecentlyViewedProducts
+const WobbleCardDemo = dynamic(
+  () => import("./home/card").then((m) => m.WobbleCardDemo),
+  {
+    loading: () => null,
+  },
+);
+
 const RecentlyViewedProducts = dynamic(
   () => import("./home/RecentlyViewedProducts"),
   {
-    ssr: false,
     loading: () => <LoadingFallback />,
   },
 );
 
 const LogoSlider = dynamic(() => import("./home/LogoSlider"), {
-  ssr: false,
   loading: () => <LoadingFallback />,
 });
 
 const Products = dynamic(() => import("./home/Products/Page"), {
-  ssr: false,
   loading: () => <LoadingFallback />,
 });
 
 const Testimonial = dynamic(() => import("./home/TestimonialCarousel"), {
-  ssr: false,
   loading: () => <LoadingFallback />,
 });
 
 const SpinnerWheel = dynamic(() => import("./components/SpinnerWheel"), {
-  ssr: false,
-  loading: () => <div className="flex justify-center"> </div>,
+  loading: () => <div className="flex justify-center"></div>,
 });
 
 const RecentlyViewed = dynamic(() => import("./home/RecentlyViewed"), {
-  ssr: false,
   loading: () => <LoadingFallback />,
 });
 
 const WishlistProducts = dynamic(() => import("./home/WishlistProducts"), {
-  ssr: false,
   loading: () => <LoadingFallback />,
 });
 

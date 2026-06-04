@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Menu,
   Settings,
   X,
@@ -11,18 +10,27 @@ import {
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import SearchBar from "../SearchBar";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { User, Heart, ShoppingCart } from "lucide-react";
-import CartSidebar from "../CartSideBar";
 import { useAuth } from "@/app/utils/AuthContext";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import LogoutButton from "../Logout";
 import { useSession } from "@/app/context/SessionContext";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
+
+const SearchBar = dynamic(() => import("../SearchBar"), {
+  ssr: false,
+});
+
+const CartSidebar = dynamic(() => import("../CartSideBar"), {
+  ssr: false,
+});
+
+const LanguageSwitcher = dynamic(() => import("./LanguageSwitcher"), {
+  ssr: false,
+});
 
 export default function Navbar() {
   const { t } = useTranslation();
@@ -37,6 +45,8 @@ export default function Navbar() {
   const [direction, setDirection] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const [groupId, setGroupId] = useState(null);
+
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isOdopOpen, setIsOdopOpen] = useState(false);
 
@@ -47,6 +57,10 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    setGroupId(Number(localStorage.getItem("group_id")));
+  }, []);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -194,7 +208,7 @@ export default function Navbar() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/homeCategory");
+        const res = await fetch("/api/newHomeCategory");
 
         if (!res.ok) {
           const errText = await res.text();
@@ -236,11 +250,13 @@ export default function Navbar() {
     if (messages.length < 2) return;
 
     const interval = setInterval(() => {
-      handleNext();
+      setDirection(1);
+
+      setIndex((prev) => (prev + 1) % messages.length);
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [messages, handleNext]);
+  }, [messages.length]);
 
   return (
     <>
@@ -252,6 +268,7 @@ export default function Navbar() {
         {/* Prev Button */}
         <button
           onClick={handlePrev}
+          aria-label="Previous slide"
           className="absolute left-4 bg-gray-200 text-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all"
         >
           <ChevronLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -259,23 +276,13 @@ export default function Navbar() {
 
         {/* Message */}
         <div className="relative w-full max-w-[300px] md:max-w-full flex justify-center items-center">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={index}
-              initial={{ x: direction === 1 ? 100 : -100, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: direction === 1 ? -100 : 100, opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="absolute text-center px-4"
-            >
-              {messages[index]}
-            </motion.div>
-          </AnimatePresence>
+          <div className="text-center px-4">{messages[index]}</div>
         </div>
 
         {/* Next Button */}
         <button
           onClick={handleNext}
+          aria-label="Next slide"
           className="absolute right-4 bg-gray-200 text-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all"
         >
           <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -327,11 +334,13 @@ export default function Navbar() {
                         >
                           {/* 🔹 Category Image/Icon */}
                           <div className="w-16 h-16 mb-3 flex items-center justify-center rounded-full bg-gray-100 overflow-hidden">
-                            <img
+                            <Image
                               src={category.image || "/placeholder.png"}
                               alt={category.name}
-                              title={`${category.name} Products on Yuukke`}
-                              className="w-12 h-12 object-contain"
+                              width={48}
+                              height={48}
+                              loading="lazy"
+                              className="object-contain"
                             />
                           </div>
 
@@ -381,21 +390,6 @@ export default function Navbar() {
                   {t("Corporate Gifting")}
                 </span>
               </Link>
-
-              {/* Sherise */}
-              {/* <Link
-                href="/sherise"
-                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-[#A00300] hover:text-[#180d0d] transition-all duration-200 group shrink-0 whitespace-nowrap"
-              >
-                
-                <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
-                  <Flame className="w-3 h-3" />
-                  SALE
-                </span>
-                <span className="whitespace-nowrap font-medium">
-                  {t("Sherise-Week")}
-                </span>
-              </Link> */}
 
               {/* Track Order */}
               <Link
@@ -459,7 +453,7 @@ export default function Navbar() {
                       )}
                     </div>
                     {/* Dashboard Icon for group_id 4 */}
-                    {Number(localStorage.getItem("group_id")) === 4 && (
+                    {groupId === 4 && (
                       <button
                         onClick={() => {
                           const token = localStorage.getItem("access_token");
@@ -508,12 +502,14 @@ export default function Navbar() {
                   </span>
                 )}
               </button>
-              <CartSidebar
-                isOpen={isCartOpen}
-                onClose={() => setIsCartOpen(false)}
-                cartItems={cartItems}
-                setCartItems={setCartItems}
-              />
+              {isCartOpen && (
+                <CartSidebar
+                  isOpen={isCartOpen}
+                  onClose={() => setIsCartOpen(false)}
+                  cartItems={cartItems}
+                  setCartItems={setCartItems}
+                />
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -549,12 +545,14 @@ export default function Navbar() {
                     className="fixed inset-0 bg-black bg-opacity-50 z-40"
                     onClick={() => setIsCartOpen(false)}
                   />
-                  <CartSidebar
-                    isOpen={isCartOpen}
-                    onClose={() => setIsCartOpen(false)}
-                    cartItems={cartItems}
-                    setCartItems={setCartItems}
-                  />
+                  {isCartOpen && (
+                    <CartSidebar
+                      isOpen={isCartOpen}
+                      onClose={() => setIsCartOpen(false)}
+                      cartItems={cartItems}
+                      setCartItems={setCartItems}
+                    />
+                  )}
                 </>
               )}
 
@@ -647,20 +645,6 @@ export default function Navbar() {
     block 
   "
             >
-              {/* HOT badge */}
-              {/* <span
-                className="
-      absolute -top-3 left-36
-      inline-flex items-center gap-1
-      rounded-full bg-red-50 text-[#A00300]
-      text-[12px] font-bold px-2 py-0.5
-      ring-1 ring-red-200 shadow-sm animate-bounce
-    "
-              >
-                <Flame className="w-4 h-4" />
-                HOT
-              </span> */}
-
               {/* Text */}
               <span className="whitespace-nowrap">Corporate Gifting</span>
 
@@ -675,24 +659,6 @@ export default function Navbar() {
                 </span>
               </span>
             </Link>
-
-            {/* Sherise – Premium */}
-            {/* <Link
-              href={{
-                pathname: "/sherise", // dedicated offers route
-              }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="relative inline-flex items-center gap-2 px-2 py-2 mt-2 rounded-full  text-gray-600 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
-            >
-            
-              <span className="absolute -top-3 left-12 inline-flex items-center gap-1 rounded-full bg-red-50 text-[#A00300] text-[10px] font-bold px-2 py-0.5 ring-1 ring-red-200 shadow-sm animate-bounce ">
-                <Flame className="w-3 h-3" />
-                SALE
-              </span>
-              <span className="whitespace-nowrap font-medium">
-                {t("Sherise-Week")}
-              </span>
-            </Link> */}
 
             {/* Tracking Link */}
             <Link

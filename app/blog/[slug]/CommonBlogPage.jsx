@@ -95,7 +95,13 @@ export default function CommonBlogPage({ slug }) {
   }, [blog, relatedBlogs]);
 
   if (!blog) {
-    return <div className="p-10 text-center">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-[#A00300]/20 border-t-[#A00300] animate-spin"></div>
+        </div>
+      </div>
+    );
   }
 
   return (

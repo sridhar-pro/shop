@@ -147,12 +147,19 @@ export async function generateMetadata({ params: paramsPromise }) {
     // console.log("🟢 Full API response:", data);
     const meta = data?.metaData;
     // console.log("🟢 Category metadata fetched:", meta);
+
+    const canonicalUrl = `https://shop.yuukke.com/products/category/${params.slug.join("/")}`;
     return {
       title: meta?.title || meta?.name || "Products", // use meta.title if exists, fallback to name
       description: meta?.description || "Browse our collection", // use description from API
+
+      alternates: {
+        canonical: canonicalUrl,
+      },
       openGraph: {
         title: meta?.name || "Products",
         description: meta?.description || "Browse our collection",
+        url: canonicalUrl,
         images: meta?.image
           ? [
               {

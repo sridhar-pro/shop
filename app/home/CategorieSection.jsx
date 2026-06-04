@@ -10,13 +10,7 @@ import { FlipWords } from "../components/ui/flip-words";
 const CategoriesSection = () => {
   const { t } = useTranslation();
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
-  const [categories, setCategories] = useState(() => {
-    if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("home_categories_cache");
-      return cached ? JSON.parse(cached) : [];
-    }
-    return [];
-  });
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const trackRef = useRef(null);
@@ -36,9 +30,17 @@ const CategoriesSection = () => {
     const CACHE_TIME_KEY = "home_categories_cache_time";
     const ONE_DAY = 24 * 60 * 60 * 1000;
 
+    const cached = localStorage.getItem(CACHE_KEY);
+
+    if (cached) {
+      try {
+        setCategories(JSON.parse(cached));
+      } catch {}
+    }
+
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/homeCategory");
+        const res = await fetch("/api/newHomeCategory");
         const data = await res.json();
         const formatted = data.map((cat) => ({
           name: cat.name,
@@ -201,7 +203,8 @@ const CategoriesSection = () => {
                       <div className="absolute inset-0 flex items-center justify-center p-6 md:p-8">
                         <Image
                           src={cat.image}
-                          alt={cat.name}
+                          alt=""
+                          aria-hidden="true"
                           title={`${cat.name} Products on Yuukke`}
                           width={140}
                           height={140}
@@ -210,9 +213,9 @@ const CategoriesSection = () => {
                         />
                       </div>
                     </div>
-                    <h3 className="mt-4 text-center font-serif text-[13px] md:text-[15px] text-[#1F1F1F] group-hover:text-[#A00300] transition">
+                    <h2 className="mt-4 text-center font-serif text-[13px] md:text-[15px] text-[#1F1F1F] group-hover:text-[#A00300] transition">
                       {cat.name}
-                    </h3>
+                    </h2>
                   </Link>
                 ))}
           </div>

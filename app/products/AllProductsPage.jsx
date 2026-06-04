@@ -161,7 +161,7 @@ export default function AllProductsPage({
   const isGetTitle10Page = pathname?.includes("/G02--8bd14e6f");
   const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
   const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
-  const isWomensday = pathname === "/products/tamilnewyear-sale";
+  const isWomensday = pathname === "/products/fathersday-sale";
   const isEOY = pathname === "/products/iris-expo-2026";
 
   const searchQuery = search.get("query");

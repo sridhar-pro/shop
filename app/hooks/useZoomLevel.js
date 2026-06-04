@@ -6,23 +6,9 @@ export default function useZoomLevel() {
 
   useEffect(() => {
     const checkZoom = () => {
-      const desktop = window.innerWidth >= 768;
-      setIsDesktop(desktop);
+      setIsDesktop(window.innerWidth >= 768);
 
-      // Create a hidden div to measure true zoom ratio
-      const div = document.createElement("div");
-      div.style.position = "absolute";
-      div.style.visibility = "hidden";
-      div.style.height = "1in"; // 1 inch in CSS units
-      document.body.appendChild(div);
-
-      // The actual number of pixels per inch changes when zooming
-      const dpi = div.offsetHeight;
-      document.body.removeChild(div);
-
-      // 96 is the standard DPI for 100% zoom
-      const zoomRatio = dpi / 96;
-      setZoom(zoomRatio);
+      setZoom(window.devicePixelRatio || 1);
     };
 
     checkZoom();

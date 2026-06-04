@@ -39,26 +39,6 @@ const LogoSlider = () => {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap");
-
-        @font-face {
-          font-family: "Odop";
-          src:
-            url("/fonts/odop/Odop-Regular.woff2") format("woff2"),
-            url("/fonts/odop/Odop-Regular.woff") format("woff");
-          font-weight: 400;
-          font-style: normal;
-        }
-
-        @font-face {
-          font-family: "Odop";
-          src:
-            url("/fonts/odop/Odop-Italic.woff2") format("woff2"),
-            url("/fonts/odop/Odop-Italic.woff") format("woff");
-          font-weight: 400;
-          font-style: italic;
-        }
-
         .seller-section {
           padding: 3.5rem 0 4rem;
           position: relative;
@@ -75,12 +55,11 @@ const LogoSlider = () => {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          font-family: "DM Sans", sans-serif;
           font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: #888;
+          color: #5f5f5f;
           margin-bottom: 0.75rem;
         }
 
@@ -101,10 +80,9 @@ const LogoSlider = () => {
         }
 
         .seller-subtitle {
-          font-family: "DM Sans", sans-serif;
           font-size: 14px;
           font-weight: 300;
-          color: #777;
+          color: #525252;
           margin: 0;
           letter-spacing: 0.01em;
         }
@@ -202,11 +180,10 @@ const LogoSlider = () => {
         }
 
         .seller-card-name {
-          font-family: "DM Sans", sans-serif;
           font-size: 13px;
           font-weight: 500;
           letter-spacing: 0.04em;
-          color: #4a4a4a; /* slight gray instead of pure black */
+          color: #2f2f2f;
           margin-top: 14px;
           text-transform: uppercase;
           transition: color 0.22s ease;
@@ -240,7 +217,6 @@ const LogoSlider = () => {
         }
 
         .seller-stat-number {
-          font-family: "DM Serif Display", serif;
           font-size: 1.4rem;
           font-weight: 400;
           color: #111;
@@ -248,10 +224,9 @@ const LogoSlider = () => {
         }
 
         .seller-stat-label {
-          font-family: "DM Sans", sans-serif;
           font-size: 11px;
           font-weight: 300;
-          color: #999;
+          color: #666;
           letter-spacing: 0.05em;
           text-transform: uppercase;
         }
@@ -307,7 +282,8 @@ const LogoSlider = () => {
               >
                 <img
                   src={vendor.logo}
-                  alt={vendor.name || vendor.slug}
+                  alt=""
+                  aria-hidden="true"
                   title={vendor.name || vendor.slug}
                   className="seller-logo-img"
                 />

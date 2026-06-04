@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -178,35 +178,6 @@ const WishlistProducts = () => {
   const decreaseQty = () =>
     setQuantity((prev) => (prev > MIN_LIMIT ? prev - 1 : MIN_LIMIT));
 
-  const toggleWishlistState = (slug) => {
-    setWishlist((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
-    );
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-        delayChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.35,
-        ease: "easeOut",
-      },
-    },
-  };
-
   const handleVariantChange = (productId, variant) => {
     setSelectedVariants((prev) => ({
       ...prev,
@@ -215,73 +186,44 @@ const WishlistProducts = () => {
   };
 
   const renderTitleSection = (title) => (
-    <motion.div
-      className="relative mb-20 flex flex-col items-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+    <div className="relative mb-20 flex flex-col items-center">
       {/* Title container */}
       <div className="relative w-full text-center font-odop px-6 md:px-12 lg:px-20">
         {/* Background ghost text */}
-        <motion.h3
-          className="select-none pointer-events-none relative text-[14vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-        >
+        <h3 className="select-none pointer-events-none relative text-[14vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]">
           {t(title).split(" ")[0]}
-        </motion.h3>
+        </h3>
 
         {/* Foreground main title */}
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center px-4"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
+        <div className="absolute inset-0 flex items-center justify-center px-4">
           <h2 className="text-[28px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
             {t(title)}
           </h2>
-        </motion.div>
+        </div>
       </div>
 
       {/* View All link */}
-      <motion.a
+      <a
         href="/products"
         title="Browse All Products"
         className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.4 }}
       >
         <span className="relative">
           View All Products
           <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
         </span>
-        <motion.span
-          className="inline-block text-[14px]"
-          whileHover={{ x: 4 }}
-          transition={{ duration: 0.3 }}
-        >
-          →
-        </motion.span>
-      </motion.a>
-    </motion.div>
+        <span className="inline-block text-[14px]">→</span>
+      </a>
+    </div>
   );
 
   const renderProductCardSkeletons = (count = 6) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {Array.from({ length: count }).map((_, index) => (
+      {Array.from({ length: count }).map((_, i) => (
         <div
-          key={index}
-          className="rounded-lg p-4 shadow-sm bg-white animate-pulse"
-        >
-          <Skeleton height={180} />
-          <Skeleton height={20} style={{ marginTop: "1rem" }} />
-          <Skeleton height={20} width={"80%"} />
-          <Skeleton height={30} width={"60%"} style={{ marginTop: "1rem" }} />
-        </div>
+          key={i}
+          className="h-[260px] rounded-xl bg-gray-100 animate-pulse"
+        />
       ))}
     </div>
   );
@@ -344,12 +286,12 @@ const WishlistProducts = () => {
     const finalBasePrice = Number(product.price) + variantExtra;
 
     return (
-      <motion.div
+      <div
         key={product.id}
-        variants={itemVariants}
-        whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
         className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full font-odop ${
-          isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
+          isOutOfStock
+            ? "bg-gray-50 cursor-not-allowed"
+            : "bg-white hover:scale-[1.01] transition-transform duration-200"
         } ${extraWrapperClass}`}
       >
         {/* Out of Stock Overlay */}
@@ -673,7 +615,7 @@ const WishlistProducts = () => {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   };
 
@@ -696,15 +638,9 @@ const WishlistProducts = () => {
     if (!isSlider) {
       // normal grid
       return (
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "0px 0px -100px 0px" }}
-          variants={containerVariants}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
-        >
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {products.map((product) => renderProductCard(product))}
-        </motion.div>
+        </div>
       );
     }
 
@@ -722,11 +658,7 @@ const WishlistProducts = () => {
         </button>
 
         {/* PRODUCT SLIDER */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "0px 0px -100px 0px" }}
-          variants={containerVariants}
+        <div
           ref={sliderRef}
           className="overflow-x-auto scrollbar-hide px-1 md:px-12"
         >
@@ -738,7 +670,7 @@ const WishlistProducts = () => {
               ),
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* RIGHT ARROW (desktop) */}
         <button
@@ -794,28 +726,15 @@ const WishlistProducts = () => {
       {/* Quick View Modal */}
       <AnimatePresence>
         {quickViewProduct && (
-          <motion.div
+          <div
             key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-4 md:py-0 overflow-y-auto"
             onClick={(e) =>
               e.target === e.currentTarget && setQuickViewProduct(null)
             }
           >
-            <motion.div
+            <div
               key="modal"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{
-                duration: 0.25,
-                type: "spring",
-                stiffness: 300,
-                damping: 20,
-              }}
               className="relative w-full max-w-5xl rounded-3xl p-4 md:p-10 shadow-2xl bg-white backdrop-blur-xl border border-white/20 my-auto"
               ref={modalRef}
             >
@@ -831,28 +750,24 @@ const WishlistProducts = () => {
                 <div className="order-1 md:order-none">
                   <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-none group">
                     {(mainImage || quickViewProduct.image) && (
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={mainImage || quickViewProduct.image}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="absolute inset-0"
-                        >
-                          <Image
-                            src={getImageSrc(
-                              mainImage || quickViewProduct.image,
-                            )}
-                            alt={quickViewProduct.name || "Image not found!"}
-                            title={quickViewProduct.name || "Image not found!"}
-                            fill
-                            priority
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                            className="object-contain"
-                          />
-                        </motion.div>
-                      </AnimatePresence>
+                      <div
+                        key={mainImage || quickViewProduct.image}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={getImageSrc(mainImage || quickViewProduct.image)}
+                          alt={quickViewProduct.name || "Image not found!"}
+                          title={quickViewProduct.name || "Image not found!"}
+                          fill
+                          priority
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          className="object-contain"
+                        />
+                      </div>
                     )}
                   </div>
 
@@ -1442,8 +1357,8 @@ const WishlistProducts = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
 
         {isCartOpen && (

@@ -2,15 +2,25 @@
 
 import dynamic from "next/dynamic";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import LoaderWrapper from "../Loader/LoaderWrapper";
-import Navbar from "./Navbar";
 import { useEffect } from "react";
 import "../../i18n";
-import NewFooter from "./New-Footer";
-import FloatingWhatsAppButton from "../FloatingWhatsAppButton";
+import Navbar from "./Navbar";
 
-// 💡 Lazy load heavy UI chunks
+// ✅ ADD — alongside your other dynamic() calls
+// const Navbar = dynamic(() => import("./Navbar"), {
+//   ssr: true,
+//   loading: () => <div style={{ height: "64px" }} />,
+// });
+
+const FloatingWhatsAppButton = dynamic(
+  () => import("../FloatingWhatsAppButton"),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
+
 const MobileBottomBar = dynamic(() => import("../MobileBottomBar"), {
   ssr: false,
   loading: () => null,
@@ -20,13 +30,40 @@ const FlashSaleOffer = dynamic(() => import("../FlashSaleOffer"), {
   loading: () => null,
 });
 const ConditionalFooter = dynamic(() => import("./ConditionalFooter"), {
-  ssr: false,
+  ssr: true,
   loading: () => null,
 });
 const TranslationProvider = dynamic(() => import("@/app/TranslationProvider"), {
-  ssr: false,
+  ssr: true,
   loading: () => null,
 });
+
+// ✅ NEW: Lazy-load Toastify CSS after interaction
+function LazyToastifyCSS() {
+  useEffect(() => {
+    const loadToastCSS = () => {
+      if (document.querySelector("#toastify-css")) return;
+      const link = document.createElement("link");
+      link.id = "toastify-css";
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdn.jsdelivr.net/npm/react-toastify@11/dist/ReactToastify.min.css";
+      document.head.appendChild(link);
+    };
+
+    window.addEventListener("scroll", loadToastCSS, { once: true });
+    window.addEventListener("mousemove", loadToastCSS, { once: true });
+    window.addEventListener("touchstart", loadToastCSS, { once: true });
+
+    return () => {
+      window.removeEventListener("scroll", loadToastCSS);
+      window.removeEventListener("mousemove", loadToastCSS);
+      window.removeEventListener("touchstart", loadToastCSS);
+    };
+  }, []);
+
+  return null;
+}
 
 // 🚀 Fully optimized analytics loader
 function LazyAnalytics() {
@@ -85,15 +122,6 @@ function LazyAnalytics() {
         })(window, document, "script", "dataLayer", "GTM-TSWV69XP");
         console.log("✅ GTM Loaded after GA4");
       }, 1000);
-
-      // --- Facebook Pixel ---
-      // setTimeout(() => {
-      //   const fb = document.createElement("script");
-      //   fb.async = true;
-      //   fb.src = "https://connect.facebook.net/en_US/fbevents.js";
-      //   document.body.appendChild(fb);
-      //   console.log("✅ FB Pixel Loaded after GTM");
-      // }, 2000);
     };
 
     // 🖱️ Load only after user interaction
@@ -137,6 +165,7 @@ export default function ClientAppWrapper({ children }) {
       />
 
       <LazyAnalytics />
+      <LazyToastifyCSS />
     </LoaderWrapper>
   );
 }

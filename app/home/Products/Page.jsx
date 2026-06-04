@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -302,29 +302,6 @@ const FeaturedProducts = () => {
     );
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08, // faster stagger
-        delayChildren: 0.1, // shorter initial delay
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.35, // quicker fade + move
-        ease: "easeOut",
-      },
-    },
-  };
-
   const [selectedVariants, setSelectedVariants] = useState({});
 
   const handleVariantChange = (productId, variant) => {
@@ -400,61 +377,37 @@ const FeaturedProducts = () => {
     const btnLink = `/products/events/${slug}/${staticTail}`;
 
     return (
-      <motion.div
-        className="relative  flex flex-col items-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="relative flex flex-col items-center">
         <div className="relative mb-20 flex flex-col items-center">
           {/* Title container */}
           <div className="relative w-full text-center font-odop px-6 md:px-12 lg:px-20">
             {/* Background ghost text */}
-            <motion.h3
-              className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6 }}
-            >
+            <h3 className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]">
               {t(title).split(" ")[0]}
-            </motion.h3>
+            </h3>
 
             {/* Foreground main title */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center px-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-            >
+            <div className="absolute inset-0 flex items-center justify-center px-4">
               <h2 className="text-[26px] md:text-[36px] lg:text-[42px] font-semibold tracking-tight text-[#A00300] uppercase leading-tight">
                 {t(title)}
               </h2>
-            </motion.div>
+            </div>
           </div>
 
           {/* View All link */}
-          <motion.a
+          <a
             href={btnLink}
             title="Browse All Products"
             className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
           >
             <span className="relative">
               {t("View All Products")}
               <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
             </span>
-            <motion.span
-              className="inline-block text-[14px]"
-              whileHover={{ x: 4 }}
-              transition={{ duration: 0.3 }}
-            >
-              →
-            </motion.span>
-          </motion.a>
+            <span className="inline-block text-[14px]">→</span>
+          </a>
         </div>
-      </motion.div>
+      </div>
     );
   };
 
@@ -469,6 +422,7 @@ const FeaturedProducts = () => {
               setQuickViewProduct(product);
             }}
             className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-[#A00300] transition-colors group/mobile-quickview"
+            aria-label="Quick View"
           >
             <Eye className="text-gray-600 w-5 h-5 group-hover/mobile-quickview:text-white" />
           </button>
@@ -477,13 +431,7 @@ const FeaturedProducts = () => {
     };
 
     return (
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "0px 0px -100px 0px" }}
-        variants={containerVariants}
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-0 md:px-20"
-      >
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-0 md:px-20">
         {products.map((product) => {
           const now = new Date();
 
@@ -625,10 +573,8 @@ const FeaturedProducts = () => {
             : getImageSrc(product.image);
 
           return (
-            <motion.div
+            <div
               key={product.id}
-              variants={itemVariants}
-              whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
               className={`relative group rounded-3xl p-3 md:p-4 flex flex-col h-full font-odop ${
                 isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
               }`}
@@ -745,6 +691,7 @@ const FeaturedProducts = () => {
                           setQuantity(1);
                         }}
                         className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition hover:bg-[#A00300] group/quickview cursor-pointer pointer-events-auto"
+                        aria-label="Quick View"
                       >
                         <Eye className="text-gray-700 w-6 h-6 group-hover/quickview:text-white transition-colors" />
                       </button>
@@ -876,6 +823,7 @@ const FeaturedProducts = () => {
                     {variants.length > 0 && (
                       <div className="relative mt-2 font-odop w-[90px] md:w-[110px]">
                         <select
+                          aria-label="Select product variant"
                           value={selectedVariant?.id}
                           onChange={(e) => {
                             const v = variants.find(
@@ -923,10 +871,10 @@ const FeaturedProducts = () => {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
-      </motion.div>
+      </div>
     );
   };
 
@@ -1029,26 +977,10 @@ const FeaturedProducts = () => {
               {/* ===== Soft Organic Background Shapes ===== */}
               <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
                 {/* Right Organic Shape */}
-                <motion.div
-                  animate={{ y: [0, -40, 0], x: [0, 20, 0] }}
-                  transition={{
-                    duration: 18,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -right-40 top-20 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80"
-                />
+                <div className="absolute -right-40 top-20 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80" />
 
                 {/* Left Organic Shape */}
-                <motion.div
-                  animate={{ y: [0, 50, 0], x: [0, -25, 0] }}
-                  transition={{
-                    duration: 22,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -left-40 bottom-10 w-[350px] h-[350px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-70"
-                />
+                <div className="absolute -left-40 bottom-10 w-[350px] h-[350px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-70" />
 
                 {/* Very subtle brand tint wash */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white via-[#fff9f9] to-white opacity-70" />
@@ -1109,26 +1041,10 @@ const FeaturedProducts = () => {
                       <div className="absolute inset-0 -z-10 pointer-events-none">
                         {index % 2 === 0 ? (
                           /* RIGHT SIDE SHAPE */
-                          <motion.div
-                            animate={{ y: [0, -40, 0], x: [0, 20, 0] }}
-                            transition={{
-                              duration: 20,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                            }}
-                            className="absolute -right-40 top-10 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80"
-                          />
+                          <div className="absolute -right-40 top-10 w-[420px] h-[420px] rounded-[45%_55%_60%_40%/60%_40%_55%_45%] bg-[#F3E5E4] opacity-80" />
                         ) : (
                           /* LEFT SIDE SHAPE */
-                          <motion.div
-                            animate={{ y: [0, 50, 0], x: [0, -25, 0] }}
-                            transition={{
-                              duration: 22,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                            }}
-                            className="absolute -left-40 top-10 w-[420px] h-[420px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-80"
-                          />
+                          <div className="absolute -left-40 top-10 w-[420px] h-[420px] rounded-[60%_40%_45%_55%/50%_60%_40%_50%] bg-[#E8EDF9] opacity-80" />
                         )}
                       </div>
 
@@ -1149,28 +1065,14 @@ const FeaturedProducts = () => {
       {/* Quick View Modal */}
       <AnimatePresence>
         {quickViewProduct && (
-          <motion.div
+          <div
             key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-4 md:py-0 overflow-y-auto font-odop"
             onClick={(e) =>
               e.target === e.currentTarget && setQuickViewProduct(null)
             }
           >
-            <motion.div
-              key="modal"
-              initial={{ scale: 0.95, opacity: 0 }} // Less dramatic initial scale
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{
-                duration: 0.25, // Reduced from 0.35
-                type: "spring",
-                stiffness: 300, // Increased stiffness for snappier motion
-                damping: 20,
-              }}
+            <div
               className="relative w-full max-w-5xl rounded-3xl p-4 md:p-10 shadow-2xl bg-white backdrop-blur-xl border border-white/20 my-auto"
               ref={modalRef}
             >
@@ -1187,12 +1089,8 @@ const FeaturedProducts = () => {
                   <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-none group">
                     {(mainImage || quickViewProduct.image) && (
                       <AnimatePresence mode="wait">
-                        <motion.div
+                        <div
                           key={mainImage || quickViewProduct.image}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
                           className="absolute inset-0"
                         >
                           <Image
@@ -1206,7 +1104,7 @@ const FeaturedProducts = () => {
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                             className="object-contain"
                           />
-                        </motion.div>
+                        </div>
                       </AnimatePresence>
                     )}
                   </div>
@@ -1911,8 +1809,8 @@ const FeaturedProducts = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
 
         {isCartOpen && (

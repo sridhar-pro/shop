@@ -207,6 +207,7 @@ export function WobbleCardDemo() {
                         e.stopPropagation();
                         setIndex(index === 0 ? slides.length - 1 : index - 1);
                       }}
+                      aria-label="Previous slide"
                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-white text-[#A00300] rounded-full p-3 shadow-xl hover:scale-110 transition z-20"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -218,6 +219,7 @@ export function WobbleCardDemo() {
                         e.stopPropagation();
                         setIndex((index + 1) % slides.length);
                       }}
+                      aria-label="Next slide"
                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-white text-[#A00300] rounded-full p-3 shadow-xl hover:scale-110 transition z-20"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -256,9 +258,9 @@ export function WobbleCardDemo() {
 
                       {/* Content */}
                       <div className="flex flex-col justify-center">
-                        <h4 className="text-base font-semibold line-clamp-2 text-gray-900 group-hover:text-[#A00300] transition">
+                        <h3 className="text-base font-semibold line-clamp-2 text-gray-900 group-hover:text-[#A00300] transition">
                           {item.title}
-                        </h4>
+                        </h3>
                         <span className="text-sm font-medium text-[#A00300]">
                           View Product →
                         </span>

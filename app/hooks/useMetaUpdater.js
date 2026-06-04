@@ -11,6 +11,7 @@ export default function useMetaUpdater(meta) {
         title: meta?.title || meta?.name || "",
         description: meta?.description || "",
         image: meta?.image || "",
+        keywords: meta?.keywords || "",
         category_type: meta?.category_type || "website",
       };
     }
@@ -20,6 +21,7 @@ export default function useMetaUpdater(meta) {
       title: meta?.meta_title || "",
       description: meta?.meta_description || "",
       image: meta?.meta_image || "",
+      keywords: meta?.meta_keywords || "",
       category_type: meta?.category_type || "website",
     };
   };
@@ -52,6 +54,16 @@ export default function useMetaUpdater(meta) {
       document.head.appendChild(descTag);
     }
     descTag.setAttribute("content", resolvedMeta.description || "");
+
+    // ✅ Meta Keywords
+    let keywordsTag = document.querySelector("meta[name='keywords']");
+
+    if (!keywordsTag) {
+      keywordsTag = document.createElement("meta");
+      keywordsTag.setAttribute("name", "keywords");
+      document.head.appendChild(keywordsTag);
+    }
+    keywordsTag.setAttribute("content", resolvedMeta.keywords || "");
 
     // ✅ Build full image URL
     const imageUrl = getImageSrc(resolvedMeta.image);

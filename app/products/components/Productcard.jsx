@@ -249,12 +249,12 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
             </div>
           )}
 
-          <h3
+          <h2
             className="text-xs sm:text-sm md:text-base line-clamp-2 mb-1 capitalize"
             style={{ minHeight: "2.75rem" }}
           >
             {product.name}
-          </h3>
+          </h2>
 
           {/* 🔥 Variant Selector */}
           {product.product_variants?.length > 0 && (

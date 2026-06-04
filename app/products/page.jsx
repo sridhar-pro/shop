@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import AllProductsPage from "./AllProductsPage";
 
 export default function ProductsPage(props) {
@@ -19,7 +20,9 @@ export default function ProductsPage(props) {
         }}
       />
 
-      <AllProductsPage {...props} />
+      <Suspense fallback={null}>
+        <AllProductsPage {...props} />
+      </Suspense>
     </>
   );
 }

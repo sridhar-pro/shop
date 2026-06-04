@@ -1,6 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Wheel } from "react-custom-roulette";
+import dynamic from "next/dynamic";
+const Wheel = dynamic(
+  () => import("react-custom-roulette").then((mod) => mod.Wheel),
+  {
+    ssr: false,
+  },
+);
 import { X, Gift, Copy, RefreshCcw } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -145,6 +151,7 @@ const SpinnerWheel = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
+          aria-label="Spinwheel"
           className="flex fixed top-1/2 right-0 z-[100] transform -translate-y-1/2
     bg-gradient-to-b from-blue-800 via-red-700 to-[#ac0300]
     h-14 md:h-32 w-14 md:w-16 rounded-l-3xl flex-col items-center justify-center

@@ -121,32 +121,28 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
     let filteredActivities = filterActivities(activities);
 
     const scrollRef = useRef(null);
-    const stepRef = useRef(null);
     const [scrollIndex, setScrollIndex] = useState(0);
-    const [stepWidth, setStepWidth] = useState(0);
     const [maxIndex, setMaxIndex] = useState(0);
 
-    useEffect(() => {
-      if (stepRef.current) {
-        setStepWidth(stepRef.current.offsetWidth);
-      }
-    }, []);
+    const STEP_WIDTH = 176;
 
     useEffect(() => {
-      if (scrollRef.current && stepWidth > 0) {
+      if (scrollRef.current) {
         const visibleCount = Math.floor(
-          scrollRef.current.clientWidth / stepWidth,
+          scrollRef.current.clientWidth / STEP_WIDTH,
         );
+
         const maxSteps = filteredActivities.length - visibleCount;
+
         setMaxIndex(maxSteps > 0 ? maxSteps : 0);
       }
-    }, [stepWidth, filteredActivities.length]);
+    }, [STEP_WIDTH, filteredActivities.length]);
 
     const handleNext = () => {
       setScrollIndex((prev) => {
         const newIndex = Math.min(prev + 1, maxIndex);
         scrollRef.current.scrollTo({
-          left: newIndex * stepWidth + 8,
+          left: newIndex * STEP_WIDTH + 8,
           behavior: "smooth",
         });
         return newIndex;
@@ -157,7 +153,7 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
       setScrollIndex((prev) => {
         const newIndex = Math.max(prev - 1, 0);
         scrollRef.current.scrollTo({
-          left: newIndex * stepWidth,
+          left: newIndex * STEP_WIDTH,
           behavior: "smooth",
         });
         return newIndex;
@@ -316,7 +312,6 @@ const TrackingResult = ({ trackingData, showBackButton = true }) => {
             return (
               <div
                 key={i}
-                ref={i === 0 ? stepRef : null}
                 className={`flex flex-col items-center text-center relative ${isScrollable ? "flex-none w-44" : "flex-1"}`}
               >
                 {/* Connector line */}

@@ -1,5 +1,6 @@
 "use client";
-import { Sparkles, Flower2, Gift } from "lucide-react";
+import { Sparkles, Flower2, Gift, Truck } from "lucide-react";
+import Link from "next/link";
 
 function SectionHeader({ label, title, description }) {
   return (
@@ -119,267 +120,270 @@ function FestivalGiftingHeader() {
   );
 }
 
-function PuthanduSaleHeader() {
+function FathersDayHero() {
   return (
-    <div className="puthandu-root relative overflow-hidden px-0 py-2  mb-4">
-      <div className="px-2 mb-4">
-        <div className="relative w-full aspect-[520/600] md:h-auto md:aspect-[16/4] overflow-hidden rounded-2xl">
-          {/* 📱 Mobile Image */}
-          <img
-            src="/puthandu-image.jpeg"
-            alt="Puthandu Banner"
-            title="Puthandu Banner"
-            className="block md:hidden w-full h-full object-cover rounded-2xl"
-          />
+    <div className="relative overflow-hidden pb-4 grid grid-cols-[1fr_200px] items-center gap-0">
+      <style>{`
+        @keyframes fd-rise { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fd-slide-r { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes fd-shimmer { from{transform:translateX(-120%)} to{transform:translateX(220%)} }
+        @keyframes fd-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+        @keyframes fd-pulse-ring { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(1.55);opacity:0} }
+        @keyframes fd-line-in { from{transform:scaleX(0)} to{transform:scaleX(1)} }
 
-          {/* 💻 Desktop Video */}
-          <video
-            src="/puthandu-video.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="hidden md:block w-full h-full object-cover rounded-2xl"
-          />
-        </div>
+        .fd-a1 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .05s both }
+        .fd-a2 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .18s both }
+        .fd-a3 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .30s both }
+        .fd-a4 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .42s both }
+        .fd-a5 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .54s both }
+        .fd-a6 { animation: fd-rise .65s cubic-bezier(.22,1,.36,1) .64s both }
+        .fd-gift { animation: fd-float 3.4s ease-in-out infinite, fd-slide-r .7s cubic-bezier(.22,1,.36,1) .1s both }
 
-        {/* ✅ SCROLL INDICATOR (outside banner now) */}
-        <div className="flex flex-col items-center mt-3 animate-bounce">
-          <span className="text-[10px] tracking-[0.2em] text-[#b5460f]/70 uppercase">
-            Scroll
-          </span>
+        .fd-badge::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+          transform: translateX(-120%);
+          animation: fd-shimmer 3s infinite 1.2s;
+        }
+        .fd-live-dot::after {
+          content: ''; position: absolute; inset: 0; border-radius: 50%;
+          background: #A00300;
+          animation: fd-pulse-ring 1.6s ease-out infinite;
+        }
+        .fd-accent-line {
+          transform-origin: left;
+          animation: fd-line-in .5s cubic-bezier(.22,1,.36,1) .35s both;
+        }
+        .fd-btn-shimmer::after {
+          content: ''; position: absolute; inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+          transform: translateX(-120%);
+          animation: fd-shimmer 3.2s infinite 2s;
+        }
+      `}</style>
 
-          <svg
-            className="w-5 h-5 text-[#b5460f]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Kolam motif — background */}
-      <div className="absolute inset-0 pointer-events-none animate-fade-in mt-80">
+      {/* Faint background rings */}
+      <div
+        className="absolute top-0 right-0 w-60 h-full pointer-events-none overflow-hidden opacity-[0.035]"
+        aria-hidden="true"
+      >
         <svg
-          className="absolute right-0 top-1/2 -translate-y-1/2 w-72 h-72 opacity-[0.12]"
-          viewBox="0 0 300 300"
+          viewBox="0 0 240 380"
+          width="240"
           fill="none"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <g stroke="#b5460f" strokeWidth="1.2" fill="none">
-            <circle cx="150" cy="150" r="130" strokeDasharray="4 6" />
-            <circle cx="150" cy="150" r="110" />
-            <circle cx="150" cy="150" r="88" strokeDasharray="3 5" />
-            <circle cx="150" cy="150" r="66" />
-            <circle cx="150" cy="150" r="44" strokeDasharray="2 4" />
-            <circle cx="150" cy="150" r="22" />
-
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(0 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(45 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(90 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(135 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(180 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(225 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(270 150 150)"
-            />
-            <ellipse
-              cx="150"
-              cy="30"
-              rx="14"
-              ry="26"
-              transform="rotate(315 150 150)"
-            />
-
-            <polygon points="150,60 162,140 150,240 138,140" opacity="0.6" />
-            <polygon points="60,150 140,162 240,150 140,138" opacity="0.6" />
-            <polygon points="90,90 152,138 210,210 148,162" opacity="0.4" />
-            <polygon points="210,90 162,148 90,210 138,152" opacity="0.4" />
-
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(0 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(45 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(90 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(135 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(180 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(225 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(270 150 150)"
-            />
-            <circle
-              cx="150"
-              cy="20"
-              r="3"
-              fill="#b5460f"
-              transform="rotate(315 150 150)"
-            />
-
-            <circle cx="150" cy="150" r="8" fill="#c4520f" opacity="0.5" />
-            <circle cx="150" cy="150" r="4" fill="#b5460f" />
-          </g>
-        </svg>
-
-        {/* dot grid — bottom left */}
-        <svg
-          className="absolute left-0 bottom-0 w-32 h-24 opacity-[0.18]"
-          viewBox="0 0 120 80"
-          fill="none"
-        >
-          <g fill="#c4520f">
-            <circle cx="10" cy="10" r="4" />
-            <circle cx="30" cy="10" r="4" />
-            <circle cx="50" cy="10" r="4" />
-            <circle cx="10" cy="30" r="4" />
-            <circle cx="30" cy="30" r="4" />
-            <circle cx="50" cy="30" r="4" />
-            <circle cx="70" cy="30" r="4" />
-            <circle cx="10" cy="50" r="4" />
-            <circle cx="30" cy="50" r="4" />
-            <circle cx="50" cy="50" r="4" />
-            <circle cx="70" cy="50" r="4" />
-            <circle cx="90" cy="50" r="4" />
-            <circle cx="30" cy="70" r="4" />
-            <circle cx="50" cy="70" r="4" />
-            <circle cx="70" cy="70" r="4" />
-          </g>
+          <circle cx="120" cy="190" r="160" stroke="#0a0a1a" strokeWidth="1" />
+          <circle
+            cx="120"
+            cy="190"
+            r="120"
+            stroke="#0a0a1a"
+            strokeWidth="1"
+            strokeDasharray="6 8"
+          />
+          <circle cx="120" cy="190" r="80" stroke="#0a0a1a" strokeWidth="1" />
+          <circle
+            cx="120"
+            cy="190"
+            r="40"
+            stroke="#0a0a1a"
+            strokeWidth="1"
+            strokeDasharray="3 5"
+          />
         </svg>
       </div>
 
-      {/* Label pill */}
-      <div className="inline-flex items-center gap-3 mb-5 animate-rise-1 px-2">
-        <span className="relative overflow-hidden text-[11px] font-medium tracking-[0.14em] uppercase text-[#b5460f] bg-gradient-to-br from-[#fde9d0] to-[#fbd5a0] border border-[#f4b860]/25 px-4 py-1.5 rounded-full">
-          <span className="relative z-10">Puthandu Sale</span>
-
-          {/* shimmer layer */}
-          <span className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-        </span>
-
-        <span className="flex items-center gap-1">
-          <span className="w-1 h-1 rounded-full bg-[#e07b2a] opacity-40 animate-pulse" />
-          <span className="w-1.5 h-1.5 rounded-full bg-[#e07b2a] opacity-70 animate-pulse delay-150" />
-          <span className="w-1 h-1 rounded-full bg-[#e07b2a] opacity-40 animate-pulse delay-300" />
-        </span>
-      </div>
-
-      {/* Title */}
-      <h2 className="font-serif text-[clamp(2rem,5vw,3.4rem)] font-semibold leading-tight text-[#1a0a00] mb-4 animate-rise-2 px-2">
-        Celebrate Tamil New Year
-        <br />
-        with <em className="italic text-[#A00300]">Yuukke</em>
-      </h2>
-
-      {/* Ornamental rule */}
-      <div className="flex items-center gap-3 mb-5 animate-expand-rule px-4">
-        <div className="h-0.5 w-14 bg-gradient-to-r from-[#c4520f] via-[#e8a24a] to-[#c4520f] rounded" />
-        <div className="w-1.5 h-1.5 rotate-45 bg-[#c4520f]" />
-        <div className="h-0.5 w-28 bg-gradient-to-r from-[#c4520f] via-[#e8a24a] to-[#c4520f] rounded" />
-        <div className="w-1.5 h-1.5 rotate-45 bg-[#c4520f]" />
-        <div className="h-0.5 w-10 bg-gradient-to-r from-[#c4520f] via-[#e8a24a] to-[#c4520f] rounded" />
-      </div>
-
-      {/* Description */}
-      <p className="text-[15px] font-light text-[#5a3a1a] leading-relaxed max-w-[480px] animate-rise-3 px-2">
-        Discover our most popular products, loved by thousands of happy
-        customers!
-      </p>
-
-      {/* Badges */}
-      {/* <div className="flex flex-wrap gap-2.5 mt-6 animate-rise-4">
-        {[
-          { icon: Sparkles, label: "Festive Specials" },
-          { icon: Flower2, label: "New Arrivals" },
-          { icon: Gift, label: "Gift Sets" },
-        ].map(({ icon: Icon, label }) => (
+      {/* ── Left: Copy ── */}
+      <div className="relative z-10 max-w-[680px]">
+        {/* Badge */}
+        <div
+          className="fd-badge fd-a1 inline-flex items-center gap-[7px] text-[11px] font-semibold tracking-[.13em] uppercase px-[13px] pl-[9px] py-[5px] rounded-full relative overflow-hidden"
+          style={{
+            background: "rgba(160,3,0,.08)",
+            border: "1px solid rgba(160,3,0,.2)",
+            color: "#A00300",
+          }}
+        >
           <span
-            key={label}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs text-[#7a3800] bg-[#fff8ef] border border-[#e8a24a]/30"
+            className="fd-live-dot w-[7px] h-[7px] rounded-full flex-shrink-0 relative"
+            style={{ background: "#A00300" }}
+          />
+          Father's Day Sale
+        </div>
+
+        {/* Headline */}
+        <div className="fd-a2 mt-[18px]">
+          {/* H1 */}
+          <h1
+            className="font-serif font-black leading-[1.06] tracking-[-0.028em] m-0"
+            style={{
+              fontSize: "clamp(1.9rem, 4.8vw, 3.1rem)",
+              color: "#0a0a1a",
+            }}
           >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </span>
-        ))}
-      </div> */}
+            Father's Day Gifts &amp; Hampers
+          </h1>
+
+          {/* H2 */}
+          <h2
+            className="font-serif font-semibold mt-[6px] m-0"
+            style={{
+              fontSize: "clamp(1.1rem, 2.8vw, 1.7rem)", // smaller than H1
+              color: "#A00300",
+              lineHeight: "1.2",
+            }}
+          >
+            For the Man who does it all
+          </h2>
+
+          <div className="flex items-center gap-[10px] mt-3 flex-wrap">
+            <span
+              className="text-[13px]"
+              style={{ color: "rgba(10,10,26,.3)" }}
+            >
+              —
+            </span>
+
+            <span
+              className="inline-flex items-baseline gap-[3px] text-[13px] font-semibold tracking-[.01em] rounded-[6px] px-2 py-[2px]"
+              style={{
+                color: "#A00300",
+                background: "rgba(160,3,0,.07)",
+              }}
+            >
+              From ₹200
+            </span>
+
+            <span
+              className="text-[13px]"
+              style={{ color: "rgba(10,10,26,.3)" }}
+            >
+              ·
+            </span>
+
+            {/* Highlighted Delivery */}
+            <span
+              className="inline-flex items-center gap-[6px] text-[13px] font-semibold rounded-full px-[10px] py-[5px]"
+              style={{
+                color: "#0F6D3A",
+                background: "rgba(15,109,58,.08)",
+                border: "1px solid rgba(15,109,58,.15)",
+              }}
+            >
+              <Truck size={14} strokeWidth={2.2} />
+              Delivery within 3 days
+            </span>
+          </div>
+        </div>
+
+        {/* Accent rule */}
+        <div className="fd-a3 mt-4">
+          <div
+            className="fd-accent-line h-[2px] w-12 rounded-sm"
+            style={{ background: "#A00300" }}
+          />
+        </div>
+
+        {/* CTAs */}
+        <div className="fd-a5 flex gap-[10px] flex-wrap mt-3">
+          <Link
+            href="https://gift.yuukke.com/own-hamper"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="fd-btn-shimmer relative inline-flex items-center justify-center overflow-hidden text-white text-[13px] font-semibold tracking-[.06em] uppercase px-[30px] py-[14px] rounded-full transition-all duration-[180ms]"
+            style={{ background: "#A00300" }}
+          >
+            Customize Your Own Hamper
+          </Link>
+          <button
+            className="bg-transparent text-[13px] font-medium tracking-[.06em] uppercase px-[28px] py-[13px] rounded-full cursor-pointer transition-all duration-[180ms]"
+            style={{
+              color: "#0a0a1a",
+              border: "1.5px solid rgba(10,10,26,.16)",
+            }}
+            onClick={() => {
+              window.scrollBy({
+                top: 500, // adjust scroll distance
+                behavior: "smooth",
+              });
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(10,10,26,.38)";
+              e.currentTarget.style.background = "rgba(10,10,26,.03)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(10,10,26,.16)";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            Explore Collections
+          </button>
+        </div>
+
+        {/* Trust chips */}
+        <div
+          className="fd-a6 flex items-center gap-2 flex-wrap mt-7 pt-5"
+          style={{ borderTop: "0.5px solid rgba(10,10,26,.08)" }}
+        >
+          {[
+            {
+              label: "Delivery in 3 days",
+              icon: (
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#A00300"
+                  strokeWidth="2.2"
+                  aria-hidden="true"
+                >
+                  <rect x="1" y="3" width="15" height="13" rx="1" />
+                  <path d="M16 8h4l3 5v4h-7V8z" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+              ),
+            },
+
+            {
+              label: "Starting ₹200",
+              icon: (
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#A00300"
+                  strokeWidth="2.2"
+                  aria-hidden="true"
+                >
+                  <path d="M9 14l2 2 4-4" />
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              ),
+            },
+          ].map(({ label, icon }) => (
+            <div
+              key={label}
+              className="flex items-center gap-2 px-[13px] py-[7px] rounded-full"
+              style={{
+                background: "rgba(10,10,26,.04)",
+                border: "0.5px solid rgba(10,10,26,.1)",
+              }}
+            >
+              {icon}
+              <span
+                className="text-[12px] font-medium"
+                style={{ color: "rgba(10,10,26,.55)" }}
+              >
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -606,7 +610,7 @@ export default function PageSectionHeader({
   // }
 
   if (isWomensday) {
-    return <PuthanduSaleHeader />;
+    return <FathersDayHero />;
   }
 
   if (isEOY) {

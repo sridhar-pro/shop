@@ -37,20 +37,6 @@ const CREAM = "#fdf8f5";
 const INK = "#1a0a08";
 
 /* ─────────────────────────────────────────────────────────────
-   FONT LOADER
-───────────────────────────────────────────────────────────── */
-function FontLoader() {
-  useEffect(() => {
-    const l = document.createElement("link");
-    l.rel = "stylesheet";
-    l.href =
-      "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=Cinzel:wght@400;600;900&display=swap";
-    document.head.appendChild(l);
-  }, []);
-  return null;
-}
-
-/* ─────────────────────────────────────────────────────────────
    CURSOR GLOW
 ───────────────────────────────────────────────────────────── */
 function CursorGlow() {
@@ -379,7 +365,7 @@ function IntroSection() {
         />
         <span
           className="mx-4 text-xs tracking-[0.4em] uppercase"
-          style={{ color: B, fontFamily: "'Cinzel', serif" }}
+          style={{ color: B }}
         >
           Why Yuukke
         </span>
@@ -396,7 +382,7 @@ function IntroSection() {
         <div className="pr-0 lg:pr-16 flex flex-col justify-center">
           <motion.p
             className="text-[11px] font-semibold uppercase tracking-[0.4em] mb-4"
-            style={{ color: B, fontFamily: "'Cinzel', serif" }}
+            style={{ color: B }}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -542,7 +528,7 @@ function IntroSection() {
               <div>
                 <div
                   className="text-xs uppercase tracking-[0.25em] mb-1"
-                  style={{ color: B, fontFamily: "'Cinzel', serif" }}
+                  style={{ color: B }}
                 >
                   Bulk Orders Welcome
                 </div>
@@ -665,7 +651,7 @@ function CategoryCard({
           <div className="absolute top-6 left-6">
             <span
               className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-white"
-              style={{ background: B, fontFamily: "'Cinzel', serif" }}
+              style={{ background: B }}
             >
               {badge}
             </span>
@@ -824,7 +810,7 @@ function CategoriesSection() {
       <div className="text-center mb-16">
         <motion.p
           className="text-[11px] font-semibold uppercase tracking-[0.45em] mb-5"
-          style={{ color: B, fontFamily: "'Cinzel', serif" }}
+          style={{ color: B }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -895,7 +881,7 @@ function OfferSection() {
       <div className="relative z-10 max-w-4xl mx-auto text-center">
         <motion.p
           className="text-[11px] font-semibold uppercase tracking-[0.45em] mb-5"
-          style={{ color: BL, fontFamily: "'Cinzel', serif" }}
+          style={{ color: BL }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -943,10 +929,7 @@ function OfferSection() {
           transition={{ delay: 0.3 }}
         >
           <span className="text-7xl font-black text-white font-odop">30%</span>
-          <span
-            className="text-xs uppercase tracking-[0.4em] text-white/60"
-            style={{ fontFamily: "'Cinzel', serif" }}
-          >
+          <span className="text-xs uppercase tracking-[0.4em] text-white/60">
             Flat Off on All Bulk Orders
           </span>
           <div className="flex items-center gap-2 mt-2">
@@ -1025,7 +1008,7 @@ function PathCard({
           <div className="absolute top-6 left-6">
             <span
               className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-white"
-              style={{ background: B, fontFamily: "'Cinzel', serif" }}
+              style={{ background: B }}
             >
               {badge}
             </span>
@@ -1037,7 +1020,7 @@ function PathCard({
             <div className="w-5 h-px" style={{ background: B }} />
             <span
               className="text-[10px] font-semibold uppercase tracking-[0.35em]"
-              style={{ color: B, fontFamily: "'Cinzel', serif" }}
+              style={{ color: B }}
             >
               {label}
             </span>
@@ -1126,7 +1109,7 @@ function PathsSection() {
       <div className="text-center mb-16">
         <motion.p
           className="text-[11px] font-semibold uppercase tracking-[0.45em] mb-5"
-          style={{ color: B, fontFamily: "'Cinzel', serif" }}
+          style={{ color: B }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -1232,7 +1215,7 @@ function FinalCTA() {
         />
         <span
           className="mx-4 text-xs tracking-[0.4em] uppercase"
-          style={{ color: B, fontFamily: "'Cinzel', serif" }}
+          style={{ color: B }}
         >
           Get In Touch
         </span>
@@ -1248,7 +1231,7 @@ function FinalCTA() {
         <div>
           <motion.p
             className="text-[11px] font-semibold uppercase tracking-[0.4em] mb-4"
-            style={{ color: B, fontFamily: "'Cinzel', serif" }}
+            style={{ color: B }}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -1373,10 +1356,7 @@ function Footer() {
     <footer style={{ background: INK }} className="px-8 lg:px-20 py-14">
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
         <div>
-          <div
-            className="text-2xl font-black tracking-widest text-white mb-1"
-            style={{ fontFamily: "'Cinzel', serif" }}
-          >
+          <div className="text-2xl font-black tracking-widest text-white mb-1">
             YUUKKE
           </div>
           <div
@@ -1427,7 +1407,6 @@ function Footer() {
 export default function EOYLandingPage() {
   return (
     <>
-      <FontLoader />
       <CursorGlow />
       <main
         className="min-h-screen overflow-x-hidden"

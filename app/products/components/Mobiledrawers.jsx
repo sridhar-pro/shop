@@ -261,9 +261,9 @@ export function MobileFilterDrawer({
                     className="p-4 sm:p-2"
                   >
                     <div className="flex items-center gap-3 mb-6">
-                      <h3 className="text-lg font-bold text-black uppercase tracking-wide">
+                      <h2 className="text-lg font-bold text-black uppercase tracking-wide">
                         Categories
-                      </h3>
+                      </h2>
                     </div>
                     <div className="space-y-3">
                       {loadingCategories
@@ -561,7 +561,7 @@ export function MobileSortDrawer({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Sort By</h3>
+              <h2 className="text-lg font-bold">Sort By</h2>
               <button onClick={onClose}>
                 <XIcon className="w-6 h-6" />
               </button>

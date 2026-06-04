@@ -17,7 +17,6 @@ import { toast } from "react-toastify";
 
 /* ─── Inline styles & keyframes ─────────────────────────── */
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
 
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(18px); }
@@ -90,7 +89,6 @@ const globalStyles = `
     border: none;
     border-bottom: 1.5px solid #d4a0a0;
     outline: none;
-    font-family: 'DM Sans', sans-serif;
     font-size: .95rem;
     color: #1a1a1a;
     padding: 2px 0;

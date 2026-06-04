@@ -3,20 +3,33 @@
 import React, { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+
 import { motion, AnimatePresence } from "framer-motion";
+
 import { useAuth } from "@/app/utils/AuthContext";
-import { CheckCircle, XCircle } from "lucide-react";
+
+import {
+  CheckCircle,
+  XCircle,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+  Crown,
+} from "lucide-react";
+
 import { toast } from "react-toastify";
 
 const VerifyPhoneSection = () => {
   const [step, setStep] = useState("phone");
-  const [status, setStatus] = useState(null); // ✅ success | error | null
+  const [status, setStatus] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [serverOtp, setServerOtp] = useState(null);
+
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     firstname: "",
     lastname: "",
@@ -31,6 +44,7 @@ const VerifyPhoneSection = () => {
   const ensureAuthReady = () =>
     new Promise((resolve) => {
       if (isAuthReady) return resolve();
+
       const interval = setInterval(() => {
         if (isAuthReady) {
           clearInterval(interval);
@@ -42,10 +56,12 @@ const VerifyPhoneSection = () => {
   // 🧾 Send OTP
   const handleSendOtp = async () => {
     if (!phone) return toast.warning("Please enter your phone number");
+
     setLoading(true);
 
     try {
       await ensureAuthReady();
+
       const token = await getValidToken();
 
       const response = await fetch("/api/triggerotp-seller", {
@@ -54,39 +70,42 @@ const VerifyPhoneSection = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ phone: Number(phone) }),
+        body: JSON.stringify({
+          phone: Number(phone),
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok || data.status !== "success") {
-        // show server message if available
         toast.error(data.message || "Failed to send OTP");
+
         throw new Error(data.message || "Failed to send OTP");
       }
 
       setServerOtp(data.data?.otp);
+
       toast.success("OTP sent successfully!");
-      console.log("✅ OTP Triggered:", data.data?.otp);
+
       setStep("verify");
     } catch (err) {
-      console.error("❌ Error sending OTP:", err);
-      // toast only if it wasn’t already shown
-      if (!err.message.includes("Failed to send OTP")) {
-        toast.error(err.message || "Something went wrong.");
-      }
+      console.error(err);
+
+      toast.error(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Verify OTP — simplified version
+  // ✅ Verify OTP
   const handleVerifyOtp = async () => {
     if (!otp) return toast.warning("Please enter the OTP");
 
     setLoading(true);
+
     try {
       await ensureAuthReady();
+
       const token = await getValidToken();
 
       const response = await fetch("/api/verifyotp-seller", {
@@ -95,7 +114,10 @@ const VerifyPhoneSection = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ otp: Number(otp), phone: Number(phone) }),
+        body: JSON.stringify({
+          otp: Number(otp),
+          phone: Number(phone),
+        }),
       });
 
       const data = await response.json();
@@ -104,20 +126,22 @@ const VerifyPhoneSection = () => {
         throw new Error(data.message || "OTP verification failed");
       }
 
-      console.log("✅ OTP Verified via API");
       toast.success("OTP verified successfully!");
+
       setStep("form");
     } catch (err) {
-      console.error("❌ OTP verification failed:", err);
-      toast.error(err.message || "Invalid or expired OTP. Try again.");
+      console.error(err);
+
+      toast.error(err.message || "Invalid or expired OTP.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🧠 Handle field change
+  // 🧠 Handle input
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: name === "business_type" ? Number(value) : value,
@@ -240,7 +264,7 @@ const VerifyPhoneSection = () => {
       await loadRazorpay();
 
       const options = {
-        key: "rzp_live_lclCyKLWqjYCIJ", //rzp_test_Gnu8neTnUU656M //rzp_live_lclCyKLWqjYCIJ
+        key: "rzp_test_Gnu8neTnUU656M", //rzp_test_Gnu8neTnUU656M //rzp_live_lclCyKLWqjYCIJ
         amount: paymentInfo.amount,
         currency: paymentInfo.currency || "INR",
         name: "Yuukke Seller Registration",
@@ -339,156 +363,253 @@ const VerifyPhoneSection = () => {
       setStatus("error");
     }
   };
-
   return (
     <section
       id="verify-phone"
-      className="bg-gradient-to-b from-white to-gray-50 py-16 text-center"
+      className="relative overflow-hidden bg-[#fafafa] py-16 md:py-10"
     >
-      <div className="max-w-lg mx-auto px-4">
+      {/* Grid */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(#000930 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+
+      {/* Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-[radial-gradient(circle,_rgba(160,3,0,0.08),_transparent_70%)] pointer-events-none" />
+
+      <div className="relative z-10 max-w-xl mx-auto px-4">
+        {/* Heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-10"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#A00300]/10 shadow-sm mb-5">
+            <Sparkles size={14} className="text-[#A00300]" />
+
+            <span className="text-[11px] font-black uppercase tracking-[0.22em] text-[#A00300]">
+              Seller Registration
+            </span>
+          </div>
+
+          <h2
+            className="text-[36px] sm:text-[52px] leading-[1.05] font-black tracking-[-2px] text-[#000930]"
+            style={{ fontFamily: "'Georgia', serif" }}
+          >
+            Join the
+            <br />
+            <span className="text-[#A00300]">Yuukke Marketplace</span>
+          </h2>
+
+          <p className="mt-5 text-[#666680] leading-8 max-w-lg mx-auto">
+            Start selling your products through a premium women-powered
+            marketplace experience.
+          </p>
+
+          {/* Trust line */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-5 text-sm text-[#666]">
+            {/* Secure */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#A00300]/10 flex items-center justify-center">
+                <ShieldCheck size={15} className="text-[#A00300]" />
+              </div>
+
+              <span>Secure Verification</span>
+            </div>
+
+            <div className="w-1.5 h-1.5 rounded-full bg-[#d5d5df]" />
+
+            {/* Fast Approval */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#A00300]/10 flex items-center justify-center">
+                <Zap size={15} className="text-[#A00300]" />
+              </div>
+
+              <span>Fast Approval</span>
+            </div>
+
+            <div className="w-1.5 h-1.5 rounded-full bg-[#d5d5df]" />
+
+            {/* Premium */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#A00300]/10 flex items-center justify-center">
+                <Crown size={15} className="text-[#A00300]" />
+              </div>
+
+              <span>Premium Seller Access</span>
+            </div>
+          </div>
+        </motion.div>
+
         <AnimatePresence mode="wait">
-          {/* ✅ SUCCESS SCREEN */}
+          {/* SUCCESS */}
           {status === "success" && (
             <motion.div
               key="success"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
-              className="flex flex-col items-center bg-white shadow-lg rounded-2xl p-8"
+              className="bg-white/95 backdrop-blur-xl border border-white rounded-[34px] p-8 shadow-[0_15px_60px_rgba(0,9,48,0.08)] text-center"
             >
-              <CheckCircle className="text-green-500 w-16 h-16 mb-3" />
-              <h2 className="text-2xl font-bold text-gray-800">
-                Registration Successful!
-              </h2>
-              <p className="text-gray-600 mt-2">
-                {`${
-                  formData.business_type === 1
-                    ? "You’ve been registered as a free Yuukke seller!"
-                    : "Payment completed successfully. Welcome aboard!"
-                }`}
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+
+              <h3
+                className="text-3xl font-black text-[#000930]"
+                style={{ fontFamily: "'Georgia', serif" }}
+              >
+                Registration Successful
+              </h3>
+
+              <p className="mt-4 text-[#666680] leading-7">
+                Welcome to Yuukke Marketplace. Your seller account has been
+                created successfully.
               </p>
             </motion.div>
           )}
 
-          {/* ❌ FAILURE SCREEN */}
+          {/* ERROR */}
           {status === "error" && (
             <motion.div
               key="error"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
-              className="flex flex-col items-center bg-white shadow-lg rounded-2xl p-8"
+              className="bg-white/95 backdrop-blur-xl border border-white rounded-[34px] p-8 shadow-[0_15px_60px_rgba(0,9,48,0.08)] text-center"
             >
-              <XCircle className="text-red-500 w-16 h-16 mb-3" />
-              <h2 className="text-2xl font-bold text-gray-800">
-                {errorMsg?.toLowerCase().includes("payment")
-                  ? "Payment Failed"
-                  : "Registration Failed"}
-              </h2>
-              <p className="text-gray-600 mt-2 text-center">
-                {errorMsg ||
-                  "Something went wrong. Please try again or contact support."}
+              <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+
+              <h3
+                className="text-3xl font-black text-[#000930]"
+                style={{ fontFamily: "'Georgia', serif" }}
+              >
+                Registration Failed
+              </h3>
+
+              <p className="mt-4 text-[#666680] leading-7">
+                {errorMsg || "Something went wrong. Please try again later."}
               </p>
+
               <button
                 onClick={() => {
                   setStep("form");
                   setStatus(null);
                 }}
-                className="mt-4 bg-[#000F4D] text-white px-6 py-2 rounded-md hover:bg-[#001B80]"
+                className="mt-6 bg-[#A00300] hover:bg-[#870200] text-white px-7 py-3 rounded-2xl font-bold transition-all"
               >
                 Try Again
               </button>
             </motion.div>
           )}
 
-          {/* 🧩 EXISTING STEPS (phone → verify → form) */}
+          {/* STEPS */}
           {!status && (
             <>
+              {/* PHONE */}
               {step === "phone" && (
                 <motion.div
-                  key="phone-step"
-                  initial={{ opacity: 0, y: 20 }}
+                  key="phone"
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4 }}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.45 }}
+                  className="bg-white/95 backdrop-blur-xl border border-white rounded-[34px] p-5 sm:p-6 shadow-[0_15px_60px_rgba(0,9,48,0.08)]"
                 >
-                  <div className="flex items-center border border-[#000F4D] rounded-md px-3 py-1.5 w-full sm:w-auto bg-white shadow-sm">
-                    <PhoneInput
-                      country={"in"}
-                      value={phone}
-                      onChange={(value) => setPhone(value)}
-                      inputStyle={{
-                        border: "none",
-                        boxShadow: "none",
-                        width: "100%",
-                        fontSize: "14px",
-                      }}
-                      buttonStyle={{
-                        border: "none",
-                        background: "none",
-                      }}
-                      containerStyle={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                      placeholder="Phone No"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 border border-[#000930]/10 rounded-2xl px-4 py-2.5 bg-[#fafafa] focus-within:border-[#A00300]/30 transition-all">
+                      <PhoneInput
+                        country={"in"}
+                        value={phone}
+                        onChange={(value) => setPhone(value)}
+                        inputStyle={{
+                          border: "none",
+                          boxShadow: "none",
+                          width: "100%",
+                          background: "transparent",
+                          fontSize: "15px",
+                          color: "#000930",
+                        }}
+                        buttonStyle={{
+                          border: "none",
+                          background: "transparent",
+                        }}
+                        containerStyle={{
+                          width: "100%",
+                        }}
+                        dropdownStyle={{
+                          zIndex: 9999,
+                        }}
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleSendOtp}
+                      disabled={loading}
+                      className={`bg-[#A00300] hover:bg-[#870200] text-white font-bold px-8 py-4 rounded-2xl shadow-[0_10px_30px_rgba(160,3,0,0.25)] transition-all duration-300 hover:-translate-y-0.5 ${
+                        loading ? "opacity-70 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      {loading ? "SENDING..." : "SEND OTP"}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSendOtp}
-                    disabled={loading}
-                    className={`bg-[#000F4D] hover:bg-[#001B80] text-white font-bold text-sm px-6 py-3 rounded-md shadow-md transition-all ${
-                      loading ? "opacity-70 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {loading ? "SENDING..." : "SEND OTP"}
-                  </button>
                 </motion.div>
               )}
+
+              {/* VERIFY */}
               {step === "verify" && (
                 <motion.div
-                  key="verify-step"
-                  initial={{ opacity: 0, y: 20 }}
+                  key="verify"
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4 }}
-                  className="bg-white shadow-md rounded-2xl p-6 text-center space-y-5"
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.45 }}
+                  className="bg-white/95 backdrop-blur-xl border border-white rounded-[34px] p-7 sm:p-8 shadow-[0_15px_60px_rgba(0,9,48,0.08)] text-center"
                 >
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3
+                    className="text-3xl font-black text-[#000930]"
+                    style={{ fontFamily: "'Georgia', serif" }}
+                  >
                     Verify OTP
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    Enter the 6-digit code sent to your phone ending with{" "}
-                    <span className="font-medium">
-                      {phone.slice(-3).padStart(phone.length, "*")}
-                    </span>
+
+                  <p className="mt-4 text-[#666680] leading-7">
+                    Enter the verification code sent to your registered phone
+                    number.
                   </p>
+
                   <input
                     type="text"
                     maxLength={6}
                     value={otp}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (/^\d{0,6}$/.test(value)) setOtp(value);
+
+                      if (/^\d{0,6}$/.test(value)) {
+                        setOtp(value);
+                      }
                     }}
                     placeholder="Enter OTP"
-                    className="w-full border border-gray-300 rounded-md px-4 py-2 text-center tracking-widest"
+                    className="w-full mt-7 border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-4 text-center tracking-[0.4em] text-lg font-semibold outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)] transition-all"
                   />
-                  <div className="flex justify-between items-center">
+
+                  <div className="flex justify-between items-center mt-6">
                     <button
                       onClick={() => setStep("phone")}
-                      className="text-sm text-gray-500 hover:underline"
+                      className="text-sm text-[#666680] hover:text-[#A00300] transition-all"
                     >
                       Change Number
                     </button>
+
                     <button
                       onClick={handleVerifyOtp}
                       disabled={loading}
-                      className={`bg-[#000F4D] hover:bg-[#001B80] text-white font-bold px-6 py-2 rounded-md transition-all ${
+                      className={`bg-[#A00300] hover:bg-[#870200] text-white font-bold px-7 py-3 rounded-2xl transition-all ${
                         loading ? "opacity-70 cursor-not-allowed" : ""
                       }`}
                     >
@@ -497,20 +618,26 @@ const VerifyPhoneSection = () => {
                   </div>
                 </motion.div>
               )}
+
+              {/* FORM */}
               {step === "form" && (
                 <motion.form
                   key="form"
                   onSubmit={handleSubmit}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="bg-white shadow-md rounded-2xl p-6 text-left space-y-4"
+                  transition={{ duration: 0.45 }}
+                  className="bg-white/95 backdrop-blur-xl border border-white rounded-[34px] p-6 sm:p-8 shadow-[0_15px_60px_rgba(0,9,48,0.08)] space-y-5"
                 >
-                  <h3 className="text-xl font-semibold text-center mb-4">
-                    Complete Your Registration
+                  <h3
+                    className="text-3xl font-black text-center text-[#000930]"
+                    style={{ fontFamily: "'Georgia', serif" }}
+                  >
+                    Complete Registration
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <input
                       type="text"
                       name="firstname"
@@ -518,8 +645,9 @@ const VerifyPhoneSection = () => {
                       value={formData.firstname}
                       onChange={handleChange}
                       required
-                      className="border border-gray-300 rounded-md px-4 py-2"
+                      className="border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                     />
+
                     <input
                       type="text"
                       name="lastname"
@@ -527,7 +655,7 @@ const VerifyPhoneSection = () => {
                       value={formData.lastname}
                       onChange={handleChange}
                       required
-                      className="border border-gray-300 rounded-md px-4 py-2"
+                      className="border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                     />
                   </div>
 
@@ -538,10 +666,9 @@ const VerifyPhoneSection = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full border border-gray-300 rounded-md px-4 py-2"
+                    className="w-full border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                   />
 
-                  {/* 🔑 Password Field */}
                   <input
                     type="password"
                     name="password"
@@ -549,10 +676,9 @@ const VerifyPhoneSection = () => {
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="w-full border border-gray-300 rounded-md px-4 py-2"
+                    className="w-full border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                   />
 
-                  {/* 🧠 Confirm Password (local state, not sent to backend) */}
                   <input
                     type="password"
                     placeholder="Confirm Password"
@@ -564,29 +690,26 @@ const VerifyPhoneSection = () => {
                       }))
                     }
                     required
-                    className={`w-full border rounded-md px-4 py-2 ${
-                      formData.confirmPassword &&
-                      formData.password !== formData.confirmPassword
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
+                    className="w-full border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                   />
 
                   <select
                     name="business_type"
                     value={formData.business_type}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-md px-4 py-2"
+                    className="w-full border border-[#000930]/10 bg-[#fafafa] rounded-2xl px-5 py-3.5 outline-none focus:border-[#A00300]/40 focus:shadow-[0_0_0_4px_rgba(160,3,0,0.08)]"
                   >
                     <option value={1}>Free</option>
+
                     <option value={2}>Verified</option>
+
                     <option value={3}>Premium</option>
                   </select>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#000F4D] hover:bg-[#001B80] text-white font-bold py-3 rounded-md"
+                    className="w-full bg-[#A00300] hover:bg-[#870200] text-white font-bold py-4 rounded-2xl shadow-[0_10px_30px_rgba(160,3,0,0.25)] transition-all duration-300 hover:-translate-y-0.5"
                   >
                     {loading ? "SUBMITTING..." : "SUBMIT"}
                   </button>
@@ -599,5 +722,4 @@ const VerifyPhoneSection = () => {
     </section>
   );
 };
-
 export default VerifyPhoneSection;

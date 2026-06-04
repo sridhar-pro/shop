@@ -18,14 +18,25 @@ const nextConfig = {
   experimental: {
     optimizeCss: true, // speeds up CSS extraction
   },
-  // compiler: {
-  //   removeConsole: { exclude: ["error", "warn"] },
-  // },
+  compiler: {
+    removeConsole: { exclude: ["error", "warn"] },
+  },
   images: {
+    formats: ["image/avif", "image/webp"],
+
     remotePatterns: [
-      { protocol: "https", hostname: "marketplace.betalearnings.com" },
-      { protocol: "https", hostname: "marketplace.yuukke.com" },
-      { protocol: "https", hostname: "images.unsplash.com" },
+      {
+        protocol: "https",
+        hostname: "marketplace.betalearnings.com",
+      },
+      {
+        protocol: "https",
+        hostname: "marketplace.yuukke.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
   },
 

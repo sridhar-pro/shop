@@ -3,32 +3,16 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { useSession } from "../context/SessionContext"; // 👈 adjust path if needed
 
 const RECENTLY_VIEWED_KEY = "recentlyViewedProducts";
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-};
 
 const getImageSrc = (src) => src || "/placeholder-product.jpg";
 
 // 🔹 Title section (no i18n here, just plain text)
 const renderTitleSection = () => (
-  <motion.div
-    className="relative mb-10 flex flex-col items-center font-odop"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ duration: 0.5 }}
-  >
-    <motion.div
-      className="relative text-center mb-4"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, duration: 0.6 }}
-    >
+  <div className="relative mb-10 flex flex-col items-center font-odop">
+    <div className="relative text-center mb-4">
       {/* Background big faded text */}
       <h3 className="select-none pointer-events-none relative text-[18vw] md:text-[8vw] leading-none font-semibold uppercase text-[#A00300]/8 blur-[1px]">
         Viewed
@@ -40,30 +24,23 @@ const renderTitleSection = () => (
           Recently Viewed
         </span>
       </span>
-    </motion.div>
+    </div>
 
     {/* View All link */}
-    <motion.a
+    <a
       href="/products"
       title="Browse All Products"
       className="group relative mt-3 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-[#000d45]"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.4 }}
     >
       <span className="relative">
         View All Products
         <span className="absolute left-0 -bottom-1 h-[1px] w-full bg-[#000d45] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
       </span>
-      <motion.span
-        className="inline-block text-[14px]"
-        whileHover={{ x: 4 }}
-        transition={{ duration: 0.3 }}
-      >
+      <span className="inline-block text-[14px] transition-transform group-hover:translate-x-1">
         →
-      </motion.span>
-    </motion.a>
-  </motion.div>
+      </span>
+    </a>
+  </div>
 );
 
 const isPromoActive = (startDate, endDate) => {
@@ -160,14 +137,12 @@ export default function RecentlyViewedProducts() {
           }
 
           return (
-            <motion.div
+            <div
               key={product.id}
-              variants={itemVariants}
-              initial="hidden"
-              animate="visible"
-              whileHover={!isOutOfStock ? { scale: 1.01 } : {}}
               className={`relative group rounded-3xl p-3 md:p-6 flex flex-col h-full font-odop ${
-                isOutOfStock ? "bg-gray-50 cursor-not-allowed" : "bg-white"
+                isOutOfStock
+                  ? "bg-gray-50 cursor-not-allowed"
+                  : "bg-white hover:scale-[1.01] transition-transform duration-200"
               }`}
             >
               {/* Out of Stock Overlay */}
@@ -330,7 +305,7 @@ export default function RecentlyViewedProducts() {
                   </div>
                 </div> */}
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

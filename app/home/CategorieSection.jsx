@@ -46,7 +46,7 @@ const CategoriesSection = () => {
           name: cat.name,
           slug: cat.slug,
           offer: cat.offer_lable,
-          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${cat.image}`,
+          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${cat.image}`,
         }));
         setCategories(formatted);
         localStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
@@ -130,7 +130,7 @@ const CategoriesSection = () => {
             </div>
 
             <h1 className="text-5xl md:text-6xl font-serif text-[#1F1F1F] font-medium tracking-tight">
-              {t("Explore our")}{" "}
+              {t("Explore our")}
               <span translate="no">
                 <FlipWords className="text-[#A00300]" words={words} />
               </span>
@@ -196,21 +196,22 @@ const CategoriesSection = () => {
                   >
                     <div className="relative w-[160px] h-[160px] md:w-[210px] md:h-[200px] rounded-2xl bg-[#FDFBF7] border border-[#E6DED3] shadow-sm transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-md">
                       {cat.offer && (
-                        <span className="absolute top-3 right-3 text-[10px] md:text-[11px] px-2 py-1 rounded-full bg-[#A00300] text-white font-semibold tracking-wide">
+                        <span className="absolute top-3 right-3 text-[10px] md:text-[11px] px-2 py-1 rounded-full bg-[#A00300] text-white font-semibold tracking-wide z-20">
                           {cat.offer}
                         </span>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center p-6 md:p-8">
-                        <Image
-                          src={cat.image}
-                          alt=""
-                          aria-hidden="true"
-                          title={`${cat.name} Products on Yuukke`}
-                          width={140}
-                          height={140}
-                          className="object-contain"
-                          draggable={false}
-                        />
+                      <div className="absolute inset-0 flex items-center justify-center p-5 md:p-7">
+                        <div className="relative w-[120px] h-[120px] md:w-[155px] md:h-[155px]">
+                          <Image
+                            src={cat.image}
+                            alt={`${cat.name} category`}
+                            fill
+                            className="object-contain"
+                            draggable={false}
+                            sizes="(min-width: 768px) 155px, 120px"
+                            quality={90}
+                          />
+                        </div>
                       </div>
                     </div>
                     <h2 className="mt-4 text-center font-serif text-[13px] md:text-[15px] text-[#1F1F1F] group-hover:text-[#A00300] transition">

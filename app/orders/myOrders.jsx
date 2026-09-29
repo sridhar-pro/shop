@@ -360,8 +360,8 @@ const MyOrders = () => {
     selectedCancelItem && cancellingPackage[selectedCancelItem.packageIndex];
 
   return (
-    <div className="flex flex-1 overflow-auto">
-      <div className="flex h-full w-full flex-1 flex-col rounded-tl-2xl border border-neutral-200 bg-white p-4 md:p-10">
+    <div className="flex w-full flex-1 min-h-0 overflow-visible">
+      <div className="flex w-full min-w-0 flex-1 flex-col rounded-tl-2xl border border-neutral-200 bg-white p-4 md:p-10">
         <h2 className="text-xl font-bold mb-4 text-black">Orders Dashboard</h2>
 
         {/* Show orders table only if no order is viewed */}
@@ -716,213 +716,235 @@ const MyOrders = () => {
             )}
 
             {/* 📦 Packages / Products */}
-            {viewedOrder.seller_group.map((group, gIdx) => (
-              <div key={gIdx} className="mb-12">
-                {viewedOrder.seller_group.length > 1 && (
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                    Package {gIdx + 1}
-                  </h2>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {group.items.map((item) => {
-                    const isSubmitted = submittedProducts[item.product_id];
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="relative flex flex-col bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow p-4 group"
-                      >
-                        {/* Product Image */}
-                        <div className="w-full h-44 flex items-center justify-center overflow-hidden rounded-xl mb-4">
-                          <Image
-                            src={getImageSrc(item.image)}
-                            alt={item.product_name || "Product Image"}
-                            width={180}
-                            height={180}
-                            className="object-contain w-full h-full transition-transform group-hover:scale-105"
-                          />
+            <div className="w-full">
+              {viewedOrder.seller_group.map((group, gIdx) => (
+                <div key={gIdx} className="w-full mb-10 last:mb-0">
+                  {/* Package Header */}
+                  {viewedOrder.seller_group.length > 1 && (
+                    <div className="w-full mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center min-w-[42px] h-[42px] rounded-xl bg-[#A00300] text-white font-bold text-sm shadow-sm">
+                          {gIdx + 1}
                         </div>
 
-                        {/* Product Name */}
-                        <h3
-                          className="text-md font-semibold text-center text-gray-800 mb-2 line-clamp-2
-             min-h-[3rem]"
-                        >
-                          {item.product_name}
-                        </h3>
-                        {/* Price */}
-                        <div className="flex items-center justify-center gap-2 mb-3">
-                          <p className="text-lg font-bold text-[#A00300]">
-                            ₹{parseFloat(item.subtotal).toFixed(2)}
+                        <div>
+                          <h2 className="text-lg md:text-xl font-bold text-gray-900">
+                            Package {gIdx + 1}
+                          </h2>
+                          <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+                            {group.items?.length || 0}{" "}
+                            {group.items?.length === 1 ? "item" : "items"}
                           </p>
-                          <span className="text-sm text-gray-600">
-                            x {parseInt(item.quantity)}
-                          </span>
                         </div>
+                      </div>
+                    </div>
+                  )}
 
-                        {/* ⭐ Review Section */}
-                        {item.product_review === true && (
-                          <div className="mt-4 w-full border-t pt-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2 text-center">
-                              Share your experience
-                            </p>
+                  {/* Package Products */}
+                  <div className="w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
+                      {group.items.map((item) => {
+                        const isSubmitted = submittedProducts[item.product_id];
 
-                            {/* Stars */}
-                            <div className="flex justify-center gap-2 mb-3">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  disabled={isSubmitted}
-                                  onClick={() =>
-                                    setRating(item.product_id, star)
-                                  }
-                                >
-                                  <Star
-                                    className={`h-6 w-6 ${
-                                      star <=
-                                      (activeReview[item.product_id]
-                                        ?.product_ratings || 0)
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                </button>
-                              ))}
+                        return (
+                          <div
+                            key={item.id}
+                            className="relative flex flex-col w-full min-w-0 bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow p-4 group"
+                          >
+                            {/* Product Image */}
+                            <div className="w-full h-44 flex items-center justify-center overflow-hidden rounded-xl mb-4">
+                              <Image
+                                src={getImageSrc(item.image)}
+                                alt={item.product_name || "Product Image"}
+                                width={180}
+                                height={180}
+                                className="object-contain w-full h-full transition-transform group-hover:scale-105"
+                              />
                             </div>
 
-                            {/* Headline */}
-                            <input
-                              disabled={isSubmitted}
-                              type="text"
-                              placeholder="Headline (optional)"
-                              className="w-full mb-2 rounded-lg border px-3 py-2 text-xs disabled:bg-gray-100"
-                              onChange={(e) =>
-                                updateField(
-                                  item.product_id,
-                                  "headline",
-                                  e.target.value,
-                                )
-                              }
-                            />
+                            {/* Product Name */}
+                            <h3 className="text-md font-semibold text-center text-gray-800 mb-2 line-clamp-2 min-h-[3rem]">
+                              {item.product_name}
+                            </h3>
 
-                            {/* Review */}
-                            <textarea
-                              disabled={isSubmitted}
-                              rows={2}
-                              placeholder="Write your review (optional)"
-                              className="w-full mb-3 rounded-lg border px-3 py-2 text-xs resize-none disabled:bg-gray-100"
-                              onChange={(e) =>
-                                updateField(
-                                  item.product_id,
-                                  "written_review",
-                                  e.target.value,
-                                )
-                              }
-                            />
+                            {/* Price */}
+                            <div className="flex items-center justify-center gap-2 mb-3">
+                              <p className="text-lg font-bold text-[#A00300]">
+                                ₹{parseFloat(item.subtotal).toFixed(2)}
+                              </p>
 
-                            {/* Submit */}
-                            <button
-                              disabled={submittingReview || isSubmitted}
-                              onClick={() => submitReview(item)}
-                              className="w-full rounded-lg bg-black text-white py-2 text-xs font-semibold disabled:opacity-60"
-                            >
-                              {isSubmitted
-                                ? "Review Submitted ✓"
-                                : "Submit Review"}
-                            </button>
-                          </div>
-                        )}
+                              <span className="text-sm text-gray-600">
+                                x {parseInt(item.quantity)}
+                              </span>
+                            </div>
 
-                        {/* Hover Border */}
-                        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#A00300] pointer-events-none" />
-                      </div>
-                    );
-                  })}
-                </div>
+                            {/* ⭐ Review Section */}
+                            {item.product_review === true && (
+                              <div className="mt-4 w-full border-t pt-4">
+                                <p className="text-sm font-medium text-gray-700 mb-2 text-center">
+                                  Share your experience
+                                </p>
 
-                {/* Cancel (per package) */}
-                {group.cancelable && (
-                  <div className="mt-6">
-                    {group.cancelable.status === 1 && (
-                      <>
-                        {cancelledPackages[gIdx] ? (
-                          /* ✅ Successfully cancelled state */
-                          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed select-none">
-                            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                            <span className="text-sm font-medium">
-                              {cancelledPackages[gIdx]}
-                            </span>
-                          </div>
-                        ) : (
-                          /* 🔴 Cancel button */
-                          <button
-                            disabled={cancellingPackage[gIdx]}
-                            onClick={() => {
-                              setSelectedCancelItem({
-                                itemId: group.items[0]?.id,
-                                packageIndex: gIdx,
-                              });
-                              setShowCancelModal(true);
-                            }}
-                            className={`
-                              inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
-                              border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
-                              ${
-                                cancellingPackage[gIdx]
-                                  ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
-                                  : "bg-white border-red-300 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 hover:shadow-md active:scale-[0.98] focus:ring-red-400"
-                              }
-                            `}
-                          >
-                            {cancellingPackage[gIdx] ? (
-                              <>
-                                <svg
-                                  className="w-4 h-4 animate-spin text-gray-400"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
+                                {/* Stars */}
+                                <div className="flex justify-center gap-2 mb-3">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      disabled={isSubmitted}
+                                      onClick={() =>
+                                        setRating(item.product_id, star)
+                                      }
+                                    >
+                                      <Star
+                                        className={`h-6 w-6 ${
+                                          star <=
+                                          (activeReview[item.product_id]
+                                            ?.product_ratings || 0)
+                                            ? "fill-yellow-400 text-yellow-400"
+                                            : "text-gray-300"
+                                        }`}
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {/* Headline */}
+                                <input
+                                  disabled={isSubmitted}
+                                  type="text"
+                                  placeholder="Headline (optional)"
+                                  className="w-full mb-2 rounded-lg border px-3 py-2 text-xs disabled:bg-gray-100"
+                                  onChange={(e) =>
+                                    updateField(
+                                      item.product_id,
+                                      "headline",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+
+                                {/* Review */}
+                                <textarea
+                                  disabled={isSubmitted}
+                                  rows={2}
+                                  placeholder="Write your review (optional)"
+                                  className="w-full mb-3 rounded-lg border px-3 py-2 text-xs resize-none disabled:bg-gray-100"
+                                  onChange={(e) =>
+                                    updateField(
+                                      item.product_id,
+                                      "written_review",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+
+                                {/* Submit */}
+                                <button
+                                  disabled={submittingReview || isSubmitted}
+                                  onClick={() => submitReview(item)}
+                                  className="w-full rounded-lg bg-black text-white py-2 text-xs font-semibold disabled:opacity-60"
                                 >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  />
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8v8H4z"
-                                  />
-                                </svg>
-                                Cancelling...
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-4 h-4" />
-                                Cancel Order
-                              </>
+                                  {isSubmitted
+                                    ? "Review Submitted ✓"
+                                    : "Submit Review"}
+                                </button>
+                              </div>
                             )}
-                          </button>
-                        )}
-                      </>
-                    )}
 
-                    {group.cancelable.status === 2 && (
-                      <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-500 cursor-not-allowed select-none">
-                        <XCircle className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">
-                          {group.cancelable.message ||
-                            "Order already cancelled"}
-                        </span>
-                      </div>
-                    )}
+                            {/* Hover Border */}
+                            <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#A00300] pointer-events-none" />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Cancel Package */}
+                  {group.cancelable && (
+                    <div className="mt-6">
+                      {group.cancelable.status === 1 && (
+                        <>
+                          {cancelledPackages[gIdx] ? (
+                            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed select-none">
+                              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+
+                              <span className="text-sm font-medium">
+                                {cancelledPackages[gIdx]}
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              disabled={cancellingPackage[gIdx]}
+                              onClick={() => {
+                                setSelectedCancelItem({
+                                  itemId: group.items[0]?.id,
+                                  packageIndex: gIdx,
+                                });
+
+                                setShowCancelModal(true);
+                              }}
+                              className={`
+                    inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                    text-sm font-semibold border transition-all duration-200
+                    focus:outline-none focus:ring-2 focus:ring-offset-2
+                    ${
+                      cancellingPackage[gIdx]
+                        ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-white border-red-300 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 hover:shadow-md active:scale-[0.98] focus:ring-red-400"
+                    }
+                  `}
+                            >
+                              {cancellingPackage[gIdx] ? (
+                                <>
+                                  <svg
+                                    className="w-4 h-4 animate-spin text-gray-400"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    />
+
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8v8H4z"
+                                    />
+                                  </svg>
+                                  Cancelling...
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-4 h-4" />
+                                  Cancel Order
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      {group.cancelable.status === 2 && (
+                        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-500 cursor-not-allowed select-none">
+                          <XCircle className="w-4 h-4 shrink-0" />
+
+                          <span className="text-sm font-medium">
+                            {group.cancelable.message ||
+                              "Order already cancelled"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

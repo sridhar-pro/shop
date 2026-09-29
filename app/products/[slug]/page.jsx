@@ -1,25 +1,13 @@
 import { cache } from "react";
 import ProductPageClient from "./ProductPageClient";
 import ProductSchema from "./ProductSchema";
+import { getServerToken } from "@/app/utils/authServer";
 
 // Cached so generateMetadata + Page share one fetch
 const getProduct = cache(async (slug) => {
-  const baseUrl =
-    process.env.NODE_ENV === "production"
-      ? "https://shop.yuukke.com/"
-      : "http://localhost:3001";
-
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
-  const tokenRes = await fetch(`${baseUrl}/api/serverAuth`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-  });
-
-  const tokenData = await tokenRes.json();
-  const token = tokenData?.token;
-  if (!token) throw new Error("Failed to get auth token");
+  const token = await getServerToken();
 
   const res = await fetch(
     `https://marketplace.${DOMAIN_KEY}.com/api/v1/Marketv2/getProductDetails`,

@@ -59,7 +59,7 @@ const nextConfig = {
         destination: `${BASE_API}/homeCategory`,
       },
       {
-        source: "/api/quantityCheck",
+        source: "/api/getProductDetails",
         destination: `${BASE_API}/getProductDetails/`,
       },
       {
@@ -102,6 +102,10 @@ const nextConfig = {
       //   source: "/api/vendorlogo",
       //   destination: `${BASE_API}/vendorLogo`,
       // },
+      {
+        source: "/api/getProductsByImage",
+        destination: `${BASE_API}/getProductsByImage`,
+      },
       {
         source: "/api/getNews",
         destination: `${BASE_API}/getNews`,
@@ -248,16 +252,16 @@ const nextConfig = {
         destination: `${BASE_API}/enquiryDetails`,
       },
       {
-        source: "/api/triggerotp-seller",
+        source: "/api/seller_triggerotp",
         destination: `${BASE_API}/seller_triggerotp`,
       },
       {
-        source: "/api/verifyotp-seller",
+        source: "/api/seller_verifyotp",
         destination: `${BASE_API}/seller_verifyotp`,
       },
 
       {
-        source: "/api/seller-registration",
+        source: "/api/seller_registration",
         destination: `${BASE_API}/seller_registration`,
       },
       {
@@ -267,6 +271,10 @@ const nextConfig = {
       {
         source: "/api/delete_paymentseller",
         destination: `${BASE_API}/delete_paymentseller`,
+      },
+      {
+        source: "/api/seller_plan_update",
+        destination: `${BASE_API}/seller_plan_update`,
       },
       {
         source: "/api/history_save",

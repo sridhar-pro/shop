@@ -58,12 +58,19 @@ body {
    Utilities
 ========================= */
 
-@layer utilities {
+/* @layer utilities {
   .font-odop,
   .font-odop * {
     font-family:
       ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+  }
+} */
+
+@layer utilities {
+  .font-odop,
+  .font-odop * {
+    font-family: var(--font-hanken-grotesk), serif !important;
   }
 }
 
@@ -189,4 +196,68 @@ input:-webkit-autofill:active {
   overflow: hidden;
 
   text-overflow: ellipsis;
+}
+
+@keyframes badge-flash {
+  0% {
+    left: -3rem;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.animate-badge-flash {
+  animation: badge-flash 1.5s linear infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* The badge itself - fixed */
+.bogo-badge {
+  position: relative;
+  display: inline-block;
+  font-family: "Odop", sans-serif;
+  font-weight: 700; /* a bit bolder */
+  font-size: 0.875rem; /* increased font size (14px) */
+  padding: 6px 20px; /* wider horizontally */
+  border-radius: 8px; /* slightly rounder */
+  background-color: black;
+  color: white;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* The flash overlay */
+.bogo-flash {
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  animation: flash 1.5s linear infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes flash {
+  0% {
+    left: -50%;
+  }
+  100% {
+    left: 150%;
+  }
 }

@@ -268,6 +268,17 @@ export default function ProductPriceSection({
           </p>
         </div>
       </div>
+
+      {/* ODOP Product */}
+      {Number(product?.seller?.odop) === 1 && (
+        <div className="mt-4 hidden md:block">
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#fff7e6] border border-[#f5d58a]">
+            <span className="text-sm font-semibold text-[#8a5a00]">
+              ODOP Product
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

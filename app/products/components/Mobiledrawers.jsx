@@ -1,5 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import {
   ChevronDown as ChevronDownIcon,
   PackageCheck as PackageCheckIcon,
@@ -54,18 +55,17 @@ export function MobileFilterDrawer({
   onClose,
   categories,
   loadingCategories,
-  selectedCategory,
-  selectedSubcategory,
-  selectedSubSubcategory,
-  inStock,
-  priceRange,
+  selectedCategory: externalCategory,
+  selectedSubcategory: externalSubcategory,
+  selectedSubSubcategory: externalSubSubcategory,
+  inStock: externalInStock,
+  priceRange: externalPriceRange,
   setInStock,
   setPriceRange,
   setSelectedCategory,
   setSelectedSubcategory,
   setSelectedSubSubcategory,
   getCategoryName,
-  fetchProductsByCategory,
   setSortBy,
   setCurrentPage,
   updateUrl,
@@ -73,12 +73,84 @@ export function MobileFilterDrawer({
   sortBy,
   onApplyFilters,
 }) {
+  // ── Local draft state — isolated from parent until Apply is pressed ──
+  const [localCategory, setLocalCategory] = useState(externalCategory);
+  const [localSubcategory, setLocalSubcategory] = useState(externalSubcategory);
+  const [localSubSubcategory, setLocalSubSubcategory] = useState(
+    externalSubSubcategory,
+  );
+  const [localInStock, setLocalInStock] = useState(externalInStock);
+  const [localPriceRange, setLocalPriceRange] = useState(externalPriceRange);
+
+  // Sync from parent only when drawer opens (not on every prop tick)
+  useEffect(() => {
+    if (show) {
+      setLocalCategory(externalCategory);
+      setLocalSubcategory(externalSubcategory);
+      setLocalSubSubcategory(externalSubSubcategory);
+      setLocalInStock(externalInStock);
+      setLocalPriceRange(externalPriceRange);
+    }
+  }, [show]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const hasClearableFilter =
-    selectedCategory ||
-    selectedSubcategory ||
-    selectedSubSubcategory ||
-    inStock ||
-    priceRange !== 100000;
+    localCategory ||
+    localSubcategory ||
+    localSubSubcategory ||
+    localInStock ||
+    localPriceRange !== 100000;
+
+  const handleApply = () => {
+    // Push local draft → parent state
+    setSelectedCategory(localCategory);
+    setSelectedSubcategory(localSubcategory);
+    setSelectedSubSubcategory(localSubSubcategory);
+    setInStock(localInStock);
+    setPriceRange(localPriceRange);
+
+    onApplyFilters({
+      categoryId: localCategory ?? null,
+      subcategoryId: localSubcategory ?? null,
+      subSubcategoryId: localSubSubcategory ?? null,
+      sortValue: sortBy,
+      inStockValue: localInStock,
+      priceRangeVal: localPriceRange > 0 ? [0, localPriceRange] : [1, 100000],
+      query: "",
+      warehousesId: "",
+    });
+    onClose();
+  };
+
+  const handleClear = () => {
+    // Reset local draft
+    setLocalCategory(null);
+    setLocalSubcategory(null);
+    setLocalSubSubcategory(null);
+    setLocalInStock(false);
+    setLocalPriceRange(100000);
+
+    // Reset parent state
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+    setSelectedSubSubcategory(null);
+    setInStock(false);
+    setPriceRange(100000);
+    setCurrentPage(1);
+    updateUrl("/products");
+
+    // Fire fetch with clean snapshot — no separate setSortBy call
+    onApplyFilters({
+      categoryId: null,
+      subcategoryId: null,
+      subSubcategoryId: null,
+      sortValue: "1nto",
+      inStockValue: false,
+      priceRangeVal: [1, 100000],
+      query: "",
+      warehousesId: "",
+    });
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -87,7 +159,7 @@ export function MobileFilterDrawer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden bottom-16"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[100] lg:hidden bottom-16"
           onClick={onClose}
         >
           <motion.div
@@ -105,25 +177,23 @@ export function MobileFilterDrawer({
                     <FilterIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                     <span>Filters</span>
                   </div>
-                  {(selectedCategory ||
-                    selectedSubcategory ||
-                    selectedSubSubcategory) && (
+                  {(localCategory ||
+                    localSubcategory ||
+                    localSubSubcategory) && (
                     <div className="hidden sm:flex items-center gap-1">
-                      {selectedCategory && (
+                      {localCategory && (
                         <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs sm:text-sm font-medium truncate max-w-[10rem] sm:max-w-[15rem]">
-                          {getCategoryName(selectedCategory)}
+                          {getCategoryName(localCategory)}
                         </span>
                       )}
                     </div>
                   )}
                 </div>
-                {(selectedCategory ||
-                  selectedSubcategory ||
-                  selectedSubSubcategory) && (
+                {(localCategory || localSubcategory || localSubSubcategory) && (
                   <div className="sm:hidden flex items-center gap-1 mt-1">
-                    {selectedCategory && (
+                    {localCategory && (
                       <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs font-medium truncate max-w-[80vw]">
-                        {getCategoryName(selectedCategory)}
+                        {getCategoryName(localCategory)}
                       </span>
                     )}
                   </div>
@@ -136,26 +206,7 @@ export function MobileFilterDrawer({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.2 }}
-                      onClick={() => {
-                        setSelectedCategory(null);
-                        setSelectedSubcategory(null);
-                        setSelectedSubSubcategory(null);
-                        setInStock(false);
-                        setPriceRange(100000);
-                        setSortBy("1nto");
-                        setCurrentPage(1);
-                        updateUrl("/products");
-                        onApplyFilters({
-                          categoryId: null,
-                          subcategoryId: null,
-                          subSubcategoryId: null,
-                          sortValue: "1nto",
-                          inStockValue: false,
-                          priceRangeVal: [1, 100000],
-                          query: "",
-                          warehousesId: "",
-                        });
-                      }}
+                      onClick={handleClear}
                       className="flex items-center gap-1 mt-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                     >
                       <XIcon className="w-4 h-4" />
@@ -189,18 +240,18 @@ export function MobileFilterDrawer({
                     <div className="relative">
                       <input
                         type="checkbox"
-                        checked={inStock}
-                        onChange={(e) => setInStock(e.target.checked)}
+                        checked={localInStock}
+                        onChange={(e) => setLocalInStock(e.target.checked)}
                         className="sr-only"
                       />
                       <div
                         className={`w-10 h-6 flex items-center bg-gray-300 rounded-full p-1 transition-all ${
-                          inStock ? "bg-emerald-500" : ""
+                          localInStock ? "bg-emerald-500" : ""
                         }`}
                       >
                         <div
                           className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-all ${
-                            inStock ? "translate-x-4" : "translate-x-0"
+                            localInStock ? "translate-x-4" : "translate-x-0"
                           }`}
                         />
                       </div>
@@ -219,7 +270,7 @@ export function MobileFilterDrawer({
                       <div className="flex justify-between items-center text-sm text-gray-700 font-medium font-odop">
                         <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
                           <IndianRupeeIcon className="w-3.5 h-3.5" />
-                          {priceRange.toLocaleString()}
+                          {localPriceRange.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-500">
                           Max : ₹1,00,000
@@ -230,8 +281,10 @@ export function MobileFilterDrawer({
                         min="0"
                         max="100000"
                         step="100"
-                        value={priceRange}
-                        onChange={(e) => setPriceRange(Number(e.target.value))}
+                        value={localPriceRange}
+                        onChange={(e) =>
+                          setLocalPriceRange(Number(e.target.value))
+                        }
                         className="w-full h-1.5 bg-gray-300 rounded-full appearance-none cursor-pointer 
                           [&::-webkit-slider-thumb]:appearance-none
                           [&::-webkit-slider-thumb]:h-4
@@ -243,12 +296,6 @@ export function MobileFilterDrawer({
                           [&::-webkit-slider-thumb]:shadow-sm"
                       />
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => onApplyFilters()}
-                      className=""
-                    ></motion.button>
                   </div>
                 </div>
 
@@ -274,7 +321,7 @@ export function MobileFilterDrawer({
                             />
                           ))
                         : categories.map((cat, index) => {
-                            const isSelected = selectedCategory === cat.id;
+                            const isSelected = localCategory === cat.id;
                             return (
                               <motion.div
                                 key={cat.id}
@@ -292,25 +339,12 @@ export function MobileFilterDrawer({
                                   whileTap={{ scale: 0.98 }}
                                   onClick={() => {
                                     const isCatSelected =
-                                      selectedCategory === cat.id;
-                                    setSelectedCategory(
+                                      localCategory === cat.id;
+                                    setLocalCategory(
                                       isCatSelected ? null : cat.id,
                                     );
-                                    setSelectedSubcategory(null);
-                                    setSelectedSubSubcategory(null);
-                                    onApplyFilters({
-                                      categoryId: isCatSelected ? null : cat.id,
-                                      subcategoryId: null,
-                                      subSubcategoryId: null,
-                                      sortValue: sortBy,
-                                      inStockValue: inStock,
-                                      priceRangeVal:
-                                        priceRange > 0
-                                          ? [0, priceRange]
-                                          : [1, 100000],
-                                      query: "",
-                                      warehousesId: "",
-                                    });
+                                    setLocalSubcategory(null);
+                                    setLocalSubSubcategory(null);
                                   }}
                                   className={`flex items-center justify-between w-full px-1 py-1 text-sm font-medium transition-colors duration-300 group ${
                                     isSelected
@@ -352,7 +386,7 @@ export function MobileFilterDrawer({
                                         {cat.subcategories.map(
                                           (sub, subIndex) => {
                                             const isSubSelected =
-                                              selectedSubcategory === sub.id;
+                                              localSubcategory === sub.id;
                                             return (
                                               <div key={sub.id}>
                                                 <motion.button
@@ -366,29 +400,14 @@ export function MobileFilterDrawer({
                                                   }}
                                                   onClick={() => {
                                                     const isSubSel =
-                                                      selectedSubcategory ===
+                                                      localSubcategory ===
                                                       sub.id;
-                                                    setSelectedSubcategory(
+                                                    setLocalSubcategory(
                                                       isSubSel ? null : sub.id,
                                                     );
-                                                    setSelectedSubSubcategory(
+                                                    setLocalSubSubcategory(
                                                       null,
                                                     );
-                                                    onApplyFilters({
-                                                      categoryId: cat.id,
-                                                      subcategoryId: isSubSel
-                                                        ? null
-                                                        : sub.id,
-                                                      subSubcategoryId: null,
-                                                      sortValue: sortBy,
-                                                      inStockValue: inStock,
-                                                      priceRangeVal:
-                                                        priceRange > 0
-                                                          ? [0, priceRange]
-                                                          : [1, 100000],
-                                                      query: "",
-                                                      warehousesId: "",
-                                                    });
                                                   }}
                                                   className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
                                                     isSubSelected
@@ -439,7 +458,7 @@ export function MobileFilterDrawer({
                                                         {sub.sub_subcategories.map(
                                                           (subsub) => {
                                                             const isSubSubSelected =
-                                                              selectedSubSubcategory ===
+                                                              localSubSubcategory ===
                                                               subsub.id;
                                                             return (
                                                               <motion.button
@@ -450,41 +469,11 @@ export function MobileFilterDrawer({
                                                                 whileTap={{
                                                                   scale: 0.99,
                                                                 }}
-                                                                onClick={() => {
-                                                                  setSelectedSubSubcategory(
+                                                                onClick={() =>
+                                                                  setLocalSubSubcategory(
                                                                     subsub.id,
-                                                                  );
-                                                                  onApplyFilters(
-                                                                    {
-                                                                      categoryId:
-                                                                        selectedCategory ??
-                                                                        null,
-                                                                      subcategoryId:
-                                                                        selectedSubcategory ??
-                                                                        null,
-                                                                      subSubcategoryId:
-                                                                        subsub.id,
-                                                                      sortValue:
-                                                                        sortBy,
-                                                                      inStockValue:
-                                                                        inStock,
-                                                                      priceRangeVal:
-                                                                        priceRange >
-                                                                        0
-                                                                          ? [
-                                                                              0,
-                                                                              priceRange,
-                                                                            ]
-                                                                          : [
-                                                                              1,
-                                                                              100000,
-                                                                            ],
-                                                                      query: "",
-                                                                      warehousesId:
-                                                                        "",
-                                                                    },
-                                                                  );
-                                                                }}
+                                                                  )
+                                                                }
                                                                 className={`flex items-center gap-2 w-full text-left text-sm transition-colors duration-200 ${
                                                                   isSubSubSelected
                                                                     ? "text-black font-medium"
@@ -522,7 +511,7 @@ export function MobileFilterDrawer({
 
             <div className="sticky bottom-0 pt-4">
               <button
-                onClick={onClose}
+                onClick={handleApply}
                 className="w-full bg-black text-white py-3 rounded-lg font-medium"
               >
                 Apply Filters

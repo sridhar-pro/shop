@@ -152,15 +152,19 @@ const SpinnerWheel = () => {
         <button
           onClick={() => setIsOpen(true)}
           aria-label="Spinwheel"
-          className="flex fixed top-1/2 right-0 z-[100] transform -translate-y-1/2
-    bg-gradient-to-b from-blue-800 via-red-700 to-[#ac0300]
-    h-14 md:h-32 w-14 md:w-16 rounded-l-3xl flex-col items-center justify-center
-    shadow-2xl hover:scale-105 transition-transform duration-300"
+          className="fixed left-0 bottom-1/4 md:bottom-1/5 z-[90]
+      flex h-14 w-14 -translate-y-1/2
+      flex-col items-center justify-center
+      rounded-r-3xl
+      bg-gradient-to-b from-blue-800 via-red-700 to-[#ac0300]
+      shadow-2xl
+      transition-transform duration-300
+      hover:scale-105
+      md:h-32 md:w-16"
         >
-          <Gift size={28} className="text-white mb-2" />
+          <Gift size={28} className="mb-2 text-white" />
         </button>
       )}
-
       {/* Overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
@@ -292,7 +296,7 @@ const SpinnerWheel = () => {
                         )}
 
                         {/* Gradient Text version */}
-                        <span className="bg-gradient-to-r from-blue-800 to-[#a00300] bg-clip-text text-transparent text-4xl font-bold mb-4">
+                        <span className="bg-gradient-to-r from-blue-800 to-[#a00300] bg-clip-text text-transparent text-3xl md:text-4xl font-bold mb-4">
                           <ColourfulText text={winningCoupon.coupon_desc} />
                         </span>
 

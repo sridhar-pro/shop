@@ -216,6 +216,11 @@ export default function CheckoutPage({ formData }) {
   useEffect(() => {
     fetchSummary();
 
+    // ✅ Fire InitiateCheckout when user lands on checkout
+    import("@/app/lib/trackEvent").then(({ trackEvent }) => {
+      trackEvent({ eventName: "InitiateCheckout" });
+    });
+
     const handleCartUpdate = () => fetchSummary();
     window.addEventListener("cart-updated", handleCartUpdate);
 
@@ -408,6 +413,26 @@ export default function CheckoutPage({ formData }) {
   useEffect(() => {
     if (paymentSuccess) {
       window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // ✅ Fire Purchase event to Meta CAPI
+      import("@/app/lib/trackEvent").then(({ trackEvent }) => {
+        const savedName = localStorage.getItem("checkout_name") || "";
+        const savedEmail = localStorage.getItem("checkout_email") || "";
+        const savedContact = localStorage.getItem("checkout_contact") || "";
+
+        trackEvent({
+          eventName: "Purchase",
+          userEmail: savedEmail,
+          userPhone: savedContact,
+          customData: {
+            value: total,
+            currency: "INR",
+            orderId: idordered?.toString() || "",
+            contentIds: cartItems.map((item) => item.product_id?.toString()),
+            contentType: "product",
+          },
+        });
+      });
 
       const notifyBackend = async () => {
         const storedOrder = JSON.parse(localStorage.getItem("order_id_data"));
@@ -1139,9 +1164,10 @@ export default function CheckoutPage({ formData }) {
                         marginBottom: 8,
                       }}
                     >
-                      <span>Item cost</span>
+                      <span>Item cost (incl. tax)</span>
                       <span>₹{subtotal.toFixed(2)}</span>
                     </div>
+
                     <div
                       style={{
                         display: "flex",
@@ -1151,9 +1177,10 @@ export default function CheckoutPage({ formData }) {
                         marginBottom: 8,
                       }}
                     >
-                      <span>Tax</span>
+                      <span>Tax (included in price)</span>
                       <span>₹{tax.toFixed(2)}</span>
                     </div>
+
                     <div
                       style={{
                         display: "flex",
@@ -1166,16 +1193,15 @@ export default function CheckoutPage({ formData }) {
                       <span>Shipping</span>
                       <span
                         style={
-                          success_shipping === 0
+                          shipping === 0
                             ? { color: "#15803d", fontWeight: 500 }
                             : {}
                         }
                       >
-                        {success_shipping === 0
-                          ? "Free"
-                          : `₹${success_shipping.toFixed(2)}`}
+                        {shipping === 0 ? "Free" : `₹${shipping.toFixed(2)}`}
                       </span>
                     </div>
+
                     <div
                       style={{
                         display: "flex",

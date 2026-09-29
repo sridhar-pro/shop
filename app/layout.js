@@ -1,6 +1,21 @@
 import "./globals.css";
 import ClientAppWrapper from "./components/Layout/ClientAppWrapper";
 import Providers from "./providers";
+import VisitorTracking from "./components/VisitorTracking";
+import { Fraunces, Hanken_Grotesk } from "next/font/google";
+import ClarityProvider from "./components/ClarityProvider";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-fraunces",
+});
+
+const hankenGrotesk = Hanken_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-hanken-grotesk",
+});
 
 export const metadata = {
   metadataBase: new URL("https://shop.yuukke.com"),
@@ -125,7 +140,7 @@ export default function RootLayout({ children }) {
 
         logo: {
           "@type": "ImageObject",
-          url: "https://shop.yuukke.com/new-logo.png",
+          url: "https://shop.yuukke.com/yuukke_logo.png",
         },
 
         description:
@@ -168,7 +183,10 @@ export default function RootLayout({ children }) {
   };
 
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${hankenGrotesk.variable}`}
+    >
       <head>
         {/* Google Search Console Verification */}
         <meta
@@ -187,6 +205,9 @@ export default function RootLayout({ children }) {
       </head>
 
       <body className="antialiased">
+        <VisitorTracking />
+        <ClarityProvider />
+
         <Providers>
           <ClientAppWrapper>{children}</ClientAppWrapper>
         </Providers>

@@ -1,12 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ShoppingCart,
   CreditCard,
-  ChevronDown,
   MapPin,
   X,
   XCircle,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -66,53 +68,165 @@ export default function ProductActions({
     setPhone("");
   };
 
+  // ── Quantity stepper derived values ────────────────────────────────────────
+  const minQty =
+    Number(product?.minimum_order_limit) === 1
+      ? Number(product?.minimum_order_qty) || 1
+      : 1;
+
+  const availableQty =
+    product.variants?.length > 0 && selectedVariants?.[product.id]
+      ? Number(selectedVariants[product.id].variant_quantity || 0)
+      : Number(product.quantity) || 0;
+
+  const maxQty = availableQty > 0 ? availableQty : minQty;
+
+  const decrement = () => setQuantity((q) => Math.max(minQty, q - 1));
+  const increment = () => setQuantity((q) => Math.min(maxQty, q + 1));
+
+  const atMin = quantity <= minQty;
+  const atMax = quantity >= maxQty;
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // Delivery pincode popup
+  const deliveryAnchorRef = useRef(null);
+  const [popupPos, setPopupPos] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showPopup) return;
+
+    const POPUP_WIDTH = 288;
+
+    const updatePosition = () => {
+      const el = deliveryAnchorRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      let left = rect.right - POPUP_WIDTH;
+      if (left < 8) left = 8;
+      const maxLeft = window.innerWidth - POPUP_WIDTH - 8;
+      if (left > maxLeft) left = maxLeft;
+      setPopupPos({ top: rect.bottom + 8, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [showPopup]);
+
+  const pincodePopup = mounted
+    ? createPortal(
+        <AnimatePresence>
+          {showPopup && popupPos && (
+            <motion.div
+              key="pincode-popup"
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed bg-white border border-gray-300 shadow-lg rounded-lg p-4 w-72 font-odop origin-top-right"
+              style={{ top: popupPos.top, left: popupPos.left, zIndex: 9999 }}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-semibold text-gray-800">
+                  {t("Update Delivery Location")}
+                </h2>
+                <button onClick={handleClose}>
+                  <X className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                </button>
+              </div>
+              <input
+                type="text"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                maxLength={6}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#A00300]"
+                placeholder="Enter 6-digit pincode"
+              />
+              <button
+                onClick={handleSave}
+                className="mt-3 w-full bg-[#A00300] text-white text-sm font-semibold py-2 rounded-md hover:bg-[#880200] transition"
+              >
+                {t("Save")}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )
+    : null;
+
   return (
     <div className="space-y-6">
-      {/* Quantity Selector */}
-      <div className="flex items-center gap-3">
-        <span className="text-lg text-[#A00300] font-medium uppercase">
-          {t("Quantity")}:
+      {/* ── Quantity Stepper ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-[#A00300] font-semibold uppercase tracking-wide">
+          {t("Quantity")}
         </span>
-        <div className="relative w-24">
-          <select
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="appearance-none w-full py-1 px-3 pr-6 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#A00300] focus:border-[#A00300] bg-white cursor-pointer max-h-[200px] scrollbar-hide overflow-y-auto"
+
+        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+          {/* Decrement */}
+          <button
+            onClick={decrement}
+            disabled={atMin || isOutOfStock || isBlocked}
+            aria-label="Decrease quantity"
+            className={`
+              w-9 h-9 flex items-center justify-center transition-colors duration-150
+              ${
+                atMin || isOutOfStock || isBlocked
+                  ? "text-gray-300 bg-gray-50 cursor-not-allowed"
+                  : "text-[#A00300] bg-white hover:bg-[#A00300] hover:text-white active:bg-[#880200]"
+              }
+            `}
           >
-            {(() => {
-              const minQty =
-                Number(product?.minimum_order_limit) === 1
-                  ? Number(product?.minimum_order_qty) || 1
-                  : 1;
+            <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </button>
 
-              const availableQty =
-                product.variants?.length > 0 && selectedVariants?.[product.id]
-                  ? Number(selectedVariants[product.id].variant_quantity || 0)
-                  : Number(product.quantity) || 0;
+          {/* Value display */}
+          <div className="w-11 h-9 flex items-center justify-center border-x border-gray-200 bg-white select-none">
+            <span className="text-sm font-semibold text-gray-900 tabular-nums">
+              {quantity}
+            </span>
+          </div>
 
-              const maxQty = Math.min(
-                availableQty > 0 ? availableQty : minQty + 9,
-                minQty + 9,
-              );
-
-              return Array.from(
-                { length: maxQty - minQty + 1 },
-                (_, i) => minQty + i,
-              ).map((val) => (
-                <option
-                  key={val}
-                  value={val}
-                  disabled={val > availableQty && availableQty !== 0}
-                  className={val > availableQty ? "text-gray-400" : ""}
-                >
-                  {val}
-                </option>
-              ));
-            })()}
-          </select>
-          <ChevronDown className="w-3 h-3 absolute right-2 top-2.5 text-gray-400 pointer-events-none" />
+          {/* Increment */}
+          <button
+            onClick={increment}
+            disabled={atMax || isOutOfStock || isBlocked}
+            aria-label="Increase quantity"
+            className={`
+              w-9 h-9 flex items-center justify-center transition-colors duration-150
+              ${
+                atMax || isOutOfStock || isBlocked
+                  ? "text-gray-300 bg-gray-50 cursor-not-allowed"
+                  : "text-[#A00300] bg-white hover:bg-[#A00300] hover:text-white active:bg-[#880200]"
+              }
+            `}
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </button>
         </div>
+
+        {/* Low-stock indicator */}
+        {availableQty > 0 && availableQty <= 10 && !isOutOfStock && (
+          <span className="text-xs text-amber-600 font-medium">
+            Only {availableQty} left
+          </span>
+        )}
+        {isOutOfStock && (
+          <span className="text-xs text-red-500 font-medium">Out of stock</span>
+        )}
       </div>
+      {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* Action Buttons */}
       <div className="space-y-3">
@@ -270,10 +384,8 @@ export default function ProductActions({
               transition={{ type: "spring", stiffness: 160, damping: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Red top bar */}
               <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#A00300]" />
 
-              {/* Close button */}
               <button
                 onClick={handleModalClose}
                 className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 border border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-white transition"
@@ -291,7 +403,6 @@ export default function ProductActions({
                 We&apos;ll get back to you within 24 hours.
               </p>
 
-              {/* Name */}
               <label className="block text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1.5">
                 Full Name <span className="text-[#A00300]">*</span>
               </label>
@@ -314,7 +425,6 @@ export default function ProductActions({
               {name.trim() && <div className="mb-3" />}
               {name === "" && <div className="mb-3" />}
 
-              {/* Email & Phone side by side */}
               <div className="flex gap-3 mb-4">
                 <div className="flex-1">
                   <label className="block text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1.5">
@@ -365,7 +475,6 @@ export default function ProductActions({
                 </div>
               </div>
 
-              {/* Message */}
               <label className="block text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1.5">
                 Your Message <span className="text-[#A00300]">*</span>
               </label>
@@ -420,7 +529,7 @@ export default function ProductActions({
       </AnimatePresence>
 
       {/* Delivery Location */}
-      <div className="relative">
+      <div className="relative font-odop" ref={deliveryAnchorRef}>
         <div>
           <div className="text-sm text-gray-700 font-medium flex items-center justify-between">
             <span>{t("Delivery to")}</span>
@@ -440,33 +549,7 @@ export default function ProductActions({
             {city} {pincode}
           </p>
         </div>
-
-        {showPopup && (
-          <div className="absolute top-full mt-2 right-0 bg-white border border-gray-300 shadow-lg rounded-lg p-4 z-50 w-72">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-semibold text-gray-800">
-                {t("Update Delivery Location")}
-              </h2>
-              <button onClick={handleClose}>
-                <X className="w-4 h-4 text-gray-500 hover:text-gray-700" />
-              </button>
-            </div>
-            <input
-              type="text"
-              value={pincode}
-              onChange={(e) => setPincode(e.target.value)}
-              maxLength={6}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#A00300]"
-              placeholder="Enter 6-digit pincode"
-            />
-            <button
-              onClick={handleSave}
-              className="mt-3 w-full bg-[#A00300] text-white text-sm font-semibold py-2 rounded-md hover:bg-[#880200] transition"
-            >
-              {t("Save")}
-            </button>
-          </div>
-        )}
+        {pincodePopup}
       </div>
     </div>
   );

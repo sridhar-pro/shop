@@ -135,7 +135,7 @@ export default function CommonBlogPage({ slug }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
           {blog.title}
         </h1>
         <p className="text-lg text-gray-600 mb-8">{blog.description}</p>
@@ -152,13 +152,16 @@ export default function CommonBlogPage({ slug }) {
           />
         </div>
 
-        <p className="text-lg text-gray-600 mb-8">{blog.description}</p>
-
-        {/* Body */}
         <div
-          className="blog-content"
+          className="text-lg text-gray-600 mb-8 leading-8"
           dangerouslySetInnerHTML={{ __html: blog.content }}
         />
+
+        {/* Body */}
+        {/* <div
+          className="blog-content"
+          dangerouslySetInnerHTML={{ __html: blog.content }}
+        /> */}
       </article>
 
       {/* Right - sticky sidebar */}

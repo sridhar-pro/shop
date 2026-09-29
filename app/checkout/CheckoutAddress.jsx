@@ -19,6 +19,65 @@ import RazorpayButtonLogged from "./RazorpayButtonLogged";
 import Link from "next/link";
 import CashfreeButton from "./CashfreeButton";
 
+// ─── Premium Delete Confirmation Modal ─────────────────────────────────────────
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+      >
+        {/* Top accent bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-red-400 via-red-500 to-rose-500" />
+
+        <div className="px-8 pt-8 pb-7 text-center">
+          {/* Icon ring */}
+          <div className="mx-auto mb-5 w-14 h-14 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
+            <Trash2 className="w-6 h-6 text-red-500" />
+          </div>
+
+          <h3 className="text-[17px] font-bold text-gray-900 mb-1.5">
+            Remove this address?
+          </h3>
+          <p className="text-sm text-gray-500 leading-relaxed max-w-[220px] mx-auto">
+            This address will be permanently deleted and can't be recovered.
+          </p>
+
+          <div className="mt-7 flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Keep it
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-bold text-white shadow-sm shadow-red-200 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const CheckoutAddress = ({
   cartItems,
   subtotal,
@@ -74,30 +133,29 @@ const CheckoutAddress = ({
   );
   const [appliedCoupon, setAppliedCoupon] = useState("");
 
+  // ── Delete confirmation modal state ──────────────────────────────────────────
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+
   const [selectedAddressId, setSelectedAddressId] = useState(() => {
     const stored = localStorage.getItem("selectedAddressId");
-    // console.log("📦 Loaded selectedAddressId from localStorage:", stored);
     return stored ? JSON.parse(stored) : null;
   });
 
   const [selectedPhone, setSelectedPhone] = useState(() => {
     const stored = localStorage.getItem("selectedPhone");
-    // console.log("📦 Loaded selectedPhone from localStorage:", stored);
     return stored ? JSON.parse(stored) : null;
   });
 
   const [selectedPostalCode, setSelectedPostalCode] = useState(() => {
     const stored = localStorage.getItem("selectedPostalCode");
-    // console.log("📦 Loaded selectedPOstalCode from localStorage:", stored);
     return stored ? JSON.parse(stored) : null;
   });
 
   const handleSelectAddress = async (id) => {
-    // console.log("🟢 Address selected with ID:", id);
     setSelectedAddressId(id);
 
     const selected = addresses.find((addr) => addr.id === id);
-    // console.log("🎯 Selected address object:", selected);
 
     if (selected) {
       setSelectedAddress(selected);
@@ -110,12 +168,6 @@ const CheckoutAddress = ({
         "selectedPostalCode",
         JSON.stringify(selected.postal_code),
       );
-
-      // console.log("💾 Saved to localStorage:", {
-      //   selectedAddressId: id,
-      //   selectedPhone: selected.phone,
-      //   selectedPostalCode: selected.postal_code,
-      // });
 
       // ✅ Call Shipping API
       try {
@@ -158,7 +210,6 @@ const CheckoutAddress = ({
   };
 
   useEffect(() => {
-    // console.log("🔄 Addresses updated. Verifying stored selectedAddressId...");
     if (
       selectedAddressId &&
       !addresses.some((addr) => addr.id === selectedAddressId)
@@ -176,10 +227,6 @@ const CheckoutAddress = ({
       localStorage.removeItem("selectedAddressId");
       localStorage.removeItem("selectedPhone");
       localStorage.removeItem("selectedPostalCode");
-
-      // console.log(
-      //   "🧹 Cleared invalid selected address data from localStorage."
-      // );
     }
   }, [addresses, selectedAddressId]);
 
@@ -213,7 +260,6 @@ const CheckoutAddress = ({
 
   const { getValidToken, isAuthReady } = useAuth();
   const { companyId } = useSession();
-  //   console.log("Company ID 👉", companyId);
 
   // 🛡️ Helper: wait
   const wait = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -229,7 +275,7 @@ const CheckoutAddress = ({
       }
 
       if (attempt === 5) {
-        localStorage.removeItem("authToken"); // force refresh if token exists but junk
+        localStorage.removeItem("authToken");
       }
 
       await wait(delay);
@@ -253,7 +299,7 @@ const CheckoutAddress = ({
 
     if (res.status === 401 && !retry) {
       localStorage.removeItem("authToken");
-      return fetchWithAuth(url, options, true); // retry once silently
+      return fetchWithAuth(url, options, true);
     }
 
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -285,8 +331,8 @@ const CheckoutAddress = ({
     Number(val?.toString().replace(/[^0-9.-]+/g, "")) || 0;
 
   // 🔥 Limited-time hot deal config
-  const LIMITED_DEAL_CODE = "FLATY100"; // same as OrderSummary
-  const LIMITED_DEAL_DURATION = 600; // 10 minutes in seconds (or your value)
+  const LIMITED_DEAL_CODE = "FLATY100";
+  const LIMITED_DEAL_DURATION = 600;
 
   const [limitedDealApplied, setLimitedDealApplied] = useState(false);
   const [dealTimer, setDealTimer] = useState(LIMITED_DEAL_DURATION);
@@ -303,7 +349,6 @@ const CheckoutAddress = ({
     const finalCode = overrideCode || code;
     const trimmed = finalCode.trim();
 
-    // 🔹 Basic guard: no cart / no code
     if (!cartId || !trimmed) {
       setCouponMessage("");
       setIsApplied(false);
@@ -319,7 +364,6 @@ const CheckoutAddress = ({
     }
 
     try {
-      // 1️⃣ Apply coupon
       const applyResponse = await fetchWithAuth("/api/applyCoupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -342,7 +386,6 @@ const CheckoutAddress = ({
           console.warn("Error clearing coupon storage", e);
         }
 
-        // ✅ FORCE BACKEND SYNC (THIS WAS MISSING)
         try {
           const summaryResponse = await fetchWithAuth("/api/getTax", {
             method: "POST",
@@ -359,7 +402,6 @@ const CheckoutAddress = ({
 
           setCouponValue(newCouponValue);
 
-          // ✅ persist
           localStorage.setItem(
             "cart_tax_details",
             JSON.stringify({ cart_data: cartData }),
@@ -374,24 +416,20 @@ const CheckoutAddress = ({
           console.error("❌ Failed to sync after invalid coupon", err);
         }
 
-        // ✅ always refresh UI
         window.dispatchEvent(new Event("cart-updated"));
 
         return;
       }
 
-      // ✅ Success
       setCouponMessage("Discount applied successfully!");
       setIsApplied(true);
       setAppliedCoupon(trimmed);
 
       skipNextApplyRef.current = true;
 
-      // A normal coupon overrides any active hot deal
       setLimitedDealApplied(false);
       setDealTimer(0);
 
-      // ⭐ Normal coupon kills hot-deal expiry
       try {
         localStorage.removeItem("limited_deal_expiry");
       } catch (e) {
@@ -408,10 +446,8 @@ const CheckoutAddress = ({
         console.warn("Error persisting coupon storage", e);
       }
 
-      // Trigger global cart refresh (OrderSummary will pull latest totals)
       window.dispatchEvent(new Event("cart-updated"));
 
-      // 2️⃣ Fetch updated cart summary (tax, totals, items)
       const summaryResponse = await fetchWithAuth("/api/getTax", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -423,19 +459,16 @@ const CheckoutAddress = ({
 
       const appliedCoupon = cartData.coupon_id && cartData.coupon_id !== "0";
 
-      // Keep discount amount in sync
       setCouponValue(
         appliedCoupon ? parseCurrency(cartData.coupon_value || 0) : 0,
       );
 
       if (appliedCoupon) {
-        // Sync input with backend coupon id
         if (!overrideCode) {
           setCode(cartData.coupon_id);
         }
       }
 
-      // Persist full tax/summary snapshot
       try {
         localStorage.setItem(
           "cart_tax_details",
@@ -445,7 +478,6 @@ const CheckoutAddress = ({
         console.warn("Error saving cart_tax_details", e);
       }
 
-      // Notify any listeners relying on this snapshot
       window.dispatchEvent(
         new CustomEvent("local-storage-update", {
           detail: { key: "cart_tax_details" },
@@ -456,22 +488,15 @@ const CheckoutAddress = ({
       setCouponMessage("Failed to apply coupon. Try again.");
       setIsApplied(false);
     } finally {
-      isApplyingRef.current = false; // ✅ THIS is the correct place
+      isApplyingRef.current = false;
     }
   };
 
   const handleApplyOfferCode = (offerCode) => {
     if (!offerCode) return;
-
-    // ❌ don't touch input
-    // ❌ don't use setCode
-
-    handleApply(offerCode); // (if you already updated handleApply earlier)
+    handleApply(offerCode);
   };
 
-  // 🚀 Auto-apply limited-time hot deal (silent, invisible coupon)
-  //  - Triggers after 5 seconds (testing)
-  //  - Lasts for 2 minutes (120s) then removes itself
   const autoApplyLimitedDeal = async () => {
     const cartId = localStorage.getItem("cart_id");
     if (!cartId) return;
@@ -492,7 +517,6 @@ const CheckoutAddress = ({
         return;
       }
 
-      // Persist "seen once" + tracking of last coupon
       try {
         localStorage.setItem("limited_deal_applied_once", "1");
         localStorage.setItem("last_applied_coupon", LIMITED_DEAL_CODE);
@@ -500,11 +524,9 @@ const CheckoutAddress = ({
         console.warn("Could not persist limited-deal flag", e);
       }
 
-      // Mark local hot-deal state and start 2-minute countdown
       setLimitedDealApplied(true);
       setDealTimer(600);
 
-      // ⭐ Persist absolute expiry time for the countdown
       try {
         const expiresAt = Date.now() + LIMITED_DEAL_DURATION * 1000;
         localStorage.setItem("limited_deal_expiry", expiresAt.toString());
@@ -512,7 +534,6 @@ const CheckoutAddress = ({
         console.warn("Could not persist limited_deal_expiry", e);
       }
 
-      // Refresh cart summary so couponValue & totals are correct
       const summaryResponse = await fetchWithAuth("/api/getTax", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -539,14 +560,12 @@ const CheckoutAddress = ({
         );
       }
 
-      // Let other components (OrderSummary / header) refresh totals
       window.dispatchEvent(new Event("cart-updated"));
     } catch (err) {
       console.error("Failed to apply limited-time deal:", err);
     }
   };
 
-  // ⭐ Restore limited-deal timer from localStorage on mount
   useEffect(() => {
     try {
       const expiryRaw = localStorage.getItem("limited_deal_expiry");
@@ -562,7 +581,6 @@ const CheckoutAddress = ({
         setLimitedDealApplied(true);
         setDealTimer(remaining);
       } else {
-        // expired, clean up stale value
         localStorage.removeItem("limited_deal_expiry");
       }
     } catch (e) {
@@ -570,7 +588,6 @@ const CheckoutAddress = ({
     }
   }, []);
 
-  // 🧹 Remove hot deal when timer expires
   const removeLimitedDeal = async () => {
     const cartId = localStorage.getItem("cart_id");
     if (!cartId) return;
@@ -579,7 +596,7 @@ const CheckoutAddress = ({
       const res = await fetchWithAuth("/api/applyCoupon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cart_id: cartId, coupon_code: "0" }), // clear coupon server-side
+        body: JSON.stringify({ cart_id: cartId, coupon_code: "0" }),
       });
 
       const ok = res?.status === true || res?.success === true;
@@ -598,7 +615,6 @@ const CheckoutAddress = ({
         console.error("Failed to update last_applied_coupon on removal:", e);
       }
 
-      // ⭐ Clear stored expiry when deal is removed
       try {
         localStorage.removeItem("limited_deal_expiry");
       } catch (e) {
@@ -635,8 +651,6 @@ const CheckoutAddress = ({
     }
   };
 
-  // ⏰ Auto-apply hot deal after 5s (testing)
-  // Skips if user already applied a coupon or has seen the hot deal once
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -644,23 +658,18 @@ const CheckoutAddress = ({
         const limitedOnce =
           localStorage.getItem("limited_deal_applied_once") === "1";
 
-        // 🚫 HARD STOP: user already applied coupon manually
         if (manualCoupon) return;
-
-        // 🚫 HARD STOP: limited deal already used once
         if (limitedOnce) return;
 
-        // ✅ Safe to auto-apply
         autoApplyLimitedDeal();
       } catch (e) {
         console.warn("Auto deal check failed", e);
       }
-    }, 120000); // 2 minutes
+    }, 120000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  // ⏳ Deal countdown: 2 minutes total (120 seconds)
   useEffect(() => {
     if (!limitedDealApplied) return;
 
@@ -668,7 +677,6 @@ const CheckoutAddress = ({
       setDealTimer((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          // Fire and forget – do not await here
           removeLimitedDeal().catch((e) =>
             console.error("removeLimitedDeal failed", e),
           );
@@ -681,7 +689,6 @@ const CheckoutAddress = ({
     return () => clearInterval(interval);
   }, [limitedDealApplied]);
 
-  // 👇 Debounced live validation (same pattern everywhere)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -697,7 +704,6 @@ const CheckoutAddress = ({
       return;
     }
 
-    // ✅ prevent double call after success
     if (skipNextApplyRef.current) {
       skipNextApplyRef.current = false;
       return;
@@ -723,13 +729,9 @@ const CheckoutAddress = ({
         body: { cart_id: cartId },
       });
 
-      // ✅ existing
       setBogoOffers(response?.bogo_offers || []);
-
-      // ✅ NEW
       setOffers(response?.offers || []);
 
-      // ✅ sync applied coupon
       const applied = response?.cart_data?.coupon_id;
       if (applied && applied !== "0") {
         setAppliedCoupon(applied);
@@ -766,7 +768,7 @@ const CheckoutAddress = ({
   }
 
   const applyBogoOffer = async (bogoId) => {
-    if (applyingOffer || appliedOffers.includes(bogoId)) return; // prevent double click
+    if (applyingOffer || appliedOffers.includes(bogoId)) return;
 
     try {
       setApplyingOffer(true);
@@ -789,10 +791,8 @@ const CheckoutAddress = ({
 
       toast.success(data.message || "Offer applied successfully");
 
-      // ✅ mark this offer as applied
       setAppliedOffers((prev) => [...prev, bogoId]);
 
-      // ✅ refresh cart
       window.dispatchEvent(new Event("cart-updated"));
     } catch (error) {
       toast.error(error.message || "Something went wrong");
@@ -801,7 +801,6 @@ const CheckoutAddress = ({
     }
   };
 
-  // ✅ Use it inside fetchAddresses
   const fetchAddresses = async () => {
     try {
       setLoading(true);
@@ -812,12 +811,51 @@ const CheckoutAddress = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company_id: companyId }),
       });
-      // console.log("Address : ", data);
 
-      if (data.status) {
+      if (data.status && Array.isArray(data.data) && data.data.length > 0) {
         setAddresses(data.data);
+
+        // ✅ Auto-select first active address if none already selected
+        const storedId = localStorage.getItem("selectedAddressId");
+        if (!storedId) {
+          // Prefer active addresses first, fall back to any address
+          const firstActive = data.data.find((addr) => addr.active === "1");
+          const firstAny = data.data[0];
+          const firstToSelect = firstActive || firstAny;
+
+          if (firstToSelect) {
+            setSelectedAddressId(firstToSelect.id);
+            setSelectedAddress(firstToSelect);
+            setSelectedPhone(firstToSelect.phone);
+            setSelectedPostalCode(firstToSelect.postal_code);
+
+            localStorage.setItem(
+              "selectedAddressId",
+              JSON.stringify(firstToSelect.id),
+            );
+            localStorage.setItem(
+              "selectedPhone",
+              JSON.stringify(firstToSelect.phone),
+            );
+            localStorage.setItem(
+              "selectedPostalCode",
+              JSON.stringify(firstToSelect.postal_code),
+            );
+          }
+        }
       } else {
-        toast.error(data.message || "Failed to fetch addresses ❌");
+        setAddresses([]);
+        setSelectedAddressId(null);
+        setSelectedAddress(null);
+        setSelectedPhone(null);
+        setSelectedPostalCode(null);
+        localStorage.removeItem("selectedAddressId");
+        localStorage.removeItem("selectedPhone");
+        localStorage.removeItem("selectedPostalCode");
+        // Only toast if it's a real error, not a benign "no addresses" response
+        if (data.message && data.message !== "No addresses found") {
+          toast.error(data.message || "Failed to fetch addresses ❌");
+        }
       }
     } catch (error) {
       console.error("Addresses API Error ❌", error);
@@ -832,7 +870,6 @@ const CheckoutAddress = ({
   const activeAddresses = addresses.filter((addr) => addr.active === "1");
   const inactiveAddresses = addresses.filter((addr) => addr.active === "0");
 
-  // Handle edit button click
   const handleEditClick = (address) => {
     setSelectedAddress(address);
     setFormData({
@@ -848,7 +885,6 @@ const CheckoutAddress = ({
     setIsEditModalOpen(true);
   };
 
-  // Handle form field changes
   const handleChange = (e) => {
     let { name, value } = e.target;
 
@@ -857,15 +893,12 @@ const CheckoutAddress = ({
     }
 
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // remove error instantly when user types
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // Handle address update
   const handleUpdateAddress = async (e) => {
     e.preventDefault();
-    if (!validateAddressForm()) return; // ⛔ hard stop
+    if (!validateAddressForm()) return;
 
     try {
       const token = await getValidToken();
@@ -886,12 +919,14 @@ const CheckoutAddress = ({
       });
 
       const data = await res.json();
-      // console.log("Response edit address", data);
 
       if (res.ok && data.status) {
         toast.success("Address updated successfully ✅");
         setIsEditModalOpen(false);
-        fetchAddresses();
+        await fetchAddresses();
+        if (selectedAddressId === selectedAddress.id) {
+          handleSelectAddress(selectedAddress.id);
+        }
       } else {
         toast.error(data.message || "Failed to update address ❌");
       }
@@ -901,10 +936,9 @@ const CheckoutAddress = ({
     }
   };
 
-  // Handle add new address
   const handleAddAddress = async (e) => {
     e.preventDefault();
-    if (!validateAddressForm()) return; // ⛔ hard stop
+    if (!validateAddressForm()) return;
     try {
       const token = await getValidToken();
       const requestBody = {
@@ -923,7 +957,6 @@ const CheckoutAddress = ({
       });
 
       const data = await res.json();
-      // console.log("Response add address", data);
 
       if (res.ok && data.status) {
         toast.success("Address added successfully ✅");
@@ -983,125 +1016,63 @@ const CheckoutAddress = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle delete address
-  const handleDeleteAddress = async (id) => {
-    toast(
-      ({ closeToast }) => (
-        <div className="p-5 bg-white rounded-2xl shadow-xl border border-gray-200  w-80 text-center">
-          {/* Icon */}
-          <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-100 rounded-full mb-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-7 w-7 text-red-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </div>
+  // ── Delete: open modal instead of toast ──────────────────────────────────────
+  const handleDeleteAddress = (id) => {
+    setPendingDeleteId(id);
+    setDeleteModalOpen(true);
+  };
 
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-800  mb-1">
-            Delete Address?
-          </h3>
-          <p className="text-sm text-gray-500 mb-4">
-            This action cannot be undone.
-          </p>
+  const confirmDelete = async () => {
+    setDeleteModalOpen(false);
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
 
-          {/* Buttons */}
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => closeToast()}
-              className="px-5 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-            >
-              Cancel
-            </button>
+    try {
+      const token = await getValidToken();
+      const res = await fetch("/api/delete_address", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
 
-            <button
-              onClick={async () => {
-                try {
-                  const token = await getValidToken();
-                  const res = await fetch("/api/delete_address", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ id }),
-                  });
-
-                  const data = await res.json();
-                  if (res.ok && data.status) {
-                    toast.success("Address deleted successfully ", {
-                      position: "top-right",
-                    });
-                    fetchAddresses();
-                  } else {
-                    toast.error(data.message || "Failed to delete ❌");
-                  }
-                } catch (error) {
-                  console.error("Delete Address API Error ❌", error);
-                  toast.error("Something went wrong ❌");
-                } finally {
-                  closeToast();
-                }
-              }}
-              className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        position: "top-center",
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-        closeButton: false,
-        hideProgressBar: true,
-      },
-    );
+      const data = await res.json();
+      if (res.ok && data.status) {
+        toast.success("Address deleted successfully");
+        fetchAddresses();
+      } else {
+        toast.error(data.message || "Failed to delete ❌");
+      }
+    } catch (error) {
+      console.error("Delete Address API Error ❌", error);
+      toast.error("Something went wrong ❌");
+    }
   };
 
   const handleOrderAndPayLogged = async () => {
-    // 🚫 Prevent double click instantly
     if (processingRef.current) return;
 
     processingRef.current = true;
     setIsProcessing(true);
     try {
-      // console.log("🔄 Starting logged-in order creation process...");
-
-      // ✅ Check auth readiness
       if (!isAuthReady) {
         toast.error("Authentication not ready yet. Please try again.");
         console.warn("⚠️ Auth not ready: isAuthReady =", isAuthReady);
         return;
       }
 
-      // ✅ Get token
       const token = await getValidToken();
-      // console.log("🔑 Retrieved Token:", token);
 
-      // ✅ Get cart ID
       const cartId = localStorage.getItem("cart_id");
       if (!cartId) {
         toast.error("Please select products before proceeding!");
         console.error("Cart ID not found!");
         return;
       }
-      // console.log("🛒 Cart ID:", cartId);
 
-      // ✅ Get active address ID
       const activeAddresses = addresses.filter((addr) => addr.active === "1");
-      // console.log("📍 Active Addresses:", activeAddresses);
 
       if (!activeAddresses.length) {
         toast.error("Please select an active address before proceeding.");
@@ -1128,7 +1099,6 @@ const CheckoutAddress = ({
         console.warn("⚠️ Failed to read cart_summary_cache", e);
       }
 
-      // 🛟 fallback (keep your current logic)
       if (!couponToSend) {
         const rawLast =
           localStorage.getItem("last_applied_coupon") ||
@@ -1139,9 +1109,25 @@ const CheckoutAddress = ({
         }
       }
 
-      // console.log("🏠 Using Address ID:", addressId);
+      let affiliateCode = null;
 
-      // ✅ Prepare payload for logged-in users
+      try {
+        const affiliateRes = await fetch("/api/referral/current", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!affiliateRes.ok) {
+          throw new Error(`HTTP ${affiliateRes.status}`);
+        }
+
+        const affiliateData = await affiliateRes.json();
+
+        affiliateCode = affiliateData?.affiliate_code || null;
+      } catch (err) {
+        console.warn("Failed to fetch affiliate status:", err);
+      }
+
       const customerPayload = {
         customer: {
           id: 0,
@@ -1156,18 +1142,30 @@ const CheckoutAddress = ({
           postal_code: "",
           country: "India",
         },
-        company_id: companyId, // ✅ From useSession()
-        address_id: addressId, // ✅ From activeAddresses
-        cart_id: cartId, // ✅ From localStorage
+        company_id: companyId,
+        address_id: addressId,
+        cart_id: cartId,
         coupon_code: couponToSend,
+        ...(affiliateCode && { affiliate_code: affiliateCode }),
       };
+
+      // ✅ Fire AddPaymentInfo when logged-in user clicks Pay
+      const { trackEvent } = await import("@/app/lib/trackEvent");
+      trackEvent({
+        eventName: "AddPaymentInfo",
+        customData: {
+          value: total,
+          currency: "INR",
+          contentIds: cartItems.map((item) => item.product_id?.toString()),
+          contentType: "product",
+        },
+      });
 
       console.log(
         "📦 Payload being sent to /api/createOrder:",
         customerPayload,
       );
 
-      // ✅ API call
       const res = await fetch("/api/createOrder", {
         method: "POST",
         headers: {
@@ -1181,7 +1179,6 @@ const CheckoutAddress = ({
 
       console.log("📥 Raw API Response:", result);
 
-      // ✅ Check response status
       if (!res.ok) {
         console.error("❌ Error creating order:", result);
         throw new Error(result?.message || "Failed to create order.");
@@ -1191,13 +1188,11 @@ const CheckoutAddress = ({
 
       const paymentType = result?.type || "razorpay";
 
-      // 🔥 CASHFREE FLOW
       if (paymentType === "cashfree") {
         if (!result?.r_response?.payment_session_id) {
           throw new Error("Cashfree session missing");
         }
 
-        // ✅ 🔥 ADD THIS (MISSING PIECE)
         localStorage.setItem("order_id_data", JSON.stringify(result));
 
         window.dispatchEvent(
@@ -1216,28 +1211,23 @@ const CheckoutAddress = ({
           cashfreeRef.current?.click();
         }, 100);
 
-        return; // 🚨 IMPORTANT: stop here
+        return;
       }
 
-      // 🧾 Extract amount and order id
       const razorpayOrder = result?.r_response?.data;
       if (!razorpayOrder?.id || !razorpayOrder?.amount) {
         throw new Error("Razorpay order data missing from response");
       }
 
-      // ✅ Save to state for RazorpayButton
       setOrderDetails({
         sale_id: result.sale_id,
-        order_id: result.order_id, // your internal reference
-        r_order_id: razorpayOrder.id, // ✅ actual Razorpay order ID
+        order_id: result.order_id,
+        r_order_id: razorpayOrder.id,
         amount: razorpayOrder.amount,
       });
 
-      // 🧾 Save order data to localStorage
       localStorage.setItem("order_id_data", JSON.stringify(result));
-      // console.log("💾 Order ID stored in localStorage:", result?.order_id);
 
-      // 🔔 Dispatch event for other listeners
       window.dispatchEvent(
         new CustomEvent("orderIdDataUpdated", {
           detail: result?.order_id,
@@ -1247,11 +1237,6 @@ const CheckoutAddress = ({
       setTimeout(() => {
         razorRef.current?.click();
       }, 100);
-
-      // console.log(
-      //   "📢 Custom event 'orderIdDataUpdated' dispatched with:",
-      //   result?.order_id
-      // );
     } catch (err) {
       console.error("🚨 Logged-in Order creation error:", err);
       toast.error(
@@ -1274,13 +1259,15 @@ const CheckoutAddress = ({
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   };
 
-  // Combine active + inactive based on toggle
-  const allAddresses = [
-    ...activeAddresses,
-    ...(showInactive ? inactiveAddresses : []),
-  ];
+  // ── FIXED: Always show all addresses; active first, then inactive ─────────────
+  // If no active addresses exist, inactive ones are shown directly (no toggle needed)
+  const hasActiveAddresses = activeAddresses.length > 0;
 
-  // Move the selected address to the top if it exists
+  const allAddresses = hasActiveAddresses
+    ? [...activeAddresses, ...(showInactive ? inactiveAddresses : [])]
+    : addresses; // no active ones → show everything directly
+
+  // Move the selected address to the top
   const sortedAddresses = [...allAddresses].sort((a, b) => {
     if (a.id === selectedAddressId) return -1;
     if (b.id === selectedAddressId) return 1;
@@ -1288,7 +1275,6 @@ const CheckoutAddress = ({
   });
 
   if (loadingadd) {
-    // 🔄 Skeletons
     return (
       <div className="space-y-4">
         {[1, 2].map((i) => (
@@ -1313,8 +1299,22 @@ const CheckoutAddress = ({
 
   return (
     <>
+      {/* ── Premium Delete Confirmation Modal ─────────────────────────────── */}
+      <AnimatePresence>
+        {deleteModalOpen && (
+          <DeleteConfirmModal
+            isOpen={deleteModalOpen}
+            onClose={() => {
+              setDeleteModalOpen(false);
+              setPendingDeleteId(null);
+            }}
+            onConfirm={confirmDelete}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="space-y-4 relative">
-        {/* ✅ Empty state with Add button */}
+        {/* ✅ Empty state — only when truly no addresses at all */}
         {sortedAddresses.length === 0 ? (
           <div className="border rounded-lg p-6 bg-white shadow-sm flex flex-col items-center justify-center text-center gap-3">
             <p className="text-gray-500 text-sm">No addresses found.</p>
@@ -1327,7 +1327,6 @@ const CheckoutAddress = ({
           </div>
         ) : (
           <>
-            {/* Active + Inactive Addresses */}
             {sortedAddresses.map((address) => (
               <div
                 key={address.id}
@@ -1392,9 +1391,9 @@ const CheckoutAddress = ({
               </div>
             ))}
 
-            {/* Buttons Row - Top Right */}
+            {/* Buttons Row — only show Change Addresses toggle when there ARE active addresses */}
             <div className="flex justify-end items-center gap-4 mt-2">
-              {inactiveAddresses.length > 0 && (
+              {hasActiveAddresses && inactiveAddresses.length > 0 && (
                 <button
                   onClick={() => setShowInactive(!showInactive)}
                   className="text-sm font-medium underline text-blue-600 hover:text-blue-800 transition-colors"
@@ -1412,156 +1411,898 @@ const CheckoutAddress = ({
             </div>
           </>
         )}
-        {/* Inactive Addresses */}
-        {showInactive && (
-          <>
-            {/* {inactiveAddresses.map((address) => (
-            <div
-              key={address.id}
-              className="border rounded-lg p-4 bg-gray-50  flex justify-between items-start"
-            >
-              <div>
-                <p className="font-semibold text-gray-700 ">
-                  {address.line1}
-                </p>
-                <p className="text-sm text-gray-600 ">
-                  {address.line2}, {address.city} - {address.postal_code}
-                </p>
-                <p className="text-sm text-gray-600 ">
-                  {address.state}, {address.country}
-                </p>
-                <p className="text-sm text-gray-600 ">
-                  Landmark: {address.landmark}
-                </p>
-                <p className="text-sm text-gray-600 ">
-                  📞 {address.phone}
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleEditClick(address)}
-                  className="text-blue-600 hover:text-blue-800"
-                  aria-label="Edit address"
-                >
-                  <Pencil className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleDeleteAddress(address.id)}
-                  className="text-red-600 hover:text-red-800"
-                  aria-label="Delete address"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          ))} */}
-
-            {/* Show Less Button */}
-            {/* <button
-            onClick={() => setShowInactive(false)}
-            className="text-sm underline text-red-600 hover:text-red-800"
-          >
-            Show less
-          </button> */}
-          </>
-        )}
 
         {/* Add Address Modal */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-            <div className="bg-white  p-6 rounded-xl shadow-lg w-full max-w-lg">
-              <h2 className="text-lg font-semibold mb-4 text-gray-800 ">
-                Add New Address
-              </h2>
-              <form onSubmit={handleAddAddress} className="space-y-3">
-                {Object.keys(formData).map((field) => (
-                  <div key={field}>
-                    <input
-                      type="text"
-                      name={field}
-                      placeholder={field.replace("_", " ").toUpperCase()}
-                      value={formData[field]}
-                      onChange={handleChange}
-                      className={`w-full border p-2 rounded-lg outline-none transition
-        ${errors[field] ? "border-red-500 focus:ring-2 focus:ring-red-300" : "border-gray-300 focus:ring-2 focus:ring-green-300"}
-      `}
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[100] p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-8 pb-6 flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        fill="none"
+                      />
+                      <circle
+                        cx="12"
+                        cy="9"
+                        r="2.5"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Add New Address
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                      Enter the address details to save for faster checkout
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1 1l12 12M13 1L1 13"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
                     />
+                  </svg>
+                </button>
+              </div>
 
-                    {errors[field] && (
+              {/* Form Body */}
+              <div className="px-8 pb-0 max-h-[65vh] overflow-y-auto">
+                <form onSubmit={handleAddAddress} id="add-address-form">
+                  {/* Row 1: Line 1 full width */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Street Address <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                          <polyline
+                            points="9 22 9 12 15 12 15 22"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="line1"
+                        placeholder="House / Flat / Building, Street"
+                        value={formData.line1}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.line1 ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.line1 && (
                       <p className="text-red-500 text-xs mt-1">
-                        {errors[field]}
+                        {errors.line1}
                       </p>
                     )}
                   </div>
-                ))}
-                <div className="flex justify-end space-x-3 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    Add
-                  </button>
-                </div>
-              </form>
+
+                  {/* Row 2: Line 2 full width */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Area / Locality <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path
+                            d="M3 9h18M9 21V9"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="line2"
+                        placeholder="Area, Landmark, Near by place"
+                        value={formData.line2}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.line2 ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.line2 && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.line2}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Row 3: City / State / Postal Code */}
+                  <div className="grid grid-cols-3 gap-4 mb-5">
+                    {/* City */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        City / Town <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <rect
+                              x="2"
+                              y="7"
+                              width="20"
+                              height="14"
+                              rx="1"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="city"
+                          placeholder="Enter city or town"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.city ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.city && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.city}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* State */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        State <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              d="M3 6l9-4 9 4v6c0 5.25-3.6 10.14-9 11.25C6.6 22.14 3 17.25 3 12V6z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="state"
+                          placeholder="Enter state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.state ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.state && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.state}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Postal Code */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Pincode <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <rect
+                              x="3"
+                              y="11"
+                              width="18"
+                              height="11"
+                              rx="2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M7 11V7a5 5 0 0110 0v4"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="postal_code"
+                          placeholder="6-digit pincode"
+                          value={formData.postal_code}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.postal_code ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.postal_code && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.postal_code}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Country + Landmark */}
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="9"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="country"
+                          placeholder="Country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.country ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.country && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.country}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Landmark <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <circle
+                              cx="12"
+                              cy="9"
+                              r="2.5"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="landmark"
+                          placeholder="Nearby landmark"
+                          value={formData.landmark}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.landmark ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.landmark && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.landmark}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 5: Phone */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 013.09 4.18 2 2 0 015.07 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.09 9.91a16 16 0 006.99 7l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="phone"
+                        placeholder="Enter 10-digit mobile number"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.phone ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition"
+                >
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1 1l12 12M13 1L1 13"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="add-address-form"
+                  className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-sm font-bold shadow-sm transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1.5 7l4 4 7-7"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Save Address
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Edit Address Modal */}
         {isEditModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-            <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg">
-              <h2 className="text-lg font-semibold mb-4 text-gray-800 ">
-                Edit Address
-              </h2>
-              <form onSubmit={handleUpdateAddress} className="space-y-3">
-                {Object.keys(formData).map((field) => (
-                  <div key={field}>
-                    <input
-                      type="text"
-                      name={field}
-                      placeholder={field.replace("_", " ").toUpperCase()}
-                      value={formData[field]}
-                      onChange={handleChange}
-                      className={`w-full border p-2 rounded-lg outline-none transition
-        ${errors[field] ? "border-red-500 focus:ring-2 focus:ring-red-300" : "border-gray-300 focus:ring-2 focus:ring-green-300"}
-      `}
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-8 pb-6 flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Edit Address
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                      Update your delivery address details
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1 1l12 12M13 1L1 13"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
                     />
+                  </svg>
+                </button>
+              </div>
 
-                    {errors[field] && (
+              {/* Form Body */}
+              <div className="px-8 pb-0 max-h-[65vh] overflow-y-auto">
+                <form onSubmit={handleUpdateAddress} id="edit-address-form">
+                  {/* Row 1: Line 1 full width */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Address Line 1 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                          <polyline
+                            points="9 22 9 12 15 12 15 22"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="line1"
+                        placeholder="House / Flat / Building, Street"
+                        value={formData.line1}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.line1 ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.line1 && (
                       <p className="text-red-500 text-xs mt-1">
-                        {errors[field]}
+                        {errors.line1}
                       </p>
                     )}
                   </div>
-                ))}
-                <div className="flex justify-end space-x-3 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Save
-                  </button>
-                </div>
-              </form>
+
+                  {/* Row 2: Line 2 full width */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Address Line 2{" "}
+                      <span className="text-gray-400 font-normal">
+                        (Optional)
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path
+                            d="M3 9h18M9 21V9"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="line2"
+                        placeholder="Area, Landmark, Near by place"
+                        value={formData.line2}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.line2 ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.line2 && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.line2}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Row 3: City / State / Postal Code */}
+                  <div className="grid grid-cols-3 gap-4 mb-5">
+                    {/* City */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        City / Town <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <rect
+                              x="2"
+                              y="7"
+                              width="20"
+                              height="14"
+                              rx="1"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="city"
+                          placeholder="Enter city or town"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.city ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.city && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.city}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* State */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        State <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              d="M3 6l9-4 9 4v6c0 5.25-3.6 10.14-9 11.25C6.6 22.14 3 17.25 3 12V6z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="state"
+                          placeholder="Enter state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.state ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.state && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.state}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Postal Code */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Pincode <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <rect
+                              x="3"
+                              y="11"
+                              width="18"
+                              height="11"
+                              rx="2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M7 11V7a5 5 0 0110 0v4"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="postal_code"
+                          placeholder="6-digit pincode"
+                          value={formData.postal_code}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.postal_code ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.postal_code && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.postal_code}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Country + Landmark */}
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="9"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="country"
+                          placeholder="Country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.country ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.country && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.country}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Landmark <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <circle
+                              cx="12"
+                              cy="9"
+                              r="2.5"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          name="landmark"
+                          placeholder="Nearby landmark"
+                          value={formData.landmark}
+                          onChange={handleChange}
+                          className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition
+                    ${errors.landmark ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                        />
+                      </div>
+                      {errors.landmark && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.landmark}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 5: Phone full width */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 013.09 4.18 2 2 0 015.07 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.09 9.91a16 16 0 006.99 7l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="phone"
+                        placeholder="Enter 10-digit mobile number"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition
+                  ${errors.phone ? "border-red-400 bg-red-50" : "border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"}`}
+                      />
+                    </div>
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition"
+                >
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1 1l12 12M13 1L1 13"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="edit-address-form"
+                  className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-sm font-bold shadow-sm transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1.5 7l4 4 7-7"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Save Address
+                </button>
+              </div>
             </div>
           </div>
         )}
-
         {/* Payment Section */}
         <div className="">
           <h1 className="text-xl font-[800] tracking-tight">Payment</h1>
@@ -1644,7 +2385,7 @@ const CheckoutAddress = ({
                 animate={{
                   opacity: 1,
                   height: "auto",
-                  marginBottom: showInfo ? 16 : 0, // Prevents button jump
+                  marginBottom: showInfo ? 16 : 0,
                 }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
@@ -1656,7 +2397,7 @@ const CheckoutAddress = ({
                       <Wallet2 className="w-10 h-10 sm:w-12 sm:h-12" />
                     </div>
                     <p className="text-sm text-gray-700 font-medium max-w-md mx-auto">
-                      After clicking “Pay now”, you'll be redirected to Razorpay
+                      After clicking "Pay now", you'll be redirected to Razorpay
                       Payment Gateway to securely complete your purchase using
                       UPI, Cards, Wallets or NetBanking.
                     </p>
@@ -1921,7 +2662,7 @@ const CheckoutAddress = ({
                         Custom Print
                       </p>
                       <p className="text-xs font-medium text-gray-800 break-words">
-                        “{customizedTexts[item.rowid]}”
+                        "{customizedTexts[item.rowid]}"
                       </p>
                     </div>
                   )}
@@ -1939,12 +2680,11 @@ const CheckoutAddress = ({
                   onChange={(e) => {
                     const newCode = e.target.value;
 
-                    // ✅ ONLY reset when actual change happens
                     if (newCode !== code) {
                       setIsApplied(false);
                       setCouponValue(0);
-                      setCouponMessage(""); // ✅ important
-                      setAppliedCoupon(""); // ✅ THIS FIXES OFFER BUTTON UI
+                      setCouponMessage("");
+                      setAppliedCoupon("");
                     }
 
                     setCode(newCode);
@@ -2015,12 +2755,10 @@ const CheckoutAddress = ({
 
                   {limitedDealApplied && (
                     <div className="flex flex-wrap items-center gap-2 text-xs mt-1">
-                      {/* Old total slashed */}
                       <span className="line-through text-gray-500">
                         ₹{(total + (couponValue || 100)).toFixed(2)}
                       </span>
 
-                      {/* Savings */}
                       <span className="text-red-700 tracking-wider font-semibold">
                         -₹{(couponValue || 100).toFixed(2)} saved
                       </span>
@@ -2029,7 +2767,6 @@ const CheckoutAddress = ({
                 </div>
 
                 <div className="text-right flex flex-col items-end">
-                  {/* Final total */}
                   <span
                     className={`font-bold ${
                       limitedDealApplied ? "text-green-600 text-xl" : "text-lg"
@@ -2059,14 +2796,14 @@ const CheckoutAddress = ({
         <div className="mt-6">
           <button
             onClick={handleOrderAndPayLogged}
-            disabled={!selectedAddressId || isProcessing} // <-- Disable when no address is selected
+            disabled={!selectedAddressId || isProcessing}
             className={`py-3 px-6 rounded-md w-full font-semibold transition-all duration-300 
       ${
         selectedAddressId
           ? "bg-black text-white hover:bg-gray-900 cursor-pointer"
           : "bg-gray-300 text-gray-500 cursor-not-allowed"
       }`}
-            title={!selectedAddressId ? "Select an address" : ""} // <-- Tooltip on hover
+            title={!selectedAddressId ? "Select an address" : ""}
           >
             {isProcessing ? "Processing..." : "Pay Now"}
           </button>
@@ -2078,7 +2815,7 @@ const CheckoutAddress = ({
               total={total}
               onSuccess={onSuccess}
               onFailure={onFailure}
-              orderDetails={orderDetails} // ✅ pass order details here
+              orderDetails={orderDetails}
             />
           </div>
           <div style={{ display: "none" }}>

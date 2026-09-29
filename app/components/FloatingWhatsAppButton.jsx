@@ -36,14 +36,14 @@ export default function FloatingWhatsAppButton() {
 
   return (
     <div className="fixed right-4 md:right-5 bottom-28 md:bottom-6 z-40 pointer-events-none">
-      <div className="flex flex-col items-end gap-2 w-fit font-odop">
+      <div className="flex flex-col items-end gap-2 w-fit font-odop ">
         {/* Popup */}
         <div
           className={`
             pointer-events-auto
             flex flex-col items-center text-center gap-2 w-52 p-5 rounded-2xl
             bg-white border border-black/10 shadow-xl
-            transition-all duration-[280ms] ease-[cubic-bezier(.22,1,.36,1)] origin-bottom-right
+            transition-all duration-[280ms] ease-[cubic-bezier(.22,1,.36,1)] origin-bottom-right 
             ${
               open
                 ? "opacity-100 translate-y-0 scale-100"

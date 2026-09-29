@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import CategoriesSection from "./CategorieSection";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { FestivalShowcase } from "./FestivalShowCase";
 
 export function WobbleCardDemo() {
   const { t } = useTranslation();
@@ -30,7 +31,7 @@ export function WobbleCardDemo() {
 
     const fetchNewArrivals = async () => {
       try {
-        const res = await fetch("/api/getTitle10");
+        const res = await fetch("/api/newArraivals");
         const data = await res.json();
         if (!data) return;
 
@@ -72,6 +73,7 @@ export function WobbleCardDemo() {
   return (
     <>
       <CategoriesSection />
+      <FestivalShowcase />
       {/* ================= WOMEN'S DAY CAMPAIGN SECTION ================= */}
       <section className="relative overflow-hidden">
         {/* ===== Animated Wave Background ===== */}

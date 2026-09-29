@@ -247,7 +247,7 @@ export default function Footer() {
             {/* Logo on the far left (or center on mobile) */}
             <div className="md:w-1/4 w-full flex justify-center md:justify-start">
               <Image
-                src="/new-logo.png"
+                src="/yuukke_logo.png"
                 alt="Logo"
                 width={160} // w-40 = 160px
                 height={64} // h-16 = 64px (you can use md height conditionally in layout)

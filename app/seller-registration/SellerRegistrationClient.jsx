@@ -10,7 +10,7 @@ import VerifyPhoneSection from "./VerifyPhoneSection";
 const Page = () => {
   return (
     <div className="w-full font-odop">
-      {/* <OurAdvantages /> */}
+      <OurAdvantages />
       <video
         src="/intro.mp4"
         autoPlay

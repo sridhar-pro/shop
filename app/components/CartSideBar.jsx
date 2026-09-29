@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { X, IndianRupee, Plus, Minus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 
 const CartSidebar = ({ isOpen, onClose }) => {
   const { getValidToken } = useAuth();
-
   const router = useRouter();
 
   const [cartData, setCartData] = useState([]);
@@ -21,18 +20,17 @@ const CartSidebar = ({ isOpen, onClose }) => {
     total_item_tax: "0.00",
   });
   const [loading, setLoading] = useState(false);
-
   const [processingItems, setProcessingItems] = useState({});
-
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleClick = async (e) => {
-    e.preventDefault(); // stop Link default navigation
-    setIsProcessing(true);
+  // ── Flag: skip the next "cart-updated" event we fired ourselves ───────────
+  const skipNextCartUpdate = useRef(false);
 
+  const handleClick = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
     try {
       const { items } = await fetchCartItemsWithDetails();
-
       if (!items || items.length === 0) {
         toast.error(
           "No products selected! Please add items to your cart before checkout.",
@@ -40,11 +38,8 @@ const CartSidebar = ({ isOpen, onClose }) => {
         setIsProcessing(false);
         return;
       }
-
-      // await syncFinalCart(cartData); // ✅ sync cart state
-
       onClose?.();
-      setIsProcessing(false); // ✅ reset before navigation
+      setIsProcessing(false);
       router.push("/checkout");
     } catch (error) {
       console.error("❌ Checkout error:", error);
@@ -57,18 +52,11 @@ const CartSidebar = ({ isOpen, onClose }) => {
     setProcessingItems((prev) => ({ ...prev, [id]: value }));
 
   const formatPrice = (price) => {
-    // If it's already a number, keep existing behavior
-    if (typeof price === "number" && !isNaN(price)) {
-      return price.toFixed(2);
-    }
-
-    // If it's a string, remove non-numeric characters (like ₹) and convert
+    if (typeof price === "number" && !isNaN(price)) return price.toFixed(2);
     if (typeof price === "string") {
       const numeric = parseFloat(price.replace(/[^\d.]/g, ""));
       if (!isNaN(numeric)) return numeric.toFixed(2);
     }
-
-    // Fallback for anything else
     return "0.00";
   };
 
@@ -80,26 +68,18 @@ const CartSidebar = ({ isOpen, onClose }) => {
     retryFetch = false,
   ) => {
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-
-    // Retry getting a valid token
     const getTokenWithRetry = async () => {
       for (let attempt = 0; attempt < maxTokenAttempts; attempt++) {
         const token = await getValidToken();
         if (token && typeof token === "string" && token.length > 10)
           return token;
-
-        // Force refresh halfway through attempts
-        if (attempt === Math.floor(maxTokenAttempts / 2)) {
+        if (attempt === Math.floor(maxTokenAttempts / 2))
           localStorage.removeItem("authToken");
-        }
-
         await wait(tokenDelay);
       }
       throw new Error("❌ Auth token unavailable after multiple retries.");
     };
-
     let token = await getTokenWithRetry();
-
     const fetchOptions = {
       method: options.method || "GET",
       headers: {
@@ -109,10 +89,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
     };
-
     const res = await fetch(url, fetchOptions);
-
-    // Retry once on 401
     if (res.status === 401 && !retryFetch) {
       console.warn("Token invalid, forcing refresh and retrying...");
       localStorage.removeItem("authToken");
@@ -123,7 +100,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
         return r.json();
       });
     }
-
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     return await res.json();
   };
@@ -139,7 +115,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
   useEffect(() => {
     const loadCartItems = async () => {
       setLoading(true);
-      const { items, totals } = await fetchCartItemsWithDetails(); // updated function
+      const { items, totals } = await fetchCartItemsWithDetails();
       setCartData(items);
       setTotals(totals);
       setLoading(false);
@@ -147,9 +123,17 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
     if (isOpen) loadCartItems();
 
-    const handleCartUpdate = () => loadCartItems();
-    window.addEventListener("cart-updated", handleCartUpdate);
+    const handleCartUpdate = () => {
+      // If we dispatched this event ourselves (after a qty patch),
+      // skip the API re-fetch — the cache is already correct.
+      if (skipNextCartUpdate.current) {
+        skipNextCartUpdate.current = false;
+        return;
+      }
+      if (isOpen) loadCartItems();
+    };
 
+    window.addEventListener("cart-updated", handleCartUpdate);
     return () => window.removeEventListener("cart-updated", handleCartUpdate);
   }, [isOpen]);
 
@@ -159,10 +143,8 @@ const CartSidebar = ({ isOpen, onClose }) => {
       console.warn("⚠️ No cart_id found in localStorage");
       return { items: [], totals: {} };
     }
-
     try {
       const token = await getValidToken();
-
       const res = await fetch("/api/getTax", {
         method: "POST",
         headers: {
@@ -171,37 +153,23 @@ const CartSidebar = ({ isOpen, onClose }) => {
         },
         body: JSON.stringify({ cart_id: cartId }),
       });
-
       if (!res.ok) {
         console.error("❌ Failed to fetch /api/getTax:", res.status);
         return { items: [], totals: {} };
       }
-
       const data = await res.json();
-
-      // ✅ Cache the full response for checkout page
       localStorage.setItem("cart_summary_cache", JSON.stringify(data));
-
       const cart = data.cart_data || {};
-
-      // Extract items from contents
       const items = Object.values(cart.contents || {}).map((item) => {
         let image = item.image || "/fallback.png";
-
         let variantId = null;
-
         if (item.option && Array.isArray(item.options)) {
           const selectedVariant = item.options.find(
             (opt) => String(opt.id) === String(item.option),
           );
-
-          if (selectedVariant?.front_view) {
-            image = selectedVariant.front_view;
-          }
-
+          if (selectedVariant?.front_view) image = selectedVariant.front_view;
           variantId = selectedVariant?.id || null;
         }
-
         return {
           rowid: item.rowid,
           product_id: item.product_id,
@@ -210,18 +178,15 @@ const CartSidebar = ({ isOpen, onClose }) => {
           name: item.name,
           subtotal: item.subtotal || "₹0.00",
           qty: item.qty || 1,
-          image: image,
+          image,
         };
       });
-
-      // Extract totals
       const totals = {
         subtotal: cart.subtotal || "₹0.00",
         grand_total: cart.grand_total || "₹0.00",
         shipping: cart.shipping || "₹0.00",
         total_item_tax: cart.total_item_tax || "₹0.00",
       };
-
       return { items, totals };
     } catch (err) {
       console.error("❌ Error fetching cart items:", err);
@@ -229,14 +194,11 @@ const CartSidebar = ({ isOpen, onClose }) => {
     }
   };
 
-  // ✅ Hit addcart API with latest quantities
   const syncFinalCart = async (cartItems) => {
     try {
       const cartId = localStorage.getItem("cart_id");
       if (!cartId) return;
-
       const token = await getValidToken();
-
       const payload = {
         selected_country: "IN",
         historypincode: Number(localStorage.getItem("user_pincode") || 600002),
@@ -244,7 +206,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
         product_ids: cartItems.map((item) => item.product_id.toString()),
         qty: cartItems.map((item) => item.qty),
       };
-
       const res = await fetch("/api/addcart", {
         method: "POST",
         headers: {
@@ -253,12 +214,8 @@ const CartSidebar = ({ isOpen, onClose }) => {
         },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
-      console.log("📩 addcart response:", data);
-
       if (data.status === "error") {
-        // 🔴 Show all errors if available
         if (Array.isArray(data.errors) && data.errors.length > 0) {
           data.errors.forEach((err) =>
             toast.error(err, { position: "top-center", autoClose: 3000 }),
@@ -271,7 +228,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
         }
         return null;
       }
-
       return data;
     } catch (err) {
       console.error("❌ syncFinalCart error:", err);
@@ -291,25 +247,17 @@ const CartSidebar = ({ isOpen, onClose }) => {
     try {
       const cartId = localStorage.getItem("cart_id");
       if (!cartId) return;
-
       const token = await getValidToken();
-
       const payload = {
         selected_country: "IN",
         historypincode: Number(localStorage.getItem("user_pincode") || 600002),
         cart_id: cartId,
-
         is_update: 1,
-        rowid: rowid,
-        product_id: product_id,
-        qty: qty,
+        rowid,
+        product_id,
+        qty,
       };
-
-      // ✅ send variant only if exists
-      if (variant_id) {
-        payload.variant_id = variant_id;
-      }
-
+      if (variant_id) payload.variant_id = variant_id;
       const res = await fetch("/api/addcart", {
         method: "POST",
         headers: {
@@ -318,10 +266,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
         },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
-      console.log("📩 Qty Update Response:", data);
-
       if (data.status === "error") {
         if (Array.isArray(data.errors) && data.errors.length > 0) {
           data.errors.forEach((err) =>
@@ -332,7 +277,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
         }
         return null;
       }
-
       return data;
     } catch (err) {
       console.error("❌ updateSingleItemQty error:", err);
@@ -342,14 +286,10 @@ const CartSidebar = ({ isOpen, onClose }) => {
   const incrementQty = async (id) => {
     if (processingItems[id]) return;
     setProcessing(id, true);
-
     try {
       const currentItem = cartData.find((i) => i.rowid === id);
       if (!currentItem) return;
-
       const newQty = currentItem.qty + 1;
-
-      // 🔥 Use special qty-updater
       const response = await updateSingleItemQty({
         rowid: currentItem.rowid,
         product_id: currentItem.product_id,
@@ -357,17 +297,19 @@ const CartSidebar = ({ isOpen, onClose }) => {
         qty: newQty,
       });
       if (response) {
-        const updatedCart = cartData.map((item) =>
-          item.rowid === id ? { ...item, qty: newQty } : item,
+        // Update sidebar UI
+        setCartData((prev) =>
+          prev.map((item) =>
+            item.rowid === id ? { ...item, qty: newQty } : item,
+          ),
         );
-
-        setCartData(updatedCart);
-
         toast.success(`Quantity updated to ${newQty}`, {
           position: "top-right",
           autoClose: 2000,
         });
-
+        // Patch cache first, then notify — skip our own re-fetch
+        _patchSummaryCache(currentItem.product_id, newQty);
+        skipNextCartUpdate.current = true;
         window.dispatchEvent(new Event("cart-updated"));
       }
     } catch (err) {
@@ -380,14 +322,10 @@ const CartSidebar = ({ isOpen, onClose }) => {
   const decrementQty = async (id) => {
     if (processingItems[id]) return;
     setProcessing(id, true);
-
     try {
       const currentItem = cartData.find((i) => i.rowid === id);
       if (!currentItem || currentItem.qty === 1) return;
-
       const newQty = currentItem.qty - 1;
-
-      // 🔥 Use special qty-updater
       const response = await updateSingleItemQty({
         rowid: currentItem.rowid,
         product_id: currentItem.product_id,
@@ -395,17 +333,17 @@ const CartSidebar = ({ isOpen, onClose }) => {
         qty: newQty,
       });
       if (response) {
-        const updatedCart = cartData.map((item) =>
-          item.rowid === id ? { ...item, qty: newQty } : item,
+        setCartData((prev) =>
+          prev.map((item) =>
+            item.rowid === id ? { ...item, qty: newQty } : item,
+          ),
         );
-
-        setCartData(updatedCart);
-
         toast.success(`Quantity updated to ${newQty}`, {
           position: "top-right",
           autoClose: 2000,
         });
-
+        _patchSummaryCache(currentItem.product_id, newQty);
+        skipNextCartUpdate.current = true;
         window.dispatchEvent(new Event("cart-updated"));
       }
     } catch (err) {
@@ -418,22 +356,18 @@ const CartSidebar = ({ isOpen, onClose }) => {
   const removeItem = async (productId) => {
     if (processingItems[productId]) return;
     setProcessing(productId, true);
-
     try {
       const cartResponse = await fetchWithAuth("/api/getTax", {
         method: "POST",
         body: { cart_id: localStorage.getItem("cart_id") },
       });
-
       const cartDataAPI = cartResponse?.cart_data;
       if (!cartDataAPI) throw new Error("Cart is empty");
-
       const cartItemsArray = Object.values(cartDataAPI.contents || {});
       const itemToRemove = cartItemsArray.find(
         (item) => item.product_id === productId,
       );
       if (!itemToRemove) throw new Error("Item not found in cart");
-
       const { rowid } = itemToRemove;
       const token = await getValidToken();
       const res = await fetch("/api/cartRemove", {
@@ -447,16 +381,20 @@ const CartSidebar = ({ isOpen, onClose }) => {
           rowid,
         }),
       });
-
       const data = await res.json();
       if (data.status === "success") {
         setCartData((prev) => prev.filter((item) => item.rowid !== rowid));
-        window.dispatchEvent(new Event("cart-updated"));
         toast.success("Item removed from cart", {
           position: "top-right",
           autoClose: 2000,
         });
-        fetchCartItemsWithDetails(); // refresh cart totals
+        _patchSummaryCache(productId, 0);
+        skipNextCartUpdate.current = true;
+        window.dispatchEvent(new Event("cart-updated"));
+        // Re-fetch to get accurate totals after removal (this is intentional)
+        const { items, totals } = await fetchCartItemsWithDetails();
+        setCartData(items);
+        setTotals(totals);
       } else {
         throw new Error(data.message || "Failed to remove item");
       }
@@ -478,23 +416,20 @@ const CartSidebar = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Blurred Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[90] bg-transparent backdrop-blur-md transition-opacity font-odop"
+            className="fixed inset-0 z-[9998] bg-transparent backdrop-blur-md transition-opacity font-odop"
             onClick={onClose}
           />
-
-          {/* Cart Sidebar (unchanged) */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3 }}
-            className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-[30rem] lg:w-[37rem] bg-white shadow-lg z-[100] rounded-l-3xl overflow-hidden"
+            className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-[30rem] lg:w-[37rem] bg-white shadow-lg z-[9999] rounded-l-3xl overflow-hidden font-odop"
           >
             <div className="p-12 sm:p-14 h-full flex flex-col">
               {/* Header */}
@@ -539,7 +474,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
                         className="py-4 pb-8"
                       >
                         <div className="flex items-center gap-3 sm:gap-4 px-2">
-                          {/* Product Image */}
                           <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0 border border-white">
                             {item.image ? (
                               <img
@@ -555,8 +489,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
                               </div>
                             )}
                           </div>
-
-                          {/* Product Info */}
                           <div className="flex-1 min-w-0 h-16 flex flex-col justify-between">
                             <div className="flex justify-between items-start">
                               <h3 className="text-sm sm:text-lg line-clamp-2 pr-2">
@@ -565,7 +497,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
                               <button
                                 onClick={() => removeItem(item.product_id)}
                                 className="text-gray-500 hover:text-black transition p-1 ml-2 flex-shrink-0 flex items-center justify-center w-6 h-6 relative"
-                                disabled={processingItems[item.product_id]} // disable during processing
+                                disabled={processingItems[item.product_id]}
                               >
                                 {processingItems[item.product_id] ? (
                                   <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></span>
@@ -575,7 +507,6 @@ const CartSidebar = ({ isOpen, onClose }) => {
                               </button>
                             </div>
                             <div className="flex items-center justify-between mt-2">
-                              {/* Price + Tax note */}
                               <div className="flex flex-col">
                                 <span className="font-medium flex items-center text-sm sm:text-base">
                                   {item.subtotal}
@@ -584,23 +515,15 @@ const CartSidebar = ({ isOpen, onClose }) => {
                                   Incl. of all taxes
                                 </span>
                               </div>
-
-                              {/* Quantity Controls */}
                               <div className="flex items-center bg-gray-50 rounded-sm overflow-hidden">
                                 <button
                                   onClick={() => decrementQty(item.rowid)}
                                   disabled={item.qty === 1}
-                                  className={`px-2 py-2 transition ${
-                                    item.qty === 1
-                                      ? "opacity-50 cursor-not-allowed"
-                                      : "hover:bg-gray-100"
-                                  }`}
+                                  className={`px-2 py-2 transition ${item.qty === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"}`}
                                 >
                                   <Minus className="w-3 h-3" />
                                 </button>
-
                                 <span className="px-2 text-sm">{item.qty}</span>
-
                                 <button
                                   onClick={() => incrementQty(item.rowid)}
                                   className="px-2 py-2 hover:bg-gray-100 transition"
@@ -652,13 +575,11 @@ const CartSidebar = ({ isOpen, onClose }) => {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       disabled={isProcessing}
-                      className={`w-full min-w-[180px] text-sm py-3 px-3 mb-8 md:mb-0 rounded-lg transition flex items-center justify-center 
-    ${
-      isProcessing
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-red-500 hover:bg-gray-800 text-white"
-    }
-  `}
+                      className={`w-full min-w-[180px] text-sm py-3 px-3 mb-8 md:mb-0 rounded-lg transition flex items-center justify-center ${
+                        isProcessing
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-red-500 hover:bg-gray-800 text-white"
+                      }`}
                     >
                       {isProcessing ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -678,3 +599,25 @@ const CartSidebar = ({ isOpen, onClose }) => {
 };
 
 export default CartSidebar;
+
+// ── Shared cache patcher ───────────────────────────────────────────────────
+// qty <= 0 removes the entry, any positive value updates it in place.
+function _patchSummaryCache(productId, newQty) {
+  try {
+    const raw = localStorage.getItem("cart_summary_cache");
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const contents = data?.cart_data?.contents;
+    if (!contents) return;
+    const key = Object.keys(contents).find(
+      (k) => String(contents[k].product_id) === String(productId),
+    );
+    if (key === undefined) return;
+    if (newQty <= 0) {
+      delete contents[key];
+    } else {
+      contents[key].qty = newQty;
+    }
+    localStorage.setItem("cart_summary_cache", JSON.stringify(data));
+  } catch {}
+}

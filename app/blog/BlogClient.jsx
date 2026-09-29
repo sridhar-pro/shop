@@ -56,7 +56,7 @@ const BlogCard = ({ img, title, subtitle, tags, slug, link }) => {
 
 // Blog Section Component
 export default function BlogSection() {
-  const { getValidToken } = useAuth();
+  const { getValidToken, isAuthReady } = useAuth();
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,30 +72,60 @@ export default function BlogSection() {
   };
 
   useEffect(() => {
-    async function fetchBlogs() {
+    if (!isAuthReady) return;
+
+    let isMounted = true;
+
+    const fetchBlogs = async () => {
       try {
+        setLoading(true);
+
         const token = await getValidToken();
+
+        if (!token) {
+          throw new Error("Authentication token is not available");
+        }
+
         const res = await fetch("/api/getBlogs", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ page: 1, limit: 6 }), // 🔹 Adjust limit as needed
+          body: JSON.stringify({
+            page: 1,
+            limit: 6,
+          }),
         });
 
-        if (!res.ok) throw new Error("Failed to fetch blogs");
+        if (!res.ok) {
+          throw new Error("Failed to fetch blogs");
+        }
+
         const data = await res.json();
-        // console.log("blog data", data);
-        setBlogs(data?.data || []);
+
+        if (isMounted) {
+          setBlogs(data?.data || []);
+        }
       } catch (error) {
         console.error("Error fetching blogs:", error);
+
+        if (isMounted) {
+          setBlogs([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    }
+    };
+
     fetchBlogs();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthReady, getValidToken]);
 
   return (
     <section className="py-10 font-odop bg-gradient-to-br from-gray-50 to-red-50">

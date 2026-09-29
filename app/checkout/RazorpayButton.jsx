@@ -16,7 +16,7 @@ const RazorpayButton = forwardRef(
       onProcessingStart,
       orderDetails, // ✅ new prop
     },
-    ref
+    ref,
   ) => {
     const [loading, setLoading] = useState(false);
     const [processingPayment, setProcessingPayment] = useState(false);
@@ -92,6 +92,7 @@ const RazorpayButton = forwardRef(
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderDetails.amount,
         currency: "INR",
+        // one_click_checkout: true,
         name: "Yuukke's MarketPlace",
         description: "Checkout Payment",
         order_id: orderDetails.r_order_id,
@@ -111,12 +112,12 @@ const RazorpayButton = forwardRef(
 
           localStorage.setItem(
             "razorpay_payment_id",
-            response.razorpay_payment_id
+            response.razorpay_payment_id,
           );
           window.dispatchEvent(
             new CustomEvent("razorpayPaymentIdUpdated", {
               detail: response.razorpay_payment_id,
-            })
+            }),
           );
           localStorage.setItem("razorpay_order_id", response.razorpay_order_id);
 
@@ -187,13 +188,13 @@ const RazorpayButton = forwardRef(
                 {
                   position: "top-center",
                   autoClose: 5000,
-                }
+                },
               );
             }
           } catch (verifyError) {
             console.error("❌ Verification Failed:", verifyError);
             toast.error(
-              "🚨 Verification request failed. Check your connection or try again."
+              "🚨 Verification request failed. Check your connection or try again.",
             );
             //   onFailure?.();
             // } finally {
@@ -253,7 +254,7 @@ const RazorpayButton = forwardRef(
         {loading ? "Processing..." : `Pay ₹${total}`}
       </button>
     );
-  }
+  },
 );
 
 RazorpayButton.displayName = "RazorpayButton"; // Necessary for forwardRef

@@ -27,6 +27,7 @@ import ProductStore from "./ProductStore";
 import ProductSellerProducts from "./ProductSellerProducts";
 import ProductActions from "./ProductActions";
 import ProductRelatedItems from "./ProductRelatedItems";
+import ProductComboItems from "./ProductComboItems";
 
 export default function ProductPageClient() {
   const { t } = useTranslation();
@@ -129,7 +130,14 @@ export default function ProductPageClient() {
 
   const handleUpdate = () => setShowPopup(true);
   const handleClose = () => setShowPopup(false);
+  useEffect(() => {
+    const savedPincode = localStorage.getItem("user_pincode");
 
+    if (savedPincode && product?.id) {
+      setPincode(savedPincode);
+      handleSave(savedPincode, product.id);
+    }
+  }, [product?.id]);
   const handleSave = async (retry = false) => {
     if (pincode.length !== 6 || isNaN(pincode)) {
       toast.error("Please enter a valid 6-digit pincode");
@@ -148,18 +156,27 @@ export default function ProductPageClient() {
           throw new Error("Authentication failed");
         }
       }
+      if (!product?.id) {
+        console.log("Product ID is missing");
+        return;
+      }
+
       const res = await fetch("/api/pincode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ pincode, country: "IN" }),
+        body: JSON.stringify({
+          product_id: product?.id,
+          pincode,
+          country: "IN",
+        }),
       });
       const data = await res.json();
       const result = data?.data?.data;
       if (result?.pincode && result?.country === "IN" && result?.city) {
-        setCity(result.city);
+        setCity("Estimated delivery: " + result.estimated_delivery_days);
         setPincode(result.pincode);
         localStorage.setItem("user_pincode", result.pincode);
         setShowPopup(false);
@@ -261,68 +278,76 @@ export default function ProductPageClient() {
   const col3Ref = useRef(null);
 
   useEffect(() => {
-    // Returns which column element the pointer is currently inside, or null
-    const getHoveredCol = (x, y) => {
-      const cols = [col1Ref.current, col2Ref.current, col3Ref.current];
-      for (const col of cols) {
-        if (!col) continue;
-        const rect = col.getBoundingClientRect();
-        if (
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom
-        ) {
-          return col;
-        }
-      }
-      return null;
-    };
-
     const handleScrollRedirect = (e) => {
-      // Only intercept on desktop (lg breakpoint = 1024px)
+      // Only apply this behavior on desktop.
       if (window.innerWidth < 1024) return;
 
-      const col = getHoveredCol(e.clientX, e.clientY);
+      const col1 = col1Ref.current;
+      const col2 = col2Ref.current;
+      const col3 = col3Ref.current;
 
-      // Cursor is not over any of the 3 columns — let page scroll normally
-      if (!col) return;
+      if (!col1 || !col2 || !col3) return;
+
+      // Find which column the mouse is currently over.
+      let activeColumn = null;
+
+      if (col1.contains(e.target)) {
+        activeColumn = col1;
+      } else if (col2.contains(e.target)) {
+        activeColumn = col2;
+      } else if (col3.contains(e.target)) {
+        activeColumn = col3;
+      }
+
+      // Outside all three columns → normal page scrolling.
+      if (!activeColumn) return;
 
       const scrollingDown = e.deltaY > 0;
-      const colScrollTop = col.scrollTop;
-      const colMaxScroll = col.scrollHeight - col.clientHeight;
+
+      const scrollTop = activeColumn.scrollTop;
+      const maxScroll = activeColumn.scrollHeight - activeColumn.clientHeight;
+
+      const atTop = scrollTop <= 1;
+      const atBottom = scrollTop >= maxScroll - 1;
+
       const windowScrollTop = window.scrollY;
 
-      const atTop = colScrollTop <= 1;
-      const atBottom = colMaxScroll <= 1 || colScrollTop >= colMaxScroll - 1;
-      // colMaxScroll <= 1 means this column has no internal scroll (col1, col3 are typically not scrollable)
-
       if (scrollingDown) {
+        // ⬇️ DOWN
+        // Scroll the hovered column first.
         if (!atBottom) {
-          // Column still has room — scroll it
           e.preventDefault();
-          col.scrollTop += e.deltaY;
+          activeColumn.scrollTop += e.deltaY;
         }
-        // else: column exhausted — let the page scroll naturally (don't preventDefault)
+
+        // At bottom → allow the page to continue scrolling.
       } else {
-        // Scrolling up
-        if (windowScrollTop > 0 && atTop) {
-          // Column is at top AND page is scrolled — scroll page up first
+        // ⬆️ UP
+        // Keep the same behavior as your current center column:
+        // page scrolls upward first.
+        if (windowScrollTop > 0) {
           e.preventDefault();
-          window.scrollBy({ top: e.deltaY, behavior: "auto" });
+
+          window.scrollBy({
+            top: e.deltaY,
+            behavior: "auto",
+          });
         } else if (!atTop) {
-          // Column still has upward room — scroll it
+          // Once page reaches the top,
+          // continue scrolling the active column upward.
           e.preventDefault();
-          col.scrollTop += e.deltaY;
+          activeColumn.scrollTop += e.deltaY;
         }
-        // else: both column at top and page at top — nothing to do
       }
     };
 
     document.addEventListener("wheel", handleScrollRedirect, {
       passive: false,
     });
-    return () => document.removeEventListener("wheel", handleScrollRedirect);
+
+    return () => {
+      document.removeEventListener("wheel", handleScrollRedirect);
+    };
   }, []);
 
   useEffect(() => {
@@ -372,7 +397,7 @@ export default function ProductPageClient() {
         let token = await getTokenWithRetry();
 
         const fetchData = async (retry = false) => {
-          const res = await fetch("/api/quantityCheck", {
+          const res = await fetch("/api/getProductDetails", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -494,6 +519,7 @@ export default function ProductPageClient() {
             zoom_view: v.zoom_view || null,
           })),
           variant_dropdown: p.variant_dropdown || [],
+          combo_items: p.combo_items || [],
         });
 
         setSelectedImage(p.p_image || "/placeholder-product.jpg");
@@ -532,6 +558,8 @@ export default function ProductPageClient() {
     reviews.map((r) => `${r.id}-${r.updated_at || r.created_at}`).join("|");
 
   useEffect(() => {
+    return; // 🔴 TEMP: review summary disabled
+
     console.group("🧠 Review Summary Engine");
     if (!product?.id) {
       console.warn("⛔ No product ID → skipping execution");
@@ -653,14 +681,22 @@ export default function ProductPageClient() {
 
   useEffect(() => {
     if (!product) return;
+
     if (Array.isArray(product.variants) && product.variants.length > 0) {
       const firstVariant = product.variants[0];
-      setSelectedVariants((prev) => ({ ...prev, [product.id]: firstVariant }));
-      const firstVariantQty = Number(firstVariant?.variant_quantity || 1);
-      setQuantity(firstVariantQty > 0 ? 1 : 0);
-    } else {
-      setQuantity(Number(product.minimum_order_qty) || 1);
+
+      setSelectedVariants((prev) => ({
+        ...prev,
+        [product.id]: firstVariant,
+      }));
     }
+
+    const minQty =
+      Number(product?.minimum_order_limit) === 1
+        ? Number(product?.minimum_order_qty) || 1
+        : 1;
+
+    setQuantity(minQty);
   }, [product]);
 
   const hitProductHistory = async (product) => {
@@ -1121,7 +1157,7 @@ export default function ProductPageClient() {
         console.error("🚫 Failed to fetch tax details:", taxError);
       }
 
-      setIsCartOpen?.(true);
+      // setIsCartOpen?.(true);
       toast.success("🛒 Added to cart!", {
         position: "top-right",
         autoClose: 2000,
@@ -1414,7 +1450,7 @@ export default function ProductPageClient() {
         {/* Column 1 — Image Gallery (40%) */}
         <div
           ref={col1Ref}
-          className="w-full lg:w-[40%] lg:sticky top-0 overflow-hidden order-1"
+          className="w-full lg:w-[40%] lg:sticky top-0 overflow-y-auto scrollbar-hide order-1"
         >
           <div className="flex flex-col lg:flex-row gap-4 lg:h-full">
             {/* Mobile Info (name, price, stars, etc.) */}
@@ -1440,20 +1476,22 @@ export default function ProductPageClient() {
           </div>
 
           {/* Mobile Variants + Personalised Text */}
-          <ProductVariants
-            product={product}
-            selectedVariants={selectedVariants}
-            setSelectedVariants={setSelectedVariants}
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            selectedOption={selectedOption}
-            setSelectedOption={setSelectedOption}
-            customModelText={customModelText}
-            setCustomModelText={setCustomModelText}
-            isOthersSelected={isOthersSelected}
-            handleModelChange={handleModelChange}
-            isMobile={true}
-          />
+          <div className="block lg:hidden">
+            <ProductVariants
+              product={product}
+              selectedVariants={selectedVariants}
+              setSelectedVariants={setSelectedVariants}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              selectedOption={selectedOption}
+              setSelectedOption={setSelectedOption}
+              customModelText={customModelText}
+              setCustomModelText={setCustomModelText}
+              isOthersSelected={isOthersSelected}
+              handleModelChange={handleModelChange}
+              isMobile={true}
+            />
+          </div>
 
           {product?.customize && (
             <ProductPersonalisedText
@@ -1534,23 +1572,16 @@ export default function ProductPageClient() {
 
               {/* Static Badges */}
               <div className="grid grid-cols-3 gap-x-2 mt-4">
-                {["1.png", "2.png", "3.png", "4.png", "5.png", "6.png"].map(
-                  (img, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-center items-center p-2"
-                    >
-                      <Image
-                        src={`/${img}`}
-                        alt={`${product.name || "Product"} Image ${i + 1}`}
-                        title={`${product.name || "Product"} Image ${i + 1}`}
-                        width={300}
-                        height={300}
-                        className="object-cover"
-                      />
-                    </div>
-                  ),
-                )}
+                <div className="col-span-3 flex justify-center items-center p-2">
+                  <Image
+                    src="/1.jpeg"
+                    alt={`${product.name || "Product"} Image`}
+                    title={`${product.name || "Product"} Image`}
+                    width={900}
+                    height={900}
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
               </div>
 
               {/* Store */}
@@ -1568,7 +1599,7 @@ export default function ProductPageClient() {
         {/* Column 3 — Actions (25%) */}
         <div
           ref={col3Ref}
-          className="w-full lg:w-[25%] bg-white px-4 py-6 border-t lg:border-t-0 lg:border-l border-gray-100 order-2 lg:order-3"
+          className="w-full lg:w-[25%] bg-white px-4 py-6 border-t lg:border-t-0 lg:border-l border-gray-100 order-2 lg:order-3 lg:overflow-y-auto scrollbar-hide"
         >
           <ProductActions
             product={product}
@@ -1615,6 +1646,9 @@ export default function ProductPageClient() {
           </>
         )}
       </div>
+
+      {/* Combo / Bundle Products */}
+      <ProductComboItems product={product} DOMAIN_KEY={DOMAIN_KEY} />
 
       {/* Related Products */}
       <ProductRelatedItems product={product} DOMAIN_KEY={DOMAIN_KEY} />

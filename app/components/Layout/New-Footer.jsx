@@ -69,26 +69,27 @@ const footerBlocks = [
       {
         id: 1,
         text: "About Us",
-        link: "https://yuukke.com/about/",
+        link: "https://yuukke.com/about-us",
         title: "Learn About Yuukke",
       },
+
       {
         id: 2,
-        text: "Global-ambassadors",
-        link: "https://yuukke.com/global-ambassadors/",
-        title: "Meet Yuukke Global Ambassadors",
-      },
-      {
-        id: 3,
         text: "Contact",
         link: "https://yuukke.com/contact-us/",
         title: "Contact Yuukke",
       },
       {
-        id: 4,
+        id: 3,
         text: "Service-Provider",
         link: "https://connect.yuukke.com/yuukke-service",
         title: "Yuukke Service Providers",
+      },
+      {
+        id: 4,
+        text: "Events & Experiences",
+        link: "https://yuukke.com/events",
+        title: "Meet Yuukke Events",
       },
     ],
   },
@@ -164,7 +165,7 @@ const FooterBlock = () => {
           <div className="lg:w-1/3 space-y-6">
             <Link href="/" title="Yuukke Home" className="inline-block">
               <Image
-                src="/new-logo.png"
+                src="/yuukke_logo.png"
                 alt="Yuukke Eco-Friendly Marketplace Logo"
                 title="Yuukke Eco-Friendly Marketplace Logo"
                 width={150}

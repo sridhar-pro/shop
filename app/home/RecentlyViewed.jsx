@@ -1153,7 +1153,7 @@ const RecentlyViewed = () => {
                               }
 
                               setQuickViewProduct(null);
-                              setIsCartOpen(true);
+                              // if (window.innerWidth >= 768) setIsCartOpen(true);
                               toast.success("🛒 Added to cart!", {
                                 position: "top-right",
                                 autoClose: 2000,

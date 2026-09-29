@@ -6,6 +6,7 @@ import LoaderWrapper from "../Loader/LoaderWrapper";
 import { useEffect } from "react";
 import "../../i18n";
 import Navbar from "./Navbar";
+import RefferalTracking from "../RefferTracking";
 
 // ✅ ADD — alongside your other dynamic() calls
 // const Navbar = dynamic(() => import("./Navbar"), {
@@ -70,7 +71,6 @@ function LazyAnalytics() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 🧠 Skip analytics in dev or Lighthouse testing
     if (
       navigator.userAgent.includes("Lighthouse") ||
       process.env.NODE_ENV !== "production"
@@ -84,15 +84,12 @@ function LazyAnalytics() {
       if (initialized) return;
       initialized = true;
 
-      // --- GA4 ---
+      // --- GA4 (your existing code — unchanged) ---
       const ga = document.createElement("script");
       ga.src = "https://www.googletagmanager.com/gtag/js?id=G-H7QKZFNBRX";
       ga.async = true;
       document.body.appendChild(ga);
-
       ga.onload = () => {
-        console.log("🟢 GA4 script tag loaded successfully");
-
         window.dataLayer = window.dataLayer || [];
         window.gtag = function () {
           window.dataLayer.push(arguments);
@@ -101,14 +98,10 @@ function LazyAnalytics() {
         window.gtag("config", "G-H7QKZFNBRX", {
           page_path: window.location.pathname,
         });
-
-        console.log(
-          "✅ GA4 initialized and tracking page:",
-          window.location.pathname,
-        );
+        console.log("✅ GA4 initialized");
       };
 
-      // --- GTM ---
+      // --- GTM (your existing code — unchanged) ---
       setTimeout(() => {
         (function (w, d, s, l, i) {
           w[l] = w[l] || [];
@@ -120,11 +113,41 @@ function LazyAnalytics() {
           j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
           f.parentNode.insertBefore(j, f);
         })(window, document, "script", "dataLayer", "GTM-TSWV69XP");
-        console.log("✅ GTM Loaded after GA4");
+        console.log("✅ GTM Loaded");
       }, 1000);
+
+      // --- Meta Pixel (NEW) ---
+      setTimeout(() => {
+        !(function (f, b, e, v, n, t, s) {
+          if (f.fbq) return;
+          n = f.fbq = function () {
+            n.callMethod
+              ? n.callMethod.apply(n, arguments)
+              : n.queue.push(arguments);
+          };
+          if (!f._fbq) f._fbq = n;
+          n.push = n;
+          n.loaded = !0;
+          n.version = "2.0";
+          n.queue = [];
+          t = b.createElement(e);
+          t.async = !0;
+          t.src = v;
+          s = b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t, s);
+        })(
+          window,
+          document,
+          "script",
+          "https://connect.facebook.net/en_US/fbevents.js",
+        );
+
+        window.fbq("init", "1234567890123456"); // ← your Pixel ID here
+        window.fbq("track", "PageView");
+        console.log("✅ Meta Pixel initialized");
+      }, 2000);
     };
 
-    // 🖱️ Load only after user interaction
     window.addEventListener("scroll", initAnalytics, { once: true });
     window.addEventListener("mousemove", initAnalytics, { once: true });
     window.addEventListener("touchstart", initAnalytics, { once: true });
@@ -144,6 +167,7 @@ export default function ClientAppWrapper({ children }) {
     <LoaderWrapper>
       <main className="pb-16 md:pb-0">
         <TranslationProvider />
+        <RefferalTracking />
         <Navbar />
         {children}
         <FlashSaleOffer />
@@ -160,7 +184,7 @@ export default function ClientAppWrapper({ children }) {
         newestOnTop
         closeOnClick
         pauseOnHover
-        theme="light"
+        theme="dark"
         style={{ marginBottom: "2.5rem", zIndex: 999999 }}
       />
 

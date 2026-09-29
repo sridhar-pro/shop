@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { useRouter } from "next/navigation";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -29,6 +30,8 @@ const VerifyPhoneSection = () => {
   const [serverOtp, setServerOtp] = useState(null);
 
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     firstname: "",
@@ -64,7 +67,7 @@ const VerifyPhoneSection = () => {
 
       const token = await getValidToken();
 
-      const response = await fetch("/api/triggerotp-seller", {
+      const response = await fetch("/api/seller_triggerotp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,6 +81,16 @@ const VerifyPhoneSection = () => {
       const data = await response.json();
 
       if (!response.ok || data.status !== "success") {
+        if (data.message === "mobile no exists") {
+          toast.info("Account already exists. Please login to continue.", {
+            className: "font-odop",
+            autoClose: 6000, // show for 2.5s
+          });
+
+          router.push(`/login?flow=mobile&mobile=${phone}`);
+
+          return;
+        }
         toast.error(data.message || "Failed to send OTP");
 
         throw new Error(data.message || "Failed to send OTP");
@@ -108,7 +121,7 @@ const VerifyPhoneSection = () => {
 
       const token = await getValidToken();
 
-      const response = await fetch("/api/verifyotp-seller", {
+      const response = await fetch("/api/seller_verifyotp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -201,7 +214,7 @@ const VerifyPhoneSection = () => {
         console.log(`${key}:`, value, `→ type: ${typeof value}`);
       });
 
-      const response = await fetch("/api/seller-registration", {
+      const response = await fetch("/api/seller_registration", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -264,7 +277,7 @@ const VerifyPhoneSection = () => {
       await loadRazorpay();
 
       const options = {
-        key: "rzp_test_Gnu8neTnUU656M", //rzp_test_Gnu8neTnUU656M //rzp_live_lclCyKLWqjYCIJ
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: paymentInfo.amount,
         currency: paymentInfo.currency || "INR",
         name: "Yuukke Seller Registration",

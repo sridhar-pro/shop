@@ -52,11 +52,24 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       product.variant_dropdown === "1" ||
       product.variant_dropdown === true);
 
+  const isCustomizationRequired =
+    product?.customize === "1" ||
+    product?.customize === 1 ||
+    product?.customize === true;
+
+  const isMinimumOrderLimitOne =
+    Number(product?.minimum_order_limit || 0) === 1;
+
+  const shouldShowViewOptions =
+    isDropdownVariantRequired ||
+    isCustomizationRequired ||
+    isMinimumOrderLimitOne;
+
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isDropdownVariantRequired) {
+    if (shouldShowViewOptions) {
       toast.info(
         <div className="flex items-start gap-2 font-odop">
           <div className="flex flex-col leading-tight">
@@ -78,7 +91,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
 
       setTimeout(() => {
         router.push(`/products/${product.slug}`);
-      }, 600); // small delay for UX feel
+      }, 600);
 
       return;
     }
@@ -94,7 +107,6 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
 
     try {
       let cartId = localStorage.getItem("cart_id");
-
       if (!cartId) {
         cartId =
           Math.random().toString(36).substring(2, 15) +
@@ -131,7 +143,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       let token = localStorage.getItem("authToken");
       if (!token) token = await fetchToken();
 
-      const response = await fetch("/api/addcart", {
+      let response = await fetch("/api/addcart", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -140,7 +152,22 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
         body: JSON.stringify(payload),
       });
 
+      // ✅ Retry on 401
+      if (response.status === 401) {
+        localStorage.removeItem("authToken");
+        const retryToken = await fetchToken();
+        response = await fetch("/api/addcart", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${retryToken}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
       const result = await response.json();
+
       if (result.status !== "success") {
         console.warn("Cart failed:", result);
         const errorMessage =
@@ -152,7 +179,53 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
         });
         return;
       }
-      setIsCartOpen?.(true);
+
+      // ✅ Update localStorage + notify navbar
+      const existingCart = JSON.parse(
+        localStorage.getItem("cart_data") || "[]",
+      );
+      const existingItemIndex = existingCart.findIndex(
+        (item) =>
+          item.id === product.id &&
+          (item.variant_id ?? null) === (selectedVariant?.id ?? null),
+      );
+
+      const isPromoValid =
+        product.promo_price &&
+        product.end_date &&
+        new Date(product.end_date) > new Date() &&
+        Number(product.promo_price) > 0 &&
+        Number(product.promo_price) < Number(product.price);
+
+      const cartPrice = isPromoValid
+        ? Number(product.promo_price)
+        : selectedVariant
+          ? Number(selectedVariant.price)
+          : Number(product.price);
+
+      const updatedCart =
+        existingItemIndex >= 0
+          ? existingCart.map((item, i) =>
+              i === existingItemIndex ? { ...item, qty: item.qty + 1 } : item,
+            )
+          : [
+              ...existingCart,
+              {
+                id: product.id,
+                name: product.name,
+                qty: 1,
+                price: cartPrice,
+                image: product.image,
+                variant_id: selectedVariant?.id ?? null,
+                variant_name: selectedVariant?.name ?? null,
+              },
+            ];
+
+      localStorage.setItem("cart_data", JSON.stringify(updatedCart));
+      window.dispatchEvent(new Event("cart-updated")); // ← navbar updates
+
+      // setIsCartOpen?.(true);
+
       toast.success("🛒 Added to cart!", {
         position: "top-right",
         autoClose: 2000,
@@ -164,7 +237,6 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
       setIsAdding(null);
     }
   };
-
   const isVariantRequired =
     product.product_variants?.length > 0 && !selectedVariant;
 
@@ -438,23 +510,21 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
           </div>
         )}
         <button
-          disabled={
-            isAdding === product.id || isOutOfStock || isVariantRequired
-          }
+          disabled={isAdding === product.id || isOutOfStock}
           onClick={handleAddToCart}
           className={`
-    group relative w-full overflow-hidden rounded-xl py-2.5 px-4
-    font-semibold text-sm transition-all duration-300
-    flex items-center justify-center gap-2
-    whitespace-nowrap
-    ${
-      isAdding === product.id || isVariantRequired
+  group relative w-full overflow-hidden rounded-xl py-2.5 px-4
+  font-semibold text-sm transition-all duration-300
+  flex items-center justify-center gap-2
+  whitespace-nowrap
+  ${
+    isAdding === product.id
+      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+      : isOutOfStock
         ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-        : isOutOfStock
-          ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-          : "bg-white text-[#A00300] border border-[#A00300] hover:bg-[#A00300] hover:text-white active:scale-[0.97]"
-    }
-  `}
+        : "bg-white text-[#A00300] border border-[#A00300] hover:bg-[#A00300] hover:text-white active:scale-[0.97]"
+  }
+`}
           style={{
             transition: "background 0.22s, color 0.22s, transform 0.12s",
           }}
@@ -469,7 +539,7 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
           <span>
             {isAdding === product.id
               ? "Adding..."
-              : isDropdownVariantRequired
+              : shouldShowViewOptions
                 ? "View Options"
                 : isVariantRequired
                   ? "Select Variant"

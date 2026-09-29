@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Search, X, ArrowRight, Sparkles } from "lucide-react";
+import { Search, X, ArrowRight, ImagePlus } from "lucide-react";
 import { useSession } from "../context/SessionContext";
 
 const SearchBar = () => {
@@ -13,12 +13,22 @@ const SearchBar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+
+  // Image search state
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isImageSearching, setIsImageSearching] = useState(false);
+  const [imageSearchError, setImageSearchError] = useState(false);
+
   const router = useRouter();
   const timeoutRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const { isLoggedIn, companyId } = useSession();
+
+  const isImageMode = !!imagePreview;
 
   const handleSearch = async (searchTerm) => {
     const cleanedTerm = searchTerm.trim();
@@ -78,6 +88,82 @@ const SearchBar = () => {
     }
   };
 
+  const handleImageSearch = async (file) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.warn("No auth token found");
+      return;
+    }
+
+    setIsImageSearching(true);
+    setImageSearchError(false);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await axios.post("/api/getProductsByImage", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (res.data?.products) {
+        setResults(res.data.products);
+        setShowDropdown(true);
+        if (!res.data.products.length) setImageSearchError(true);
+      } else {
+        setResults([]);
+        setImageSearchError(true);
+      }
+    } catch (err) {
+      console.error("Image search failed:", err);
+      setResults([]);
+      setImageSearchError(true);
+    } finally {
+      setIsImageSearching(false);
+    }
+  };
+
+  const handleImageIconClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting same file later
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      console.warn("Selected file is not an image");
+      return;
+    }
+
+    // clear any active text search state
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setQuery("");
+    setImageSearchError(false);
+
+    const previewUrl = URL.createObjectURL(file);
+    setImageFile(file);
+    setImagePreview(previewUrl);
+    setShowDropdown(false);
+    setResults([]);
+
+    handleImageSearch(file);
+  };
+
+  const clearImageSearch = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+    setImageSearchError(false);
+    setIsImageSearching(false);
+    setResults([]);
+    setShowDropdown(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
   const handleInputChange = (e) => {
     const value = e.target.value;
     setQuery(value);
@@ -98,7 +184,9 @@ const SearchBar = () => {
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClickOutside = (e) => {
@@ -107,11 +195,16 @@ const SearchBar = () => {
       setShowDropdown(false);
       setQuery("");
       setResults([]);
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      setImageFile(null);
+      setImagePreview(null);
+      setImageSearchError(false);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isImageMode) return;
     if (query.trim()) {
       router.push(`/products/query?query=${encodeURIComponent(query)}`, {
         scroll: false,
@@ -126,7 +219,7 @@ const SearchBar = () => {
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  });
 
   // Close on Escape key
   useEffect(() => {
@@ -136,17 +229,22 @@ const SearchBar = () => {
         setShowDropdown(false);
         setQuery("");
         setResults([]);
+        if (imagePreview) URL.revokeObjectURL(imagePreview);
+        setImageFile(null);
+        setImagePreview(null);
+        setImageSearchError(false);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isActive]);
+  }, [isActive, imagePreview]);
 
   // Auto-focus input when search opens
   useEffect(() => {
-    if (isActive && inputRef.current) {
+    if (isActive && inputRef.current && !isImageMode) {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   return (
@@ -255,7 +353,7 @@ const SearchBar = () => {
           margin: 0 auto;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           background: #fff;
           border: 2px solid rgba(160,3,0,0.15);
           border-radius: 18px;
@@ -266,6 +364,9 @@ const SearchBar = () => {
         .sb-form.focused {
           border-color: #A00300;
           box-shadow: 0 0 0 4px rgba(160,3,0,0.08), 0 4px 24px rgba(160,3,0,0.12);
+        }
+        .sb-form.image-mode {
+          padding: 8px 8px 8px 8px;
         }
         .sb-form-icon {
           width: 18px;
@@ -343,6 +444,91 @@ const SearchBar = () => {
         .sb-submit-btn svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
         .sb-submit-btn:hover svg { transform: translateX(3px); }
 
+        /* Image search trigger button (inside form) */
+        .sb-image-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          border: 1.5px dashed rgba(160,3,0,0.3);
+          background: rgba(160,3,0,0.04);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+          flex-shrink: 0;
+          color: #A00300;
+        }
+        .sb-image-btn:hover {
+          border-style: solid;
+          background: rgba(160,3,0,0.09);
+          transform: scale(1.06) rotate(-4deg);
+          box-shadow: 0 2px 10px rgba(160,3,0,0.15);
+        }
+        .sb-image-btn:active { transform: scale(0.96); }
+        .sb-image-btn svg { width: 16px; height: 16px; }
+
+        /* Image mode chip (replaces text input while an image is active) */
+        .sb-image-chip {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          background: linear-gradient(135deg, rgba(160,3,0,0.05), rgba(160,3,0,0.02));
+          border-radius: 12px;
+          padding: 6px 8px 6px 6px;
+          animation: sb-chipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes sb-chipIn {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .sb-image-chip-thumb-wrap {
+          position: relative;
+          width: 40px;
+          height: 40px;
+          border-radius: 9px;
+          overflow: hidden;
+          flex-shrink: 0;
+          background: #f5f5f5;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .sb-image-chip-thumb {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .sb-image-chip-thumb-scanning {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #ff6b6b, transparent);
+          animation: sb-scan 1.3s ease-in-out infinite;
+        }
+        @keyframes sb-scan {
+          0% { top: 0; opacity: 0; }
+          15% { opacity: 1; }
+          85% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        .sb-image-chip-text { flex: 1; min-width: 0; }
+        .sb-image-chip-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1a1a1a;
+        }
+        .sb-image-chip-sub {
+          font-size: 11.5px;
+          color: #999;
+          font-weight: 400;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .sb-image-chip-sub.error { color: #A00300; }
+
         /* Dropdown */
         .sb-dropdown {
           max-width: 680px;
@@ -357,6 +543,15 @@ const SearchBar = () => {
         @keyframes sb-dropIn {
           from { opacity: 0; transform: translateY(-8px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .sb-dropdown-label {
+          padding: 10px 16px 4px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: #A00300;
         }
 
         .sb-results-list {
@@ -437,6 +632,34 @@ const SearchBar = () => {
           transform: translateX(0);
         }
 
+        /* Image search empty state */
+        .sb-image-empty {
+          padding: 28px 20px;
+          text-align: center;
+        }
+        .sb-image-empty-icon {
+          width: 40px;
+          height: 40px;
+          margin: 0 auto 10px;
+          border-radius: 50%;
+          background: #fff0f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #A00300;
+        }
+        .sb-image-empty-icon svg { width: 18px; height: 18px; }
+        .sb-image-empty-title {
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 4px;
+        }
+        .sb-image-empty-sub {
+          font-size: 12px;
+          color: #999;
+        }
+
         /* View all */
         .sb-view-all {
           display: flex;
@@ -464,7 +687,15 @@ const SearchBar = () => {
           max-width: 680px;
           margin: 8px auto 0;
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .sb-hint-left {
+          font-size: 11px;
+          color: #aaa;
+          display: flex;
+          align-items: center;
+          gap: 5px;
         }
         .sb-hint-btn {
           display: flex;
@@ -504,12 +735,24 @@ const SearchBar = () => {
         }
         .sb-trigger-mobile:hover { border-color: #A00300; box-shadow: 0 0 0 3px rgba(160,3,0,0.1); }
 
-        /* Escape key listener */
+        .sb-visually-hidden {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0,0,0,0);
+          white-space: nowrap;
+          border: 0;
+        }
+
         @media (max-width: 767px) {
           .sb-panel { padding: 16px 12px 12px; }
           .sb-submit-btn span { display: none; }
           .sb-submit-btn { padding: 8px 10px; }
           .sb-result-img-wrap { width: 50px; height: 50px; }
+          .sb-hint-left span { display: none; }
         }
       `}</style>
 
@@ -544,41 +787,107 @@ const SearchBar = () => {
                 setShowDropdown(false);
                 setQuery("");
                 setResults([]);
+                if (imagePreview) URL.revokeObjectURL(imagePreview);
+                setImageFile(null);
+                setImagePreview(null);
+                setImageSearchError(false);
               }}
             />
 
             {/* Panel */}
             <div className="sb-panel" ref={containerRef}>
+              {/* Hidden file input for image search */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileChange}
+                className="sb-visually-hidden"
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+
               {/* Search Form */}
               <form
                 onSubmit={handleSubmit}
-                className={`sb-form ${isFocused ? "focused" : ""}`}
+                className={`sb-form ${isFocused ? "focused" : ""} ${
+                  isImageMode ? "image-mode" : ""
+                }`}
               >
-                <Search className="sb-form-icon" />
+                {!isImageMode && <Search className="sb-form-icon" />}
 
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={query}
-                  onChange={handleInputChange}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  placeholder="Search for the perfect gift…"
-                  className="sb-input"
-                  autoComplete="off"
-                />
+                {isImageMode ? (
+                  <div className="sb-image-chip">
+                    <div className="sb-image-chip-thumb-wrap">
+                      <img
+                        src={imagePreview}
+                        alt="Uploaded search"
+                        className="sb-image-chip-thumb"
+                      />
+                      {isImageSearching && (
+                        <div className="sb-image-chip-thumb-scanning" />
+                      )}
+                    </div>
+                    <div className="sb-image-chip-text">
+                      <p className="sb-image-chip-title">
+                        {isImageSearching
+                          ? "Searching by image…"
+                          : imageSearchError
+                            ? "No matches found"
+                            : "Results by image"}
+                      </p>
+                      <p
+                        className={`sb-image-chip-sub ${
+                          imageSearchError ? "error" : ""
+                        }`}
+                      >
+                        {imageFile?.name || "uploaded-image"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={handleInputChange}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholder="Search for the perfect gift…"
+                    className="sb-input"
+                    autoComplete="off"
+                  />
+                )}
 
-                {isLoading && <div className="sb-loading-bar" />}
+                {isLoading && !isImageMode && (
+                  <div className="sb-loading-bar" />
+                )}
 
-                {query && (
+                {/* {!isImageMode && (
+                  <button
+                    type="button"
+                    className="sb-image-btn"
+                    onClick={handleImageIconClick}
+                    aria-label="Search by image"
+                    title="Search by image"
+                  >
+                    <ImagePlus />
+                  </button>
+                )} */}
+
+                {(query || isImageMode) && (
                   <button
                     type="button"
                     className="sb-clear-btn"
                     onClick={() => {
-                      setQuery("");
-                      setResults([]);
-                      setShowDropdown(false);
-                      inputRef.current?.focus();
+                      if (isImageMode) {
+                        clearImageSearch();
+                      } else {
+                        setQuery("");
+                        setResults([]);
+                        setShowDropdown(false);
+                        inputRef.current?.focus();
+                      }
                     }}
                     aria-label="Clear"
                   >
@@ -586,69 +895,103 @@ const SearchBar = () => {
                   </button>
                 )}
 
-                <button
-                  type="submit"
-                  className="sb-submit-btn"
-                  aria-label="Search"
-                >
-                  <span>Search</span>
-                  <ArrowRight />
-                </button>
+                {!isImageMode && (
+                  <button
+                    type="submit"
+                    className="sb-submit-btn"
+                    aria-label="Search"
+                  >
+                    <span>Search</span>
+                    <ArrowRight />
+                  </button>
+                )}
               </form>
 
               {/* Dropdown */}
-              {showDropdown && results.length > 0 && (
-                <div className="sb-dropdown">
-                  <div className="sb-results-list">
-                    {results.map((product) => (
-                      <div
-                        key={product.id}
-                        className="sb-result-item"
+              {showDropdown &&
+                (results.length > 0 ||
+                  (isImageMode && imageSearchError && !isImageSearching)) && (
+                  <div className="sb-dropdown">
+                    {results.length > 0 && (
+                      <>
+                        {isImageMode && (
+                          <p className="sb-dropdown-label">
+                            Matches for your photo
+                          </p>
+                        )}
+                        <div className="sb-results-list">
+                          {results.map((product) => (
+                            <div
+                              key={product.id}
+                              className="sb-result-item"
+                              onClick={() => {
+                                router.push(`/products/${product.slug}`);
+                                setIsActive(false);
+                                setShowDropdown(false);
+                                setQuery("");
+                              }}
+                            >
+                              <div className="sb-result-img-wrap">
+                                <img
+                                  src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${product.image}`}
+                                  alt={product.name}
+                                  className="sb-result-img"
+                                />
+                              </div>
+                              <div className="sb-result-text">
+                                <p className="sb-result-name">{product.name}</p>
+                                <p className="sb-result-desc">
+                                  {product.details ||
+                                    "Perfect for every occasion!"}
+                                </p>
+                              </div>
+                              <div className="sb-result-arrow">
+                                <ArrowRight style={{ width: 13, height: 13 }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {!isImageMode && results.length > 0 && (
+                      <button
+                        className="sb-view-all"
                         onClick={() => {
-                          router.push(`/products/${product.slug}`);
+                          router.push(
+                            `/products/query?query=${encodeURIComponent(query)}`,
+                          );
                           setIsActive(false);
                           setShowDropdown(false);
-                          setQuery("");
                         }}
                       >
-                        <div className="sb-result-img-wrap">
-                          <img
-                            src={`https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${product.image}`}
-                            alt={product.name}
-                            className="sb-result-img"
-                          />
-                        </div>
-                        <div className="sb-result-text">
-                          <p className="sb-result-name">{product.name}</p>
-                          <p className="sb-result-desc">
-                            {product.details || "Perfect for every occasion!"}
-                          </p>
-                        </div>
-                        <div className="sb-result-arrow">
-                          <ArrowRight style={{ width: 13, height: 13 }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        View all results
+                        <ArrowRight />
+                      </button>
+                    )}
 
-                  <button
-                    className="sb-view-all"
-                    onClick={() => {
-                      router.push(
-                        `/products/query?query=${encodeURIComponent(query)}`,
-                      );
-                      setIsActive(false);
-                      setShowDropdown(false);
-                    }}
-                  >
-                    View all results
-                    <ArrowRight />
-                  </button>
-                </div>
-              )}
+                    {/* {isImageMode && imageSearchError && !isImageSearching && (
+                      <div className="sb-image-empty">
+                        <div className="sb-image-empty-icon">
+                          <ImagePlus />
+                        </div>
+                        <p className="sb-image-empty-title">
+                          Couldn't find a match
+                        </p>
+                        <p className="sb-image-empty-sub">
+                          Try a clearer photo or search by keyword instead
+                        </p>
+                      </div>
+                    )} */}
+                  </div>
+                )}
 
               {/* Close hint */}
               <div className="sb-hint">
+                {/* <div className="sb-hint-left">
+                  <ImagePlus style={{ width: 12, height: 12 }} />
+                  <span>Tip: tap the image icon to search by photo</span>
+                </div> */}
                 <button
                   className="sb-hint-btn"
                   type="button"
@@ -657,6 +1000,10 @@ const SearchBar = () => {
                     setShowDropdown(false);
                     setQuery("");
                     setResults([]);
+                    if (imagePreview) URL.revokeObjectURL(imagePreview);
+                    setImageFile(null);
+                    setImagePreview(null);
+                    setImageSearchError(false);
                   }}
                 >
                   <kbd>Esc</kbd> to close

@@ -6,6 +6,12 @@ import {
   Menu,
   Settings,
   X,
+  ShoppingBag,
+  Percent,
+  Gift,
+  Building2,
+  Truck,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
@@ -19,6 +25,11 @@ import LogoutButton from "../Logout";
 import { useSession } from "@/app/context/SessionContext";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
+import { motion, AnimatePresence } from "framer-motion";
+
+const MobileSearchBar = dynamic(() => import("../MobileSearchBar"), {
+  ssr: false,
+});
 
 const SearchBar = dynamic(() => import("../SearchBar"), {
   ssr: false,
@@ -32,12 +43,67 @@ const LanguageSwitcher = dynamic(() => import("./LanguageSwitcher"), {
   ssr: false,
 });
 
+// ─── Animation variants ────────────────────────────────────────────────────
+const mobileMenuVariants = {
+  hidden: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      height: { duration: 0.32, ease: [0.32, 0, 0.67, 0] },
+      opacity: { duration: 0.18, ease: "easeIn" },
+    },
+  },
+  visible: {
+    opacity: 1,
+    height: "auto",
+    transition: {
+      height: { duration: 0.38, ease: [0.33, 1, 0.68, 1] },
+      opacity: { duration: 0.22, ease: "easeOut", delay: 0.04 },
+    },
+  },
+};
+
+const subGridVariants = {
+  hidden: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      height: { duration: 0.24, ease: [0.32, 0, 0.67, 0] },
+      opacity: { duration: 0.14 },
+    },
+  },
+  visible: {
+    opacity: 1,
+    height: "auto",
+    transition: {
+      height: { duration: 0.3, ease: [0.33, 1, 0.68, 1] },
+      opacity: { duration: 0.18, delay: 0.06 },
+    },
+  },
+};
+
+const backdropVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.28, ease: "easeOut" },
+  },
+};
+
+// Shared timing for the marquee <-> navbar slide so they move in perfect lockstep
+const SCROLL_TRANSITION = "transform 500ms ease-in-out";
+// ───────────────────────────────────────────────────────────────────────────
+
 export default function Navbar() {
   const { t } = useTranslation();
 
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const pathname = usePathname();
+  const hideMobileSearchBar =
+    pathname === "/login" ||
+    pathname.startsWith("/orders") ||
+    pathname.startsWith("/checkout");
 
   const { itemCount } = useCart();
 
@@ -57,6 +123,37 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    let rafId = null;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      rafId = requestAnimationFrame(() => {
+        setIsScrolled((prev) => {
+          const y = window.scrollY;
+          // small hysteresis band avoids rapid true/false flicker right at the threshold
+          if (prev && y < 4) return false;
+          if (!prev && y > 12) return true;
+          return prev;
+        });
+        ticking = false;
+      });
+    };
+
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   useEffect(() => {
     setGroupId(Number(localStorage.getItem("group_id")));
@@ -69,13 +166,12 @@ export default function Navbar() {
 
     const CACHE_KEY = "navbar_news";
 
-    // ✅ 1. Load from sessionStorage instantly
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (parsed?.length > 0) {
-          setMessages(parsed); // ⚡ instant UI
+          setMessages(parsed);
         }
       } catch (e) {
         console.warn("Cache parse failed");
@@ -113,14 +209,11 @@ export default function Navbar() {
           },
         });
 
-        // 🔥 FIX START
         if (res.status === 401 && retryCount < 2) {
           localStorage.removeItem("authToken");
-
-          await wait(300); // small delay
+          await wait(300);
           return fetchNews(retryCount + 1);
         }
-        // 🔥 FIX END
 
         if (!res.ok) throw new Error("Failed to fetch news");
 
@@ -185,13 +278,18 @@ export default function Navbar() {
   const router = useRouter();
 
   const menuRef = useRef(null);
+  // NEW: dedicated ref for the hamburger/X button so the outside-click
+  // handler can tell "clicked the toggle" apart from "clicked elsewhere"
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         mobileMenuOpen &&
         menuRef.current &&
-        !menuRef.current.contains(event.target)
+        !menuRef.current.contains(event.target) &&
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(event.target)
       ) {
         setMobileMenuOpen(false);
         setIsProductsOpen(false);
@@ -221,7 +319,7 @@ export default function Navbar() {
 
         const mapped = data.map((cat) => ({
           name: cat.name,
-          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/thumbs/${cat.image}`,
+          image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${cat.image}`,
           slug: cat.slug,
           subcategories: cat.subcategories || [],
         }));
@@ -251,427 +349,534 @@ export default function Navbar() {
 
     const interval = setInterval(() => {
       setDirection(1);
-
       setIndex((prev) => (prev + 1) % messages.length);
     }, 4000);
 
     return () => clearInterval(interval);
   }, [messages.length]);
 
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setIsProductsOpen(false);
+    setIsOdopOpen(false);
+  };
+
   return (
     <>
-      {/* Top Marquee */}
-      <div
-        className="bg-black text-white text-[10px] md:text-sm lg:text-base h-16 md:h-10 flex items-center justify-center  relative overflow-hidden font-odop"
-        translate="no"
-      >
-        {/* Prev Button */}
-        <button
-          onClick={handlePrev}
-          aria-label="Previous slide"
-          className="absolute left-4 bg-gray-200 text-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all"
+      {/* Header spacer / layout container */}
+      <div className="h-[118px] md:h-[124px]">
+        {/* Top Marquee */}
+        <div
+          className={`relative flex h-12 items-center justify-center overflow-hidden bg-black font-odop text-[11px] text-white transition-transform duration-500 ease-in-out will-change-transform md:h-9 md:text-xs lg:text-sm ${
+            isScrolled
+              ? "-translate-y-full opacity-0"
+              : "translate-y-0 opacity-100"
+          }`}
+          style={{ transitionProperty: "transform, opacity" }}
+          translate="no"
         >
-          <ChevronLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
-        </button>
-
-        {/* Message */}
-        <div className="relative w-full max-w-[300px] md:max-w-full flex justify-center items-center">
-          <div className="text-center px-4">{messages[index]}</div>
+          <div className="relative flex w-full max-w-[70%] items-center justify-center md:max-w-[80%]">
+            <AnimatePresence mode="wait" initial={false} custom={direction}>
+              <motion.div
+                key={`${index}-${messages[index]}`}
+                custom={direction}
+                variants={{
+                  enter: (direction) => ({
+                    y: direction > 0 ? 14 : -14,
+                    opacity: 0,
+                  }),
+                  center: {
+                    y: 0,
+                    opacity: 1,
+                  },
+                  exit: (direction) => ({
+                    y: direction > 0 ? -14 : 14,
+                    opacity: 0,
+                  }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  y: {
+                    duration: 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                  },
+                  opacity: {
+                    duration: 0.3,
+                    ease: "easeOut",
+                  },
+                }}
+                className="absolute inset-x-0 flex items-center justify-center truncate px-4 text-center"
+              >
+                {messages[index]}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
 
-        {/* Next Button */}
-        <button
-          onClick={handleNext}
-          aria-label="Next slide"
-          className="absolute right-4 bg-gray-200 text-black w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all"
+        {/* Main Navbar — always fixed top-0, slid with translateY so it moves
+            in lockstep with the marquee above (both are compositor-only
+            transform animations, so there's no more layout-thread lag) */}
+        <nav
+          className={`fixed left-0 right-0 top-0 z-[70] border-b border-black/5 font-odop transition-[background-color,box-shadow,backdrop-filter] duration-500 ease-in-out will-change-transform ${
+            isScrolled
+              ? "translate-y-0 bg-[#f9f9f9]/75 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-[#f9f9f9]/60"
+              : "translate-y-[48px] bg-[#f9f9f9] shadow-sm md:translate-y-[36px]"
+          }`}
+          style={{
+            transitionProperty:
+              "transform, background-color, box-shadow, backdrop-filter",
+            // exposes navbar bottom position as a CSS var for MobileSearchBar
+            "--msb-top": isScrolled ? "70px" : "118px",
+          }}
         >
-          <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
-        </button>
-      </div>
-
-      {/* Main Navbar */}
-      <nav className="bg-[#f9f9f959] shadow-sm px-0 lg:px-6 py-3 top-0 z-[100] font-odop">
-        <div className="px-3 flex justify-around md:justify-between items-center mt-0 md:mt-5 mb-0 md:mb-5">
-          {/* Logo */}
-          <Link href="/" title="Yuukke Home" className="flex items-center">
-            <div className="relative w-[135px] h-[50px] lg:w-[170px] lg:h-[45px]">
+          <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 lg:px-8 lg:py-3 xl:py-4">
+            {/* Logo */}
+            <Link
+              href="/"
+              title="Yuukke Home"
+              className="flex w-[126px] min-w-[126px] shrink-0 items-center sm:w-[138px] sm:min-w-[138px] lg:w-[165px] lg:min-w-[165px] xl:w-[185px] xl:min-w-[185px]"
+            >
               <Image
-                src="/new-logo.png"
+                src="/yuukke_logo.png"
                 alt="Yuukke Eco-Friendly Marketplace Logo"
                 title="Yuukke - Eco-Friendly Fashion, Home & Beauty Marketplace"
-                fill
+                width={185}
+                height={52}
                 priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                className="object-contain"
+                sizes="126px"
+                className="block h-[46px] w-[126px] object-contain sm:h-[50px] sm:w-[138px] lg:h-[58px] lg:w-[165px] xl:h-[62px] xl:w-[185px]"
               />
-            </div>
-          </Link>
+            </Link>
 
-          {/* Desktop Nav Links – zoom-friendly */}
-          <div className="hidden md:flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-6 text-sm md:text-base  text-neutral-600 mt-2 tracking-wider">
-            {/* Products Dropdown */}
-            <div className="flex items-center gap-4 md:gap-6">
-              {/* Products Dropdown - Updated to use group-hover like ODOP */}
-              <div className="relative group">
-                <Link
-                  href="/products"
-                  title="Yuukke Products"
-                  className="group transition-all flex items-center gap-1 py-2 px-1  text-gray-700 hover:text-[#A00300] cursor-pointer"
-                >
-                  {t("Products")}
-                  <ChevronDown className="w-4 h-4 mt-0.5 transition-transform duration-200 group-hover:rotate-180" />
-                </Link>
-
-                <div className="absolute left-0 top-full mt-1 w-[42rem] bg-white border border-gray-100 rounded-xl shadow-xl z-[100] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out ">
-                  {productCategories.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
-                      {productCategories.map((category) => (
-                        <Link
-                          key={category.id || category.slug}
-                          href={`/products/category/${category.slug}`}
-                          title={`${category.name} Products`}
-                          className="group flex flex-col items-center hover:bg-gray-50 rounded-lg p-4 transition-all duration-200"
-                        >
-                          {/* 🔹 Category Image/Icon */}
-                          <div className="w-16 h-16 mb-3 flex items-center justify-center rounded-full bg-gray-100 overflow-hidden">
-                            <Image
-                              src={category.image || "/placeholder.png"}
-                              alt={category.name}
-                              width={48}
-                              height={48}
-                              loading="lazy"
-                              className="object-contain"
-                            />
-                          </div>
-
-                          {/* 🔹 Category Name */}
-                          <span className="text-sm  text-gray-800 group-hover:text-black text-center">
-                            {category.name}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex justify-center py-8 space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-gray-300 animate-pulse"></div>
-                      <div className="w-3 h-3 rounded-full bg-gray-300 animate-pulse delay-100"></div>
-                      <div className="w-3 h-3 rounded-full bg-gray-300 animate-pulse delay-200"></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Offers */}
-              <Link
-                href={{ pathname: "/products/offers" }}
-                title="Yuukke Offers"
-                className="transition-all py-2 px-1  text-gray-700 hover:text-[#A00300] shrink-0 whitespace-nowrap"
-              >
-                {t("Offers")}
-              </Link>
-
-              {/* Personalized Gifting */}
-              <Link
-                href={{ pathname: "/products/festival-gifting" }}
-                title="Yuukke Gifting"
-                className="transition-all py-2 px-1  text-gray-700  hover:text-[#A00300] shrink-0 whitespace-nowrap"
-              >
-                {t("Personalized Gifting")}
-              </Link>
-
-              {/* Corporate Gifting (badge kept subtle on tight widths) */}
-              <Link
-                href="https://gift.yuukke.com/#featured-products"
-                title="Yuukke Gifting"
-                aria-label="Corporate Gifting – Premium, Classic"
-                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-full  text-gray-700 hover:text-[#A00300] transition-all duration-200 group shrink-0 whitespace-nowrap"
-              >
-                <span className="whitespace-nowrap">
-                  {t("Corporate Gifting")}
-                </span>
-              </Link>
-
-              {/* Track Order */}
-              <Link
-                href="/track-order"
-                title="Track your Yuukke Orders"
-                className="transition-all py-2 px-1 text-gray-700 hover:text-gray-900 shrink-0 whitespace-nowrap"
-              >
-                {t("Track Order")}
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Side Icons */}
-          <div className="flex items-center space-x-2 ml-3 md:ml-0">
-            <div className="hidden md:flex space-x-6">
-              <SearchBar />
-
-              {/* Profile/Login */}
-
-              <div className="relative" ref={dropdownRef}>
-                {!isLoggedIn ? (
+            {/* Desktop Nav Links */}
+            <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+              <div className="flex min-w-0 items-center gap-1 text-[13px] tracking-wide text-neutral-600 xl:gap-2 xl:text-sm 2xl:gap-4">
+                {/* Products Dropdown */}
+                <div className="group relative shrink-0">
                   <Link
-                    href={
-                      pathname && pathname !== "/login"
-                        ? `/login?from=${encodeURIComponent(pathname)}`
-                        : "/login"
-                    }
-                    title="Login to your Yuukke account"
-                    aria-label="Profile"
-                    className="rounded-full hover:bg-gray-100 p-2 transition flex items-center justify-center w-full h-full"
+                    href="/products"
+                    title="Yuukke Products"
+                    className="group flex cursor-pointer items-center gap-1 whitespace-nowrap px-2 py-2 text-gray-700 transition-all hover:text-[#A00300] xl:px-3"
                   >
-                    <User className="w-5 h-5 text-black cursor-pointer" />
+                    {t("Products")}
+                    <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 transition-transform duration-200 group-hover:rotate-180" />
                   </Link>
-                ) : (
-                  <div className="relative flex items-center gap-2 z-50">
-                    {/* Regular Profile Icon */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setOpen((prev) => !prev)}
-                        className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center shadow-md hover:bg-gray-300 transition"
-                      >
-                        <User className="w-5 h-5 text-gray-600" />
-                      </button>
 
-                      {open && (
-                        <div className="absolute right-0 mt-2 w-36 bg-white border rounded-lg shadow-lg z-50">
+                  <div className="invisible absolute left-0 top-full z-[100] mt-1 w-[90vw] max-w-[42rem] rounded-xl border border-gray-100 bg-white p-6 opacity-0 shadow-xl transition-all duration-200 ease-out group-hover:visible group-hover:opacity-100">
+                    {productCategories.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-1 xl:grid-cols-4">
+                        {productCategories.map((category) => (
                           <Link
-                            href="/orders"
-                            title="Your Yuukke Orders"
-                            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition text-sm"
-                            onClick={() => setOpen(false)}
+                            key={category.id || category.slug}
+                            href={`/products/category/${category.slug}`}
+                            title={`${category.name} Products`}
+                            className="group flex flex-col items-center rounded-xl p-4 transition-all duration-300 hover:bg-gray-50 hover:shadow-md"
                           >
-                            <User className="w-4 h-4" />
-                            Profile
+                            <div className="mb-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-transform duration-300 group-hover:scale-105">
+                              <Image
+                                src={category.image || "/placeholder.png"}
+                                alt={category.name}
+                                width={84}
+                                height={84}
+                                loading="lazy"
+                                className="h-[68px] w-[74px] object-cover"
+                              />
+                            </div>
+                            <span className="text-center text-sm text-gray-800 transition-colors group-hover:text-clay">
+                              {category.name}
+                            </span>
                           </Link>
-                          <div className="border-t my-1" />
-                          <div className="px-0 py-2 hover:bg-gray-100 transition">
-                            <LogoutButton />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {/* Dashboard Icon for group_id 4 */}
-                    {groupId === 4 && (
-                      <button
-                        onClick={() => {
-                          const token = localStorage.getItem("access_token");
-                          if (token) {
-                            window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${token}`;
-                          } else {
-                            alert("Access token missing. Please login again.");
-                          }
-                        }}
-                        aria-label="Dashboard"
-                        className="w-9 h-9 rounded-full bg-[#a00300] flex items-center justify-center shadow-md hover:bg-red-900 transition"
-                      >
-                        <Settings className="w-5 h-5 text-white" />
-                      </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex justify-center space-x-2 py-8">
+                        <div className="h-3 w-3 animate-pulse rounded-full bg-gray-300"></div>
+                        <div className="h-3 w-3 animate-pulse rounded-full bg-gray-300 delay-100"></div>
+                        <div className="h-3 w-3 animate-pulse rounded-full bg-gray-300 delay-200"></div>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* 🌐 Language Switcher (Lucide Globe) */}
-              <LanguageSwitcher />
-
-              {/* Wishlist */}
-              <a
-                href={!isLoggedIn ? "/login" : "/orders?tab=Wishlist"}
-                title={
-                  !isLoggedIn ? "Login to View Wishlist" : "View Your Wishlist"
-                }
-                aria-label="Favorites"
-                className="p-2 hover:bg-gray-100 rounded-full transition"
-              >
-                <Heart className="w-5 h-5 text-black" />
-              </a>
-
-              {/* Cart */}
-              <button
-                aria-label="Cart"
-                className="p-2 hover:bg-gray-100 rounded-full transition relative"
-                onClick={toggleCart}
-              >
-                <ShoppingCart className="w-5 h-5 text-black cursor-pointer" />
-
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
-                    {itemCount}
-                  </span>
-                )}
-              </button>
-              {isCartOpen && (
-                <CartSidebar
-                  isOpen={isCartOpen}
-                  onClose={() => setIsCartOpen(false)}
-                  cartItems={cartItems}
-                  setCartItems={setCartItems}
-                />
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center gap-2 px-2 py-1.5">
-              {/* ✅ Search bar takes flexible width */}
-              <div className="flex-1">
-                <SearchBar />
-              </div>
-
-              {/* ✅ Language Switcher */}
-              <div className="flex-shrink-0">
-                <LanguageSwitcher />
-              </div>
-
-              {/* ✅ Cart Icon */}
-              <button
-                aria-label="Cart"
-                className="p-2 hover:bg-gray-100 rounded-full transition relative"
-                onClick={toggleCart}
-              >
-                <ShoppingCart className="w-4 h-4 text-black" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px]  rounded-full px-[6px] min-w-[18px] h-[18px] flex items-center justify-center shadow-md leading-none font-odop">
-                    {itemCount}
-                  </span>
-                )}
-              </button>
-
-              {/* ✅ Cart Sidebar */}
-              {isCartOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
-                    onClick={() => setIsCartOpen(false)}
-                  />
-                  {isCartOpen && (
-                    <CartSidebar
-                      isOpen={isCartOpen}
-                      onClose={() => setIsCartOpen(false)}
-                      cartItems={cartItems}
-                      setCartItems={setCartItems}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* ✅ Menu Toggle */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label="Toggle Menu"
-                className="p-2 rounded-full hover:bg-gray-100 transition"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-4 h-4 text-gray-700" />
-                ) : (
-                  <Menu className="w-5 h-5 text-gray-900" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div
-            ref={menuRef}
-            className="md:hidden mt-4 px-4 space-y-2 text-lg text-gray-700"
-          >
-            <div className="block py-1">
-              <button
-                onClick={() => setIsProductsOpen(!isProductsOpen)}
-                className="w-full text-left hover:text-black transition"
-              >
-                {t("Products")}
-                {isProductsOpen ? "▲" : "▼"}
-              </button>
-              {isProductsOpen && (
-                <div className="ml-4 mt-2 space-y-0 text-gray-600">
-                  {productCategories.map((category) => (
-                    <Link
-                      key={category.id || category.slug}
-                      href={`/products/category/${category.slug}`}
-                      title={`${category.name} Products`}
-                      className="block px-4 py-2 hover:bg-gray-100 text-gray-800 text-md rounded"
-                      onClick={() => {
-                        setIsProductsOpen(false);
-                        setMobileMenuOpen(false); // Add this to close the entire menu
-                      }}
-                    >
-                      {category.name}
-                    </Link>
-                  ))}
                 </div>
-              )}
+
+                {/* Offers */}
+                <Link
+                  href={{ pathname: "/products/offers" }}
+                  title="Yuukke Offers"
+                  className="shrink-0 whitespace-nowrap px-2 py-2 text-gray-700 transition-all hover:text-[#A00300] xl:px-3"
+                >
+                  {t("Offers")}
+                </Link>
+
+                {/* Personalized Gifting */}
+                <Link
+                  href={{ pathname: "/products/festival-gifting" }}
+                  title="Yuukke Gifting"
+                  className="shrink-0 whitespace-nowrap px-2 py-2 text-gray-700 transition-all hover:text-[#A00300] xl:px-3"
+                >
+                  {t("Personalized Gifting")}
+                </Link>
+
+                {/* Corporate Gifting */}
+                <Link
+                  href="https://gift.yuukke.com/#featured-products"
+                  title="Yuukke Gifting"
+                  aria-label="Corporate Gifting – Premium, Classic"
+                  className="group relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-2 py-2 text-gray-700 transition-all duration-200 hover:text-[#A00300] xl:px-3"
+                >
+                  <span className="whitespace-nowrap">
+                    {t("Corporate Gifting")}
+                  </span>
+                </Link>
+
+                {/* Track Order */}
+                <Link
+                  href="/track-order"
+                  title="Track your Yuukke Orders"
+                  className="shrink-0 whitespace-nowrap px-2 py-2 text-gray-700 transition-all hover:text-gray-900 xl:px-3"
+                >
+                  {t("Track Order")}
+                </Link>
+              </div>
             </div>
 
-            {/* Offers Link */}
-            <Link
-              href={{
-                pathname: "/products/offers", // dedicated offers route
-              }}
-              title="Yuukke Offers"
-              className="block py-1 hover:text-black transition"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {t("Offers")}
-            </Link>
+            {/* Right Side Cluster */}
+            <div className="flex shrink-0 items-center gap-2 lg:gap-3 xl:gap-4">
+              {/* Seller Registration — desktop only */}
+              <Link
+                href="/seller-registration"
+                className="hidden h-[38px] shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#882236] px-4 text-[12px] font-semibold text-white transition-all duration-300 hover:bg-[#6e1a2b] lg:flex xl:h-[42px] xl:px-5 xl:text-[13px]"
+              >
+                {t("Become a Seller")} →
+              </Link>
 
-            {/* Best-sellers Link */}
-            <Link
-              href={{
-                pathname: "/products/festival-gifting", // dedicated offers route
-              }}
-              title="Yuukke Gifting"
-              className="block py-1 hover:text-black transition"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {t("Personalized Gifting")}
-            </Link>
+              <div className="hidden items-center gap-1 lg:flex xl:gap-2">
+                <div className="shrink-0">
+                  <SearchBar />
+                </div>
+                {/* Profile/Login */}
+                <div className="relative" ref={dropdownRef}>
+                  {!isLoggedIn ? (
+                    <Link
+                      href={
+                        pathname && pathname !== "/login"
+                          ? `/login?from=${encodeURIComponent(pathname)}`
+                          : "/login"
+                      }
+                      title="Login to your Yuukke account"
+                      aria-label="Profile"
+                      className="flex h-full w-full items-center justify-center rounded-full p-2 transition hover:bg-gray-100"
+                    >
+                      <User className="h-5 w-5 cursor-pointer text-black" />
+                    </Link>
+                  ) : (
+                    <div className="relative z-50 flex items-center gap-2">
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpen((prev) => !prev)}
+                          className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 shadow-md transition hover:bg-gray-300"
+                        >
+                          <User className="h-5 w-5 text-gray-600" />
+                        </button>
 
-            {/* Offers Link */}
-            <Link
-              href="https://gift.yuukke.com/#featured-products"
-              title="Yuukke Gifting"
-              aria-label="Corporate Gifting – Premium, Classic"
-              className="
-    relative items-center
-    gap-2 px-1 py-2 rounded-full
-     text-gray-700
-   
-    active:translate-y-0
-    transition-all duration-200 group
-    block 
-  "
-            >
-              {/* Text */}
-              <span className="whitespace-nowrap">Corporate Gifting</span>
+                        {open && (
+                          <div className="absolute right-0 z-50 mt-2 w-36 rounded-lg border bg-white shadow-lg">
+                            <Link
+                              href="/orders"
+                              title="Your Yuukke Orders"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
+                              onClick={() => setOpen(false)}
+                            >
+                              <User className="h-4 w-4" />
+                              Profile
+                            </Link>
+                            <div className="my-1 border-t" />
+                            <div className="px-0 py-2 transition hover:bg-gray-100">
+                              <LogoutButton />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {groupId === 4 && (
+                        <button
+                          onClick={() => router.push("/subscription")}
+                          aria-label="Subscription"
+                          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#a00300] shadow-md transition hover:bg-red-900"
+                        >
+                          <Settings className="h-5 w-5 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-              {/* Right sparkle */}
-              {/* <Sparkle className="w-4 h-4 opacity-90 group-hover:rotate-12 transition-transform" /> */}
+                {/* 🌐 Language Switcher */}
+                <LanguageSwitcher />
 
-              {/* Attention dot */}
-              <span className="absolute -left-1.5 top-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/70"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white/90"></span>
-                </span>
-              </span>
-            </Link>
+                {/* Wishlist */}
+                <a
+                  href={!isLoggedIn ? "/login" : "/orders?tab=Wishlist"}
+                  title={
+                    !isLoggedIn
+                      ? "Login to View Wishlist"
+                      : "View Your Wishlist"
+                  }
+                  aria-label="Favorites"
+                  className="rounded-full p-2 transition hover:bg-gray-100"
+                >
+                  <Heart className="h-5 w-5 text-black" />
+                </a>
 
-            {/* Tracking Link */}
-            <Link
-              href="/track-order"
-              title="Track your Yuukke Orders"
-              className="transition-all py-2 px-1  text-gray-700 hover:text-gray-900"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {t("Track Order")}
-            </Link>
+                {/* Cart */}
+                <button
+                  aria-label="Cart"
+                  className="relative rounded-full p-2 transition hover:bg-gray-100"
+                  onClick={toggleCart}
+                >
+                  <ShoppingCart className="h-5 w-5 cursor-pointer text-black" />
+                  {itemCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-[6px] text-[10px] font-odop leading-none text-white shadow-md">
+                      {itemCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Mobile / Tablet Cluster (below lg) */}
+              <div className="flex min-w-0 items-center gap-1.5 lg:hidden">
+                <div className="shrink-0">
+                  <LanguageSwitcher />
+                </div>
+
+                <a
+                  href={!isLoggedIn ? "/login" : "/orders?tab=Profile"}
+                  title={
+                    !isLoggedIn ? "Login to View Profile" : "View Your Profile"
+                  }
+                  aria-label="Profile"
+                  className="shrink-0 rounded-full p-2 transition hover:bg-gray-100"
+                >
+                  <User className="h-5 w-5 text-black" />
+                </a>
+
+                <a
+                  href={!isLoggedIn ? "/login" : "/orders?tab=Wishlist"}
+                  title={
+                    !isLoggedIn
+                      ? "Login to View Wishlist"
+                      : "View Your Wishlist"
+                  }
+                  aria-label="Favorites"
+                  className="shrink-0 rounded-full p-2 transition hover:bg-gray-100"
+                >
+                  <Heart className="h-5 w-5 text-black" />
+                </a>
+
+                <button
+                  ref={menuButtonRef}
+                  onClick={() => setMobileMenuOpen((prev) => !prev)}
+                  aria-label="Toggle Menu"
+                  className="shrink-0 rounded-full p-2 transition hover:bg-gray-100"
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    {mobileMenuOpen ? (
+                      <motion.span
+                        key="close"
+                        initial={{ rotate: -90, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        exit={{ rotate: 90, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="block"
+                      >
+                        <X className="h-4 w-4 text-gray-700" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="open"
+                        initial={{ rotate: 90, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        exit={{ rotate: -90, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="block"
+                      >
+                        <Menu className="h-5 w-5 text-gray-900" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* ── Mobile Menu (animated) ─────────────────────────────────── */}
+          <AnimatePresence initial={false}>
+            {mobileMenuOpen && (
+              <motion.div
+                ref={menuRef}
+                key="mobile-menu"
+                variants={mobileMenuVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                style={{ overflow: "hidden" }}
+                className="border-t border-black/5 bg-[#f9f9f9] px-3 py-2 lg:hidden"
+              >
+                {/* Products */}
+                <div className="border-b border-black/5">
+                  <button
+                    onClick={() => setIsProductsOpen(!isProductsOpen)}
+                    className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition hover:bg-black/5"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#A00300]/8">
+                      <ShoppingBag className="h-[18px] w-[18px] text-[#A00300]" />
+                    </span>
+                    <span className="flex-1 text-[15px] font-medium text-gray-800">
+                      {t("Products")}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                        isProductsOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isProductsOpen && (
+                      <motion.div
+                        key="products-grid"
+                        variants={subGridVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        style={{ overflow: "hidden" }}
+                      >
+                        <div className="grid grid-cols-3 gap-2 px-2 pb-3 sm:grid-cols-4">
+                          {productCategories.map((category) => (
+                            <Link
+                              key={category.id || category.slug}
+                              href={`/products/category/${category.slug}`}
+                              title={`${category.name} Products`}
+                              className="rounded-lg bg-white px-2 py-2 text-center text-xs text-gray-700 shadow-sm transition hover:text-[#A00300]"
+                              onClick={closeMobileMenu}
+                            >
+                              {category.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Offers */}
+                <Link
+                  href={{ pathname: "/products/offers" }}
+                  title="Yuukke Offers"
+                  className="flex items-center gap-3 rounded-lg border-b border-black/5 px-2 py-3 transition hover:bg-black/5"
+                  onClick={closeMobileMenu}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#A00300]/8">
+                    <Percent className="h-[18px] w-[18px] text-[#A00300]" />
+                  </span>
+                  <span className="text-[15px] font-medium text-gray-800">
+                    {t("Offers")}
+                  </span>
+                </Link>
+
+                {/* Personalized Gifting */}
+                <Link
+                  href={{ pathname: "/products/festival-gifting" }}
+                  title="Yuukke Gifting"
+                  className="flex items-center gap-3 rounded-lg border-b border-black/5 px-2 py-3 transition hover:bg-black/5"
+                  onClick={closeMobileMenu}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#A00300]/8">
+                    <Gift className="h-[18px] w-[18px] text-[#A00300]" />
+                  </span>
+                  <span className="text-[15px] font-medium text-gray-800">
+                    {t("Personalized Gifting")}
+                  </span>
+                </Link>
+
+                {/* Corporate Gifting */}
+                <Link
+                  href="https://gift.yuukke.com/#featured-products"
+                  title="Yuukke Gifting"
+                  aria-label="Corporate Gifting – Premium, Classic"
+                  className="flex items-center gap-3 rounded-lg border-b border-black/5 px-2 py-3 transition hover:bg-black/5"
+                  onClick={closeMobileMenu}
+                >
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#A00300]/8">
+                    <Building2 className="h-[18px] w-[18px] text-[#A00300]" />
+                    <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#A00300]/60"></span>
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#A00300]"></span>
+                    </span>
+                  </span>
+                  <span className="text-[15px] font-medium text-gray-800">
+                    {t("Corporate Gifting")}
+                  </span>
+                </Link>
+
+                {/* Track Order */}
+                <Link
+                  href="/track-order"
+                  title="Track your Yuukke Orders"
+                  className="flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-black/5"
+                  onClick={closeMobileMenu}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200/70">
+                    <Truck className="h-[18px] w-[18px] text-gray-700" />
+                  </span>
+                  <span className="text-[15px] font-medium text-gray-800">
+                    {t("Track Order")}
+                  </span>
+                </Link>
+
+                {/* Become a Seller */}
+                <Link
+                  href="/seller-registration"
+                  className="mt-3 flex h-11 items-center justify-center gap-2 rounded-full bg-[#882236] text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6e1a2b]"
+                  onClick={closeMobileMenu}
+                >
+                  <Store className="h-4 w-4" />
+                  {t("Become a Seller")}
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+        {!hideMobileSearchBar && <MobileSearchBar isScrolled={isScrolled} />}
+      </div>
+      {/* Compensates for the fixed MobileSearchBar strip height — mobile only, no effect on any page hero */}
+      {!hideMobileSearchBar && (
+        <div className="h-[54px] lg:hidden" aria-hidden="true" />
+      )}
+
+      {/* ── Blur backdrop behind open mobile menu ─────────────────────── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            key="menu-backdrop"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="fixed inset-0 z-[69] lg:hidden"
+            style={{
+              background: "rgba(0, 0, 0, 0.18)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              top: "0",
+            }}
+            onClick={closeMobileMenu}
+          />
         )}
-      </nav>
+      </AnimatePresence>
+
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
 }

@@ -26,7 +26,7 @@ import EmptyState from "./components/Emptystate";
 
 //  ─────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 12; // every batch loads exactly 12 products
+const PAGE_SIZE = 50; // every batch loads exactly 12 products
 
 let categoriesCache = null;
 let categoriesCacheTime = null;
@@ -148,6 +148,7 @@ export default function AllProductsPage({
 
   // ── Page-type flags ──────────────────────────────────────────────
   const isOffersPage = pathname === "/products/offers";
+  const isOdopPage = pathname === "/products/odop";
   const isFestivalGifting = pathname === "/products/festival-gifting";
   const isBogo = pathname === "/products/special-offers";
   const isNewarrivalsPage = pathname?.endsWith("/NA01--4c91bafe");
@@ -161,7 +162,7 @@ export default function AllProductsPage({
   const isGetTitle10Page = pathname?.includes("/G02--8bd14e6f");
   const isGetTitle11Page = pathname?.includes("/G03--c29fa781");
   const isGetTitle12Page = pathname?.includes("/G04--6e5b3d90");
-  const isWomensday = pathname === "/products/fathersday-sale";
+  const isWomensday = pathname === "/products/festival-season";
   const isEOY = pathname === "/products/iris-expo-2026";
 
   const searchQuery = search.get("query");
@@ -372,6 +373,7 @@ export default function AllProductsPage({
             // promotion: { promotion: 1, start_date: today },
             active_offers: "1",
           }),
+          ...(isOdopPage && { query: "odop" }),
           ...(isFestivalGifting && { best_selling: "1" }),
           ...(isBogo && { bogo: "1" }),
           ...(isNewarrivalsPage && { new_arrivals: "1" }),
@@ -385,7 +387,8 @@ export default function AllProductsPage({
           ...(isGetTitle10Page && { title10: "1" }),
           ...(isGetTitle11Page && { title11: "1" }),
           ...(isGetTitle12Page && { title12: "1" }),
-          ...(isWomensday && { title13: "1" }),
+          // ...(isWomensday && { title13: "1" }),
+          ...(isWomensday && { title9: "1" }),
           ...(isEOY && { title10: "1" }),
         },
       };
@@ -423,21 +426,39 @@ export default function AllProductsPage({
 
         const data = await res.json();
         const incoming = data?.products || [];
+
+        // ── Offers + Women's Day: position-first sort ───────────────────
+        const shouldSortByPosition =
+          isOffersPage || isWomensday || Boolean(warehousesId);
+
+        const sorted = shouldSortByPosition
+          ? [
+              ...incoming
+                .filter((p) => p.position !== null && p.position !== undefined)
+                .sort((a, b) => Number(a.position) - Number(b.position)),
+
+              ...incoming.filter(
+                (p) => p.position === null || p.position === undefined,
+              ),
+            ]
+          : incoming;
+
         const total = Number(data?.info?.total_record || 0);
 
-        if (data.metaData) setCategoryMeta(data.metaData);
-        if (mode === "reset") setWarehouse(data.warehouse || null);
+        if (data.metaData) {
+          setCategoryMeta(data.metaData);
+        }
+
+        if (data.warehouse) {
+          setWarehouse(data.warehouse);
+        }
 
         if (mode === "reset") {
-          setProducts(incoming);
+          setProducts(sorted); // ← was: incoming
         } else {
           setProducts((prev) => {
             const map = new Map();
-
-            [...prev, ...incoming].forEach((p) => {
-              map.set(p.id, p);
-            });
-
+            [...prev, ...sorted].forEach((p) => map.set(p.id, p)); // ← was: incoming
             return Array.from(map.values());
           });
         }
@@ -501,6 +522,7 @@ export default function AllProductsPage({
       warehousesId,
       today,
       isOffersPage,
+      isOdopPage,
       isFestivalGifting,
       isBogo,
       isNewarrivalsPage,
@@ -519,7 +541,15 @@ export default function AllProductsPage({
     ],
   );
 
-  useMetaUpdater(categoryMeta);
+  useMetaUpdater(
+    warehouse
+      ? {
+          title: warehouse.meta_title || "",
+          description: warehouse.meta_description || "",
+          keywords: warehouse.meta_keywords || "",
+        }
+      : categoryMeta,
+  );
 
   // ── Shared reset helper ───────────────────────────────────────────
   const resetAndFetch = useCallback(
@@ -724,7 +754,7 @@ export default function AllProductsPage({
       mode: "reset",
     });
 
-    setShowMobileFilters(false);
+    // setShowMobileFilters(false);
   };
 
   const handleSidebarCategoryFetch = (catId, subId, subsubId) => {
@@ -766,6 +796,7 @@ export default function AllProductsPage({
 
   const pageSectionProps = {
     isOffersPage,
+    isOdopPage,
     isFestivalGifting,
     isWomensday,
     isNewarrivalsPage,
@@ -814,7 +845,7 @@ export default function AllProductsPage({
       </div>
 
       {/* Main layout */}
-      <div className="px-4 sm:px-6 py-6 sm:py-8">
+      <div className="px-4 sm:px-6 py-0 sm:py-8">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           <FilterSidebar {...filterProps} />
 
@@ -931,7 +962,7 @@ export default function AllProductsPage({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           onClick={scrollToTop}
-          className="fixed bottom-44 md:bottom-24 right-5 md:right-6 z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
+          className="fixed bottom-44 md:bottom-24 right-5 md:right-6 z-40 md:z-[100] w-12 h-12 rounded-full flex items-center justify-center bg-[#A00300] shadow-lg hover:scale-110 transition-transform"
           aria-label="Go to top"
         >
           <ArrowUp className="w-5 h-5 text-white" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../utils/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,12 +19,19 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
+  const flow = searchParams.get("flow");
+  const prefilledMobile = searchParams.get("mobile");
   const { handleLogin } = useSession();
 
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
-  const [currentFlow, setCurrentFlow] = useState("initial");
-  const [mobileNumber, setMobileNumber] = useState("");
+  const [currentFlow, setCurrentFlow] = useState(
+    flow === "mobile" ? "mobile" : "initial",
+  );
+
+  const [mobileNumber, setMobileNumber] = useState(
+    prefilledMobile?.replace(/^91/, "") || "",
+  );
   const [otp, setOtp] = useState("");
   const [emailLogin, setEmailLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +44,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false); // keep for other flows if needed
 
   const [mobileError, setMobileError] = useState("");
+
+  const autoOtpTriggered = useRef(false);
 
   const { getValidToken } = useAuth();
 
@@ -83,6 +92,19 @@ export default function LoginPage() {
     }
   };
 
+  useEffect(() => {
+    if (
+      currentFlow === "mobile" &&
+      mobileNumber?.length === 10 &&
+      !loading &&
+      !autoOtpTriggered.current
+    ) {
+      autoOtpTriggered.current = true;
+
+      handleSendOTP();
+    }
+  }, [currentFlow, mobileNumber]);
+
   const handleVerifyOTP = async () => {
     if (verifyLoading) return;
     setVerifyLoading(true);
@@ -106,7 +128,8 @@ export default function LoginPage() {
         );
         return;
       }
-      const { company_id, user_id, group_id, name } = data.data;
+      const { company_id, user_id, group_id, name, plan, payment_id } =
+        data.data;
       const { access_token, refresh_token } = data.token;
       handleLogin({
         company_id,
@@ -115,11 +138,22 @@ export default function LoginPage() {
         access_token,
         refresh_token,
         group_id,
+        plan,
+        payment_id,
       });
       toast.success(data.message || "You are successfully logged in! 🎉");
       if (group_id == 4) {
         localStorage.setItem("access_token", access_token);
-        window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${access_token}`;
+
+        localStorage.setItem(
+          "seller_plan",
+          JSON.stringify({
+            user_id,
+            plan,
+            payment_id,
+          }),
+        );
+        router.replace("/subscription");
       } else {
         router.push(from || "/");
       }
@@ -164,22 +198,29 @@ export default function LoginPage() {
   const handleMailLogin = async () => {
     if (loading) return;
     setLoading(true);
+
     try {
       const token = await getValidToken();
+
       const res = await fetch("/api/email_login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: emailLogin, password }),
+        body: JSON.stringify({
+          email: emailLogin,
+          password,
+        }),
       });
+
       let data;
       try {
         data = await res.json();
       } catch {
         data = null;
       }
+
       if (!res.ok || data?.status !== "success") {
         toast.dismiss();
         toast.error(
@@ -190,8 +231,12 @@ export default function LoginPage() {
         );
         return;
       }
-      const { company_id, user_id, group_id, name } = data.data;
+
+      const { company_id, user_id, group_id, name, plan, payment_id } =
+        data.data;
+
       const { access_token, refresh_token } = data.token;
+
       handleLogin({
         company_id,
         name,
@@ -199,11 +244,25 @@ export default function LoginPage() {
         access_token,
         refresh_token,
         group_id,
+        plan,
+        payment_id,
       });
+
       toast.success(data.message || "Login successful 🎉");
+
       if (group_id == 4) {
-        sessionStorage.setItem("access_token", access_token);
-        window.location.href = `https://marketplace.${DOMAIN_KEY}.com/Oauth/tLogin/${access_token}`;
+        localStorage.setItem("access_token", access_token);
+
+        localStorage.setItem(
+          "seller_plan",
+          JSON.stringify({
+            user_id,
+            plan,
+            payment_id,
+          }),
+        );
+
+        router.replace("/subscription");
       } else {
         router.push(from || "/");
       }

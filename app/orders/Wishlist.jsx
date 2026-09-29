@@ -330,7 +330,7 @@ const Wishlist = () => {
 
                       // ✅ Show toast + open cart instantly
                       toast.success("Moved from wishlist to cart!");
-                      setIsCartOpen(true); // 💥 Opens the Cart Sidebar immediately
+                      // if (window.innerWidth >= 768) setIsCartOpen(true);
                     } catch (err) {
                       console.error(err);
                       toast.error("Something went wrong!");

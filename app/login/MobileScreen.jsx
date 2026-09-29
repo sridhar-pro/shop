@@ -44,7 +44,7 @@ export default function MobileScreen({
         />
 
         <p className="text-center text-md !font-extrabold text-gray-200 mt-10">
-          Enter your register mobile number
+          Login with your registered mobile number
         </p>
       </div>
 

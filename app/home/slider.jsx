@@ -161,10 +161,17 @@ export function ImagesSliderDemo() {
 
   // 👆 Swipe support
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => setCurrentIndex((prev) => (prev + 1) % images.length),
-    onSwipedRight: () =>
-      setCurrentIndex((prev) => (prev - 1 + images.length) % images.length),
-    preventScrollOnSwipe: true,
+    onSwipedLeft: () => {
+      if (images.length > 1) {
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+      }
+    },
+    onSwipedRight: () => {
+      if (images.length > 1) {
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+      }
+    },
+    preventScrollOnSwipe: false,
     trackTouch: true,
   });
 
@@ -191,7 +198,7 @@ export function ImagesSliderDemo() {
     <div className="px-2 lg:px-8 mt-2 lg:mt-4">
       <div
         {...swipeHandlers}
-        className="relative w-full aspect-[520/600] md:h-auto md:aspect-[16/4] overflow-hidden touch-pan-x rounded-2xl"
+        className="relative w-full aspect-[520/600] md:h-auto md:aspect-[16/4] overflow-hidden touch-pan-y rounded-2xl"
       >
         {loading || images.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 lg:rounded-2xl overflow-hidden">

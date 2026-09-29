@@ -160,10 +160,10 @@ export default function YuukkeSellerHero() {
 
           {/* Seller Count Card */}
           <div className="w-[210px] h-[310px] rounded-[34px] bg-[#000930] text-white p-10 flex flex-col justify-center">
-            <h2 className="text-6xl font-semibold">10K+</h2>
+            <h2 className="text-6xl font-semibold">500+</h2>
 
             <p className="mt-6 text-[20px] leading-[1.6] text-white/85">
-              Active Sellers Growing with Yuukke
+              Premium Brands Selling Through Yuukke
             </p>
           </div>
 
@@ -191,12 +191,12 @@ export default function YuukkeSellerHero() {
               </div>
 
               <h2 className="text-[56px] leading-none font-semibold text-[#000930] mt-3">
-                25K+
+                10K+
               </h2>
 
               <p className="mt-2 text-[#888] text-md">
-                Added by <span className="text-[#A00300]">new sellers</span>{" "}
-                this month
+                Added by{" "}
+                <span className="text-[#A00300]">new sellers</span>{" "}
               </p>
             </div>
           </div>

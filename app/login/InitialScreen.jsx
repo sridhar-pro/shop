@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function InitialScreen({ setCurrentFlow }) {
   return (
-    <div className="min-h-screen flex flex-col pt-40 px-4">
+    <div className="min-h-screen flex flex-col pt-32 px-4">
       {/* Logo + Branding */}
       <div className="text-center mb-8">
         <Image

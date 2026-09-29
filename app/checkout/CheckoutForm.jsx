@@ -380,6 +380,50 @@ const CheckoutForm = ({
   const [showInfo, setShowInfo] = useState(true);
   const formRef = useRef(null);
 
+  // ✅ NEW: order the fields appear in the form (top → bottom),
+  // used to figure out which invalid field to scroll to first.
+  const FIELD_ORDER = [
+    "email",
+    "country",
+    "name",
+    "lastName",
+    "addressLine1",
+    "addressLine2",
+    "city",
+    "state",
+    "pin",
+    "contact",
+  ];
+
+  // ✅ NEW: scrolls (and focuses) the first invalid field into view.
+  // Needed because on mobile the fields sit below the sticky order
+  // summary, so a validation error can render completely off-screen.
+  const scrollToFirstError = (errors) => {
+    const firstErrorKey = FIELD_ORDER.find((key) => errors[key]);
+    if (!firstErrorKey) return;
+
+    // Wait a tick so the error text (and any layout shift it causes)
+    // has actually rendered before we measure scroll position.
+    requestAnimationFrame(() => {
+      const container = formRef.current;
+      const field = container?.querySelector(`[name="${firstErrorKey}"]`);
+
+      if (!field) return;
+
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Focus after the scroll settles so mobile keyboards don't
+      // fight the smooth-scroll animation.
+      setTimeout(() => {
+        try {
+          field.focus({ preventScroll: true });
+        } catch {
+          field.focus?.();
+        }
+      }, 350);
+    });
+  };
+
   const [code, setCode] = useState("");
 
   const [couponMessage, setCouponMessage] = useState(""); // <-- new state
@@ -458,6 +502,7 @@ const CheckoutForm = ({
       setFormError(errors);
       console.warn("❌ Form validation failed", errors);
       setIsProcessing(false);
+      scrollToFirstError(errors); // ✅ NEW: bring the error into view on mobile
       return;
     }
 
@@ -482,6 +527,32 @@ const CheckoutForm = ({
       if (!cartId) {
         toast.error("Cart ID not found!");
         return;
+      }
+
+      // Check current affiliate
+      let affiliateCode = null;
+
+      try {
+        const affiliateRes = await fetch("/api/referral/current", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!affiliateRes.ok) {
+          throw new Error(`HTTP ${affiliateRes.status}`);
+        }
+
+        const affiliateData = await affiliateRes.json();
+
+        affiliateCode = affiliateData?.affiliate_code || null;
+
+        if (affiliateCode) {
+          console.log("✅ Affiliate Code Found:", affiliateCode);
+        } else {
+          console.log("ℹ️ No affiliate code available.");
+        }
+      } catch (err) {
+        console.warn("Failed to fetch affiliate status:", err);
       }
 
       let effectiveCoupon = "";
@@ -533,9 +604,24 @@ const CheckoutForm = ({
         company_id: 0,
         cart_id: cartId,
         ...(effectiveCoupon && { coupon_code: effectiveCoupon }),
+        ...(affiliateCode && { affiliate_code: affiliateCode }),
       };
 
       console.log("📦 createOrder coupon_code =>", effectiveCoupon);
+
+      // ✅ Fire AddPaymentInfo when guest clicks Pay
+      const { trackEvent } = await import("@/app/lib/trackEvent");
+      trackEvent({
+        eventName: "AddPaymentInfo",
+        userEmail: formData.email,
+        userPhone: formData.contact,
+        customData: {
+          value: total,
+          currency: "INR",
+          contentIds: cartItems.map((item) => item.product_id?.toString()),
+          contentType: "product",
+        },
+      });
 
       console.log("📦 Sending payload to /api/createOrder:", customerPayload);
 

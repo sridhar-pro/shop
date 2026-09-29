@@ -96,6 +96,27 @@ const MultiStepForm = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
               >
+                {/* Premium ODOP Banner */}
+                <motion.div
+                  initial={{ opacity: 0, y: -15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.7 }}
+                  className="flex justify-center mb-8"
+                >
+                  <div className="relative overflow-hidden rounded-2xl border border-amber-300/60 bg-white/80 backdrop-blur-xl px-8 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+                    {/* Golden Glow */}
+                    <div className="absolute -top-10 -left-10 h-24 w-24 rounded-full bg-amber-300/20 blur-3xl" />
+                    <div className="absolute -bottom-10 -right-10 h-24 w-24 rounded-full bg-[#C0276A]/10 blur-3xl" />
+
+                    <div className="relative flex items-center justify-center gap-3">
+                      <div className="text-center">
+                        <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7A1E1E] via-[#B33B5E] to-[#D49A2A] bg-clip-text text-transparent">
+                          {t("ODOP Registration")}
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
                 <h1 className="text-[2rem] md:text-[3rem] font-bold text-[#411111]">
                   {t("Welcome to")}{" "}
                   <span className="text-[#6B1D1D]">Yuukke</span>
@@ -105,7 +126,7 @@ const MultiStepForm = () => {
                 </h4>
                 <p className="text-gray-500 text-[1rem] md:text-[1.25rem]">
                   {t(
-                    "Reach conscious buyers and grow your sustainable business effortlessly."
+                    "Reach conscious buyers and grow your sustainable business effortlessly.",
                   )}
                 </p>
 

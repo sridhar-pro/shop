@@ -322,128 +322,440 @@ const Addresses = () => {
 
       {/* Add/Edit Modal */}
       {(isAddModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50 transition-opacity">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-8 relative animate-fade-in">
-            {/* Close Button */}
-            <button
-              onClick={() => {
-                setIsAddModalOpen(false);
-                setIsEditModalOpen(false);
-                resetForm();
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <X size={22} />
-            </button>
-
-            <h2 className="text-xl font-bold mb-6 text-gray-800">
-              {isAddModalOpen ? "Add New Address" : "Edit Address"}
-            </h2>
-
-            <form
-              onSubmit={isAddModalOpen ? handleAddAddress : handleUpdateAddress}
-              className="space-y-4"
-            >
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                <input
-                  type="text"
-                  name="line1"
-                  value={formData.line1}
-                  onChange={handleChange}
-                  placeholder="Address Line 1"
-                  required
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="line2"
-                  value={formData.line2}
-                  onChange={handleChange}
-                  placeholder="Address Line 2"
-                  required
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                  required
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  placeholder="State"
-                  required
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="postal_code"
-                  value={formData.postal_code}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Allow only digits up to 6
-                    if (/^\d{0,6}$/.test(value)) {
-                      handleChange(e);
-                    }
-                  }}
-                  placeholder="Postal Code"
-                  required
-                  maxLength={6}
-                  pattern="\d{6}" // ✅ Must be exactly 6 digits
-                  title="Postal code must be exactly 6 digits"
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-
-                <input
-                  type="text"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  placeholder="Country"
-                  required
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="landmark"
-                  value={formData.landmark}
-                  onChange={handleChange}
-                  placeholder="Landmark"
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Allow only digits up to 10
-                    if (/^\d{0,10}$/.test(value)) {
-                      handleChange(e);
-                    }
-                  }}
-                  placeholder="Phone Number"
-                  required
-                  maxLength={10}
-                  pattern="\d{10}" // ✅ Ensures exactly 10 digits on form submit
-                  title="Phone number must be exactly 10 digits"
-                  className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
-                />
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[100] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-8 pt-8 pb-6 flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                  {isAddModalOpen ? (
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        fill="none"
+                      />
+                      <circle
+                        cx="12"
+                        cy="9"
+                        r="2.5"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                      />
+                    </svg>
+                  ) : (
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                        stroke="#16a34a"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {isAddModalOpen ? "Add New Address" : "Edit Address"}
+                  </h2>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    {isAddModalOpen
+                      ? "Enter the address details to save for faster checkout"
+                      : "Update your delivery address details"}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setIsEditModalOpen(false);
+                  resetForm();
+                }}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
 
+            {/* Form Body */}
+            <div className="px-8 pb-0 max-h-[65vh] overflow-y-auto">
+              <form
+                onSubmit={
+                  isAddModalOpen ? handleAddAddress : handleUpdateAddress
+                }
+                id="address-modal-form"
+              >
+                {/* Row 1: Line 1 full width */}
+                <div className="mb-5">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinejoin="round"
+                        />
+                        <polyline
+                          points="9 22 9 12 15 12 15 22"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      name="line1"
+                      value={formData.line1}
+                      onChange={handleChange}
+                      placeholder="House / Flat / Building, Street"
+                      required
+                      className="w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Line 2 full width */}
+                <div className="mb-5">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Area / Locality
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <rect
+                          x="3"
+                          y="3"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <path
+                          d="M3 9h18M9 21V9"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      name="line2"
+                      value={formData.line2}
+                      onChange={handleChange}
+                      placeholder="Area, Landmark, Near by place"
+                      required
+                      className="w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: City / State / Postal Code */}
+                <div className="grid grid-cols-3 gap-4 mb-5">
+                  {/* City */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      City / Town <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <rect
+                            x="2"
+                            y="7"
+                            width="20"
+                            height="14"
+                            rx="1"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path
+                            d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        placeholder="Enter city or town"
+                        required
+                        className="w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* State */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      State <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M3 6l9-4 9 4v6c0 5.25-3.6 10.14-9 11.25C6.6 22.14 3 17.25 3 12V6z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        placeholder="Enter state"
+                        required
+                        className="w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Postal Code */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Pincode <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <rect
+                            x="3"
+                            y="11"
+                            width="18"
+                            height="11"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path
+                            d="M7 11V7a5 5 0 0110 0v4"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="postal_code"
+                        value={formData.postal_code}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (/^\d{0,6}$/.test(value)) {
+                            handleChange(e);
+                          }
+                        }}
+                        placeholder="6-digit pincode"
+                        required
+                        maxLength={6}
+                        pattern="\d{6}"
+                        title="Postal code must be exactly 6 digits"
+                        className="w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 4: Country + Landmark */}
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  {/* Country */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Country <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="9"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path
+                            d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleChange}
+                        placeholder="Country"
+                        required
+                        className="w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Landmark */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Landmark
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <circle
+                            cx="12"
+                            cy="9"
+                            r="2.5"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        name="landmark"
+                        value={formData.landmark}
+                        onChange={handleChange}
+                        placeholder="Nearby landmark"
+                        className="w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 5: Phone full width */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 013.09 4.18 2 2 0 015.07 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.09 9.91a16 16 0 006.99 7l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d{0,10}$/.test(value)) {
+                          handleChange(e);
+                        }
+                      }}
+                      placeholder="Enter 10-digit mobile number"
+                      required
+                      maxLength={10}
+                      pattern="\d{10}"
+                      title="Phone number must be exactly 10 digits"
+                      className="w-full border rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition border-gray-200 bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3 bg-white">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setIsEditModalOpen(false);
+                  resetForm();
+                }}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition"
+              >
+                <X size={13} />
+                Cancel
+              </button>
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl shadow-md transition-transform hover:scale-105"
+                form="address-modal-form"
+                className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-sm font-bold shadow-sm transition"
               >
-                {isAddModalOpen ? "Add Address" : "Update Address"}
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path
+                    d="M1.5 7l4 4 7-7"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {isAddModalOpen ? "Save Address" : "Update Address"}
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}

@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
+  Eye,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -598,6 +599,18 @@ async function fetchFestivalProductsWithCache() {
   return data;
 }
 
+function getBackImage(imageHtml) {
+  const imgTags = imageHtml?.match(/<img\b[^>]*>/gi) || [];
+
+  const backTag = imgTags.find((tag) =>
+    /\bclass=["'][^"']*\bback-img\b/i.test(tag),
+  );
+
+  const match = backTag?.match(/\bsrc=["']([^"']+)["']/i);
+
+  return match?.[1] || null;
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function FestivalShowcase() {
@@ -686,6 +699,7 @@ export function FestivalShowcase() {
               id: item.id,
               title: item.name,
               image: `https://marketplace.${DOMAIN_KEY}.com/assets/uploads/${item.image}`,
+              hoverImage: getBackImage(item.image_g),
               link: item.slug,
               price,
               promoPrice,
@@ -693,6 +707,9 @@ export function FestivalShowcase() {
               endDate: item.promotion === "1" ? item.end_date : null,
               isFestival: item.festival_special === "1",
               warehouseId: item?.seller?.warehouse_id,
+              // minimum_order_limit === 1 → must be ordered from the product page
+              viewOnly: Number(item.minimum_order_limit ?? 0) === 1,
+              minQty: Number(item.minimum_order_qty ?? 0),
             };
           });
 
@@ -1028,13 +1045,28 @@ function FestivalCard({ item }) {
       >
         {/* Product image */}
         <div className="relative w-full h-[240px] bg-[#FBF1DE] overflow-hidden">
+          {/* Primary image */}
           <Image
             src={item.image}
             alt={item.title}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            priority={false}
+            className={`object-cover transition-all duration-500 ${
+              item.hoverImage
+                ? "group-hover:opacity-0 group-hover:scale-105"
+                : "group-hover:scale-105"
+            }`}
           />
 
+          {/* Alternate image — visible on hover */}
+          {item.hoverImage && (
+            <Image
+              src={item.hoverImage}
+              alt={`${item.title} - alternate view`}
+              fill
+              className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none"
+            />
+          )}
           {/* Discount / Festival badge */}
           {item.discount ? (
             <span className="absolute top-3 left-3 bg-[#7A0000] text-[#FBF1DE] text-xs font-semibold px-2.5 py-1 rounded-full z-10">
@@ -1045,6 +1077,15 @@ function FestivalCard({ item }) {
               Festival pick
             </span>
           ) : null}
+
+          {/* Minimum order quantity indicator (only for view-only products) */}
+          {item.viewOnly && (
+            <span className="absolute bottom-3 left-3 z-10 bg-[#2B0A1F]/90 text-[#FBF1DE] text-[11px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+              {item.minQty > 1
+                ? `${t("Min. order")}: ${item.minQty} ${t("pcs")}`
+                : t("Minimum quantity required")}
+            </span>
+          )}
 
           {/* Add-to-cart GIF loader */}
           {isAdding && (
@@ -1077,34 +1118,59 @@ function FestivalCard({ item }) {
             )}
           </div>
 
-          {/* Add to Cart — left-to-right fill animation (matches sample) */}
+          {/* Add to Cart / View Product */}
           <div className="mt-3 relative w-full flex justify-center">
-            <button
-              disabled={isAdding}
-              onClick={handleAddToCart}
-              aria-label="Add to cart"
-              className={`group/btn relative w-full overflow-hidden rounded-xl py-2.5 px-4
-                         font-semibold text-sm border border-[#2B0A1F] transition-all duration-300
-                         ${isAdding ? "opacity-60 cursor-not-allowed" : "hover:border-transparent cursor-pointer"}`}
-              style={{ isolation: "isolate" }}
-            >
-              {/* Left-to-right fill on hover */}
-              <span
-                className="absolute left-0 top-0 h-full w-0 bg-[#2B0A1F]
-                           transition-all duration-[900ms] ease-in-out
-                           group-hover/btn:w-full z-[1] rounded-xl"
-                style={{ transitionProperty: "width", willChange: "width" }}
-              />
-
-              <span
-                className="relative z-10 flex items-center justify-center gap-2
-                               text-[#2B0A1F] transition-colors duration-300
-                               group-hover/btn:text-[#FBF1DE]"
+            {item.viewOnly ? (
+              // Not a <Link>: the whole card is already a Link to /products/slug
+              <div
+                role="button"
+                aria-label={`View ${item.title}`}
+                className="group/btn relative w-full overflow-hidden rounded-xl py-2.5 px-4
+                 font-semibold text-sm border border-[#2B0A1F] transition-all duration-300
+                 hover:border-transparent cursor-pointer text-center"
+                style={{ isolation: "isolate" }}
               >
-                <ShoppingCart className="w-4 h-4" />
-                {isAdding ? t("Adding...") : t("Add to Cart")}
-              </span>
-            </button>
+                <span
+                  className="absolute left-0 top-0 h-full w-0 bg-[#2B0A1F]
+                   transition-all duration-[900ms] ease-in-out
+                   group-hover/btn:w-full z-[1] rounded-xl"
+                  style={{ transitionProperty: "width", willChange: "width" }}
+                />
+                <span
+                  className="relative z-10 flex items-center justify-center gap-2
+                   text-[#2B0A1F] transition-colors duration-300
+                   group-hover/btn:text-[#FBF1DE]"
+                >
+                  <Eye className="w-4 h-4" />
+                  {t("View Product")}
+                </span>
+              </div>
+            ) : (
+              <button
+                disabled={isAdding}
+                onClick={handleAddToCart}
+                aria-label="Add to cart"
+                className={`group/btn relative w-full overflow-hidden rounded-xl py-2.5 px-4
+                 font-semibold text-sm border border-[#2B0A1F] transition-all duration-300
+                 ${isAdding ? "opacity-60 cursor-not-allowed" : "hover:border-transparent cursor-pointer"}`}
+                style={{ isolation: "isolate" }}
+              >
+                <span
+                  className="absolute left-0 top-0 h-full w-0 bg-[#2B0A1F]
+                   transition-all duration-[900ms] ease-in-out
+                   group-hover/btn:w-full z-[1] rounded-xl"
+                  style={{ transitionProperty: "width", willChange: "width" }}
+                />
+                <span
+                  className="relative z-10 flex items-center justify-center gap-2
+                   text-[#2B0A1F] transition-colors duration-300
+                   group-hover/btn:text-[#FBF1DE]"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  {isAdding ? t("Adding...") : t("Add to Cart")}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </motion.div>

@@ -9,14 +9,14 @@ export default function InitialScreen({ setCurrentFlow }) {
       {/* Logo + Branding */}
       <div className="text-center mb-8">
         <Image
-          src="/home_yuukke.png"
+          src="/logo-white.png"
           alt="Yuukke Logo"
-          width={200}
-          height={200}
+          width={250}
+          height={250}
           className="mx-auto"
         />
 
-        <p className="text-center text-md text-gray-200 mt-12 ">
+        <p className="text-center text-md text-gray-200 mt-4">
           By tapping Sign in, you agree to our <br />
           <a
             href="https://marketplace.yuukke.com/themes/yuukke/shop/assets/images/Yuukke-Privacy-Policy.pdf"

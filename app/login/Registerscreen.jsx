@@ -47,7 +47,7 @@ export default function RegisterScreen({
     >
       <div className="mb-3">
         <Image
-          src="/home_yuukke.png"
+          src="/logo-white.png"
           alt="Yuukke Logo"
           width={200}
           height={200}

@@ -8,6 +8,7 @@ import { ArrowUp, PackageSearch } from "lucide-react";
 import { useAuth } from "../utils/AuthContext";
 import { fetchWithAuthGlobal } from "../utils/fetchWithAuth";
 import CartSidebar from "@/app/components/CartSideBar";
+import QuickViewModal from "../home/Products/components/QuickViewModal";
 
 // ── Split components ──────────────────────────────────────────────
 import ProductCard from "./components/Productcard";
@@ -62,6 +63,37 @@ export default function AllProductsPage({
   // The cooldown was occasionally blocking legitimate triggers.
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // ── Quick view modal ─────────────────────────────────────────────
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [mainImage, setMainImage] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isAddingQuick, setIsAddingQuick] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [, setCartItems] = useState([]);
+  const modalRef = useRef(null);
+
+  const quickVariants = quickViewProduct?.product_variants || [];
+  const selectedQuickVariant = quickViewProduct
+    ? selectedVariants[quickViewProduct.id] || quickVariants[0] || null
+    : null;
+
+  const MIN_LIMIT = Number(quickViewProduct?.minimum_order_qty) || 1;
+  const MAX_LIMIT = Math.max(
+    Number(quickViewProduct?.quantity) || 1,
+    MIN_LIMIT,
+  );
+
+  const increaseQty = () => setQuantity((q) => Math.min(q + 1, MAX_LIMIT));
+  const decreaseQty = () => setQuantity((q) => Math.max(q - 1, MIN_LIMIT));
+
+  // Passed to ProductCard → called when the eye icon is clicked
+  const openQuickView = (p) => {
+    setMainImage(null);
+    setQuantity(Number(p?.minimum_order_qty) || 1);
+    // The modal's thumbnail strip reads `image_g`, the listing API returns `images_g`
+    setQuickViewProduct({ ...p, image_g: p.image_g || p.images_g });
+  };
 
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -883,6 +915,7 @@ export default function AllProductsPage({
                   <ProductCard
                     key={product.id}
                     product={product}
+                    onQuickView={openQuickView}
                     isCartOpen={isCartOpen}
                     setIsCartOpen={setIsCartOpen}
                   />
@@ -948,7 +981,26 @@ export default function AllProductsPage({
                   <OtherProductsGrid />
                 </>
               )}
-
+            <QuickViewModal
+              quickViewProduct={quickViewProduct}
+              setQuickViewProduct={setQuickViewProduct}
+              mainImage={mainImage}
+              setMainImage={setMainImage}
+              quantity={quantity}
+              setQuantity={setQuantity}
+              isAdding={isAddingQuick}
+              setIsAdding={setIsAddingQuick}
+              selectedVariants={selectedVariants}
+              setSelectedVariants={setSelectedVariants}
+              modalRef={modalRef}
+              MIN_LIMIT={MIN_LIMIT}
+              MAX_LIMIT={MAX_LIMIT}
+              increaseQty={increaseQty}
+              decreaseQty={decreaseQty}
+              quickVariants={quickVariants}
+              selectedQuickVariant={selectedQuickVariant}
+              setCartItems={setCartItems}
+            />
             <CartSidebar
               isOpen={isCartOpen}
               onClose={() => setIsCartOpen(false)}

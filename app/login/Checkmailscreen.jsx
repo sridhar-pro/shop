@@ -25,10 +25,10 @@ export default function CheckMailScreen({ setCurrentFlow }) {
     >
       <div className="mb-6 text-center">
         <Image
-          src="/home_yuukke.png"
+          src="/logo-white.png"
           alt="Yuukke Logo"
-          width={200}
-          height={200}
+          width={250}
+          height={250}
           className="mx-auto"
         />
 

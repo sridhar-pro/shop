@@ -331,45 +331,43 @@ export default function ProductCard({
               );
             })()}
 
-          {/* Mobile eye icon */}
+          {/* Quick View – glass pill on desktop hover, compact icon on mobile */}
           {!isOutOfStock && (
-            <div className="md:hidden absolute bottom-2 right-1 z-30">
+            <>
+              {/* soft scrim so the pill reads on any product photo */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/10 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 z-20" />
+
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setQuickViewProduct(product);
                   setQuantity(1);
                 }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#A00300] shadow-lg transition-transform active:scale-95"
                 aria-label="Quick View"
+                title="Quick View"
+                className="absolute z-30 flex items-center justify-center gap-2 cursor-pointer
+        bottom-2 right-2 h-9 w-9 rounded-full
+        md:bottom-3 md:left-1/2 md:right-auto md:-translate-x-1/2 md:h-10 md:w-auto md:px-5
+        bg-white/80 backdrop-blur-md text-[#A00300]
+        border border-white/70 ring-1 ring-[#A00300]/10
+        shadow-[0_4px_20px_rgba(160,3,0,0.18)]
+        md:opacity-0 md:translate-y-3 md:group-hover:opacity-100 md:group-hover:translate-y-0
+        transition-all duration-300 ease-out
+        hover:bg-[#A00300] hover:text-white hover:ring-[#A00300]
+        hover:shadow-[0_6px_24px_rgba(160,3,0,0.35)]
+        active:scale-95"
               >
-                <Eye className="h-4 w-4 text-white" />
+                <Eye className="w-4 h-4" strokeWidth={1.75} />
+                <span className="hidden md:inline text-[11px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap">
+                  {t("Quick View")}
+                </span>
               </button>
-            </div>
+            </>
           )}
         </div>
       </Link>
-
-      {/* Desktop hover eye — centred on image */}
-      {!isOutOfStock && (
-        <div className="hidden md:block absolute inset-0 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setQuickViewProduct(product);
-                setQuantity(1);
-              }}
-              className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition hover:bg-[#A00300] group/quickview cursor-pointer pointer-events-auto"
-              aria-label="Quick View"
-            >
-              <Eye className="text-gray-700 w-6 h-6 group-hover/quickview:text-white transition-colors" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Product info */}
       <div className="flex flex-col h-full">

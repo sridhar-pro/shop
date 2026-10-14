@@ -235,8 +235,6 @@ export default function ProductReviewPage() {
     );
   }
 
-  const isCompleted = orderData.invoice?.sale_status === "completed";
-
   const DOMAIN_KEY = process.env.NEXT_PUBLIC_DOMAIN_KEY || "yuukke";
 
   const getImageSrc = (image) => {
@@ -260,7 +258,7 @@ export default function ProductReviewPage() {
         {orderData.seller_group.map((group) =>
           group.items.map((item) => {
             const isSubmitted = submittedProducts[item.product_id];
-            const canReview = isCompleted && item.product_review === true;
+            const canReview = item.product_review === true;
 
             const isFormValid =
               activeReview[item.product_id]?.product_ratings &&
@@ -287,7 +285,7 @@ export default function ProductReviewPage() {
                       {item.product_name}
                     </h2>
                     <p className="mt-3 text-sm text-gray-600">
-                      We’d love to hear how this hamper worked out for you.
+                      We’d love to hear how this product worked out for you.
                     </p>
                   </div>
                 </div>

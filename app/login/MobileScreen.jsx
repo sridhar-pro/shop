@@ -36,14 +36,14 @@ export default function MobileScreen({
     >
       <div className="mb-3">
         <Image
-          src="/home_yuukke.png"
+          src="/logo-white.png"
           alt="Yuukke Logo"
-          width={200}
-          height={200}
+          width={250}
+          height={250}
           className="mx-auto"
         />
 
-        <p className="text-center text-md !font-extrabold text-gray-200 mt-10">
+        <p className="text-center text-md !font-extrabold text-gray-200 mt-2">
           Login with your registered mobile number
         </p>
       </div>

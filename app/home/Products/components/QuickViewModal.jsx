@@ -7,7 +7,7 @@ import { X, Star, ShoppingCart, ArrowRight, Minus, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { trackProductHistory } from "@/app/utils/productHistory";
-import { getImageSrc, getImageSrcThumbs } from "../utils/imageHelpers";
+import { getImageSrc } from "../utils/imageHelpers";
 
 export default function QuickViewModal({
   quickViewProduct,
@@ -375,6 +375,21 @@ export default function QuickViewModal({
     );
   };
 
+  // ── Gallery images (main image + image_g, deduped, no thumbs) ───────────────
+  const galleryImages = (() => {
+    if (!quickViewProduct.image_g) return [];
+
+    const matches = quickViewProduct.image_g.match(/src="([^"]+)"/g) || [];
+    const imageUrls = matches.map((src) => src.replace(/src="|"/g, ""));
+
+    return [quickViewProduct.image, ...imageUrls]
+      .filter(Boolean)
+      .map((img) => getImageSrc(img))
+      .filter((img, index, self) => img && self.indexOf(img) === index);
+  })();
+
+  const activeImage = getImageSrc(mainImage || quickViewProduct.image);
+
   return (
     <div
       key="backdrop"
@@ -396,7 +411,7 @@ export default function QuickViewModal({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
           {/* ── Image section ────────────────────────────────────────────── */}
           <div className="order-1 md:order-none">
-            <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-none group">
+            <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-xl overflow-hidden shadow-none group">
               {(mainImage || quickViewProduct.image) && (
                 <AnimatePresence mode="wait">
                   <div
@@ -404,13 +419,13 @@ export default function QuickViewModal({
                     className="absolute inset-0"
                   >
                     <Image
-                      src={getImageSrc(mainImage || quickViewProduct.image)}
+                      src={activeImage}
                       alt={quickViewProduct.name || "Image not found!"}
                       title={quickViewProduct.name || "Image not found!"}
                       fill
                       priority
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                      className="object-contain"
+                      className="object-contain "
                     />
                   </div>
                 </AnimatePresence>
@@ -418,42 +433,28 @@ export default function QuickViewModal({
             </div>
 
             {/* Thumbnail strip */}
-            {quickViewProduct.image_g && (
+            {galleryImages.length > 0 && (
               <div className="flex gap-2 md:gap-3 mt-3 md:mt-4 overflow-x-auto scrollbar-hide py-2">
-                {(() => {
-                  const matches =
-                    quickViewProduct.image_g.match(/src="([^"]+)"/g) || [];
-                  const imageUrls = matches.map((src) =>
-                    src.replace(/src="|"/g, ""),
-                  );
-                  const allImages = [
-                    getImageSrcThumbs(quickViewProduct.image),
-                    ...imageUrls,
-                  ].filter(
-                    (img, index, self) => img && self.indexOf(img) === index,
-                  );
-
-                  return allImages.map((img, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setMainImage(getImageSrc(img))}
-                      className={`relative w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 transition-all duration-300 cursor-pointer overflow-hidden shadow-sm ${
-                        getImageSrc(img) === mainImage
-                          ? "border-[#A00300] ring-1 ring-[#A00300]"
-                          : "border-gray-200"
-                      }`}
-                    >
-                      <Image
-                        src={getImageSrcThumbs(img)}
-                        alt={`thumb-${i}`}
-                        title={`thumb-${i}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover rounded-md"
-                      />
-                    </div>
-                  ));
-                })()}
+                {galleryImages.map((img, i) => (
+                  <div
+                    key={img}
+                    onClick={() => setMainImage(img)}
+                    className={`relative w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 transition-all duration-300 cursor-pointer overflow-hidden shadow-sm ${
+                      img === activeImage
+                        ? "border-[#A00300] ring-1 ring-[#A00300]"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`thumb-${i}`}
+                      title={`thumb-${i}`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover rounded-md"
+                    />
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -51,10 +51,10 @@ export default function EmailScreen({
     >
       <div className="mb-3">
         <Image
-          src="/home_yuukke.png"
+          src="/logo-white.png"
           alt="Yuukke Logo"
-          width={200}
-          height={200}
+          width={250}
+          height={250}
           className="mx-auto"
         />
       </div>

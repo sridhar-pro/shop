@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import Image from "next/image";
@@ -19,7 +19,34 @@ function getImageSrc(image) {
   return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
-export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
+function getAlternateImage(imagesHtml) {
+  if (!imagesHtml) return null;
+
+  const matches = [
+    ...imagesHtml.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi),
+  ];
+
+  const alternateImage = matches[1]?.[1];
+
+  if (!alternateImage) return null;
+
+  if (
+    alternateImage.startsWith("https://") ||
+    alternateImage.startsWith("http://") ||
+    alternateImage.startsWith("/")
+  ) {
+    return alternateImage;
+  }
+
+  return getImageSrc(alternateImage);
+}
+
+export default function ProductCard({
+  product,
+  isCartOpen,
+  setIsCartOpen,
+  onQuickView, // optional: (product) => void  → opens QuickViewModal
+}) {
   const router = useRouter();
 
   const [selectedVariant, setSelectedVariant] = useState(
@@ -64,6 +91,14 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
     isDropdownVariantRequired ||
     isCustomizationRequired ||
     isMinimumOrderLimitOne;
+
+  // Eye icon → quick view (falls back to the product page if no handler is passed)
+  const handleQuickView = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onQuickView) onQuickView(product);
+    else router.push(`/products/${product.slug}`);
+  };
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -245,6 +280,8 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
     product.product_variants?.[0]?.front_view ||
     product.image;
 
+  const alternateImage = getAlternateImage(product.images_g);
+
   const isTextVariantOnly = product.product_variants.every(
     (v) => v.type === "text",
   );
@@ -289,14 +326,59 @@ export default function ProductCard({ product, isCartOpen, setIsCartOpen }) {
               isOutOfStock ? "blur-[1.5px]" : ""
             }`}
           >
+            {/* Primary and alternate product images */}
             <Image
               src={getImageSrc(displayImage)}
-              alt={product.name || "Image not found!"}
-              title={product.name || "Image not found!"}
+              alt={product.name || "Product image"}
+              title={product.name || "Product image"}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              className="object-contain"
+              className={`object-contain transition-opacity duration-500 ${
+                alternateImage ? "group-hover:opacity-0" : ""
+              }`}
             />
+
+            {alternateImage && (
+              <Image
+                src={alternateImage}
+                alt={`${product.name || "Product"} - alternate view`}
+                title={`${product.name || "Product"} - alternate view`}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                className="object-contain opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none"
+              />
+            )}
+
+            {/* Quick View – glass pill on desktop hover, compact icon on touch/mobile */}
+            {!isOutOfStock && (
+              <>
+                {/* soft scrim so the pill reads on any product photo */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/10 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-500" />
+
+                <button
+                  type="button"
+                  onClick={handleQuickView}
+                  aria-label={`Quick view ${product.name || "product"}`}
+                  title="Quick view"
+                  className="absolute z-20 flex items-center justify-center gap-2 cursor-pointer
+        bottom-2 right-2 h-8 w-8 rounded-full
+        md:bottom-3 md:left-1/2 md:right-auto md:-translate-x-1/2 md:h-10 md:w-auto md:px-5
+        bg-white/80 backdrop-blur-md text-[#A00300]
+        border border-white/70 ring-1 ring-[#A00300]/10
+        shadow-[0_4px_20px_rgba(160,3,0,0.18)]
+        md:opacity-0 md:translate-y-3 md:group-hover:opacity-100 md:group-hover:translate-y-0
+        transition-all duration-300 ease-out
+        hover:bg-[#A00300] hover:text-white hover:ring-[#A00300]
+        hover:shadow-[0_6px_24px_rgba(160,3,0,0.35)]
+        active:scale-95"
+                >
+                  <Eye className="w-4 h-4" strokeWidth={1.75} />
+                  <span className="hidden md:inline text-[11px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap">
+                    Quick View
+                  </span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Out of Stock Overlay */}
